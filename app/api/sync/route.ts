@@ -37,8 +37,8 @@ export async function GET() {
   return NextResponse.json({
     syncedAt: new Date().toISOString(),
     sources: results,
-    campuses: [...campusSet].sort(),
-    months: [...monthSet],
+    campuses: Array.from(campusSet).sort(),
+    months: Array.from(monthSet),
     errors,
   });
 }
