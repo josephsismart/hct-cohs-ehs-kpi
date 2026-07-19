@@ -4,6 +4,9 @@ import './globals.css';
 export const metadata: Metadata = {
   title: 'HCT-COHS EHS KPI Dashboard',
   description: 'Health, Safety & Environment KPI Dashboard',
+  icons: {
+    icon: '/icon.svg',
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
