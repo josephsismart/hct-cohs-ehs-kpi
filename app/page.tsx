@@ -24,10 +24,10 @@ const KPI_CHARTS = [
   { key: 'v2_hs_kpi_report', label: 'HS KPI Report', valueLabel: 'Submitted', type: 'value' },
   { key: 'v2_permit_to_work', label: 'Permit to Work', plannedLabel: 'No. of PTWs Issued', actualLabel: 'Total Work Registered', type: 'planned_actual' },
   { key: 'v2_hs_committee', label: 'EHS Committee Meeting', valueLabel: 'No. of Committee Meeting', type: 'value' },
-  { key: 'v2_findings_on_time', label: 'Findings Closed On Time', plannedLabel: 'No. of Findings in Reporting Month', actualLabel: 'No. of Findings Due \u2014 Met/Exceeded', belowLabel: 'No. of Findings Due \u2014 Below Target', type: 'planned_actual_below' },
+  { key: 'v2_findings_on_time', label: 'Findings Closed On Time', plannedLabel: 'No. of Findings in Reporting Month', actualLabel: 'No. of Findings Due — Met/Exceeded', belowLabel: 'No. of Findings Due — Below Target', type: 'planned_actual_below' },
   { key: 'v2_risk_closed', label: 'Risk Assessment Closed', plannedLabel: 'Total Risk Assessments', actualLabel: 'Risk Assessment Closed', type: 'planned_actual' },
   { key: 'v2_risk_validated', label: 'Risk Assessment Validated & Signed Off', plannedLabel: 'Total Assessments Register', actualLabel: 'RA Validated and Signed Off', type: 'planned_actual' },
-  { key: 'v2_external_compliance', label: 'External Compliance', plannedLabel: 'Applicable Compliance', actualLabel: 'Actual Compliance \u2014 Met/Exceeded', belowLabel: 'Actual Compliance \u2014 Below Target', type: 'planned_actual_below' },
+  { key: 'v2_external_compliance', label: 'External Compliance', plannedLabel: 'Applicable Compliance', actualLabel: 'Actual Compliance — Met/Exceeded', belowLabel: 'Actual Compliance — Below Target', type: 'planned_actual_below' },
   { key: 'v2_safe_working', label: 'Safe Working Procedure', plannedLabel: 'No. of SOPs Verified', actualLabel: 'No. of SOPs Implemented', type: 'planned_actual' },
   { key: 'v2_hazard_id', label: 'Hazard Identification', plannedLabel: 'Total Control Sampled', actualLabel: 'Implemented Controls', type: 'planned_actual' },
   { key: 'v2_onsite_induction', label: 'Onsite Induction', plannedLabel: 'New Contractors', actualLabel: 'Contractors Inducted', type: 'planned_actual' },
@@ -244,8 +244,8 @@ export default function Dashboard() {
             </div>
             <div className="legend-row">
               <span className="legend-dot" style={{ background: 'rgba(13,110,253,0.4)' }} /> Planned / Target
-              <span className="legend-dot" style={{ background: '#198754' }} /> Actual \u2014 Met or Exceeded
-              <span className="legend-dot" style={{ background: '#dc3545' }} /> Actual \u2014 Below Target
+              <span className="legend-dot" style={{ background: '#198754' }} /> Actual — Met or Exceeded
+              <span className="legend-dot" style={{ background: '#dc3545' }} /> Actual — Below Target
               <span className="legend-dot" style={{ background: '#ffc107' }} /> No target set
             </div>
 
