@@ -8,6 +8,10 @@ const QUARTERS: Record<string, string[]> = {
   Q1: ['January','February','March'], Q2: ['April','May','June'],
   Q3: ['July','August','September'], Q4: ['October','November','December'],
 };
+const QUARTER_LABELS: Record<string, string> = {
+  Q1: 'Q1 (Jan–Mar)', Q2: 'Q2 (Apr–Jun)',
+  Q3: 'Q3 (Jul–Sep)', Q4: 'Q4 (Oct–Dec)',
+};
 
 const SUMMARY_CARDS = [
   { key: 'incidents', label: 'Total Incidents', unit: 'count', color: '#dc3545' },
@@ -20,17 +24,17 @@ const SUMMARY_CARDS = [
 ];
 
 const KPI_CHARTS = [
-  { key: 'v2_ehs_inspection', label: 'Authority Compliance Rate', plannedLabel: 'Applicable Compliance', actualLabel: 'Actual Compliance', type: 'planned_actual' },
-  { key: 'v2_hs_kpi_report', label: 'HS KPI Report', valueLabel: 'Submitted', type: 'value' },
-  { key: 'v2_permit_to_work', label: 'Permit to Work', plannedLabel: 'No. of PTWs Issued', actualLabel: 'Total Work Registered', type: 'planned_actual' },
   { key: 'v2_hs_committee', label: 'EHS Committee Meeting', valueLabel: 'No. of Committee Meeting', type: 'value' },
   { key: 'v2_findings_on_time', label: 'Findings Closed On Time', plannedLabel: 'No. of Findings in Reporting Month', actualLabel: 'No. of Findings Due — Met/Exceeded', belowLabel: 'No. of Findings Due — Below Target', type: 'planned_actual_below' },
   { key: 'v2_risk_closed', label: 'Risk Assessment Closed', plannedLabel: 'Total Risk Assessments', actualLabel: 'Risk Assessment Closed', type: 'planned_actual' },
   { key: 'v2_risk_validated', label: 'Risk Assessment Validated & Signed Off', plannedLabel: 'Total Assessments Register', actualLabel: 'RA Validated and Signed Off', type: 'planned_actual' },
-  { key: 'v2_external_compliance', label: 'External Compliance', plannedLabel: 'Applicable Compliance', actualLabel: 'Actual Compliance — Met/Exceeded', belowLabel: 'Actual Compliance — Below Target', type: 'planned_actual_below' },
+  { key: 'v2_ehs_inspection', label: 'Scheduled EHS Inspection', plannedLabel: 'Applicable Compliance', actualLabel: 'Actual Compliance', type: 'planned_actual' },
+  { key: 'v2_hs_kpi_report', label: 'HS KPI Report', valueLabel: 'Submitted', type: 'value' },
+  { key: 'v2_external_compliance', label: 'External Authority Compliance', plannedLabel: 'Applicable Compliance', actualLabel: 'Actual Compliance — Met/Exceeded', belowLabel: 'Actual Compliance — Below Target', type: 'planned_actual_below' },
   { key: 'v2_safe_working', label: 'Safe Working Procedure', plannedLabel: 'No. of SOPs Verified', actualLabel: 'No. of SOPs Implemented', type: 'planned_actual' },
+  { key: 'v2_permit_to_work', label: 'Permit to Work', plannedLabel: 'No. of PTWs Issued', actualLabel: 'Total Work Registered', type: 'planned_actual' },
   { key: 'v2_hazard_id', label: 'Hazard Identification', plannedLabel: 'Total Control Sampled', actualLabel: 'Implemented Controls', type: 'planned_actual' },
-  { key: 'v2_onsite_induction', label: 'Onsite Induction', plannedLabel: 'New Contractors', actualLabel: 'Contractors Inducted', type: 'planned_actual' },
+  { key: 'v2_onsite_induction', label: 'Onsite Safety Induction', plannedLabel: 'New Contractors', actualLabel: 'Contractors Inducted', type: 'planned_actual' },
   { key: 'v2_investigation_on_time', label: 'Investigation Completed on Time', plannedLabel: 'Total Incident', actualLabel: 'Investigation Completed on Time', type: 'planned_actual' },
   { key: 'notification', label: 'Notification on Time', plannedLabel: 'Total Incident', actualLabel: 'Notification Submitted on Time', type: 'planned_actual' },
 ];
@@ -82,23 +86,23 @@ function KpiBarChart({ chartDef, rows }: { chartDef: typeof KPI_CHARTS[0]; rows:
     series.push({
       type: 'column', name: chartDef.valueLabel || 'Value',
       data: campuses.map(c => byCampus[c].value || byCampus[c].actual || byCampus[c].planned),
-      color: '#2196F3',
+      color: '#4A90D9',
     });
   } else if (chartDef.type === 'planned_actual_below') {
     series.push(
-      { type: 'column', name: chartDef.plannedLabel || 'Planned', data: campuses.map(c => byCampus[c].planned), color: 'rgba(13,110,253,0.4)' },
-      { type: 'column', name: chartDef.actualLabel || 'Met/Exceeded', data: campuses.map(c => Math.max(0, byCampus[c].actual)), color: '#198754' },
-      { type: 'column', name: chartDef.belowLabel || 'Below Target', data: campuses.map(c => Math.max(0, byCampus[c].planned - byCampus[c].actual)), color: '#dc3545' },
+      { type: 'column', name: chartDef.plannedLabel || 'Planned', data: campuses.map(c => byCampus[c].planned), color: 'rgba(74,144,217,0.4)' },
+      { type: 'column', name: chartDef.actualLabel || 'Met/Exceeded', data: campuses.map(c => Math.max(0, byCampus[c].actual)), color: '#1D9E75' },
+      { type: 'column', name: chartDef.belowLabel || 'Below Target', data: campuses.map(c => Math.max(0, byCampus[c].planned - byCampus[c].actual)), color: '#EA352E' },
     );
   } else {
     series.push(
-      { type: 'column', name: chartDef.plannedLabel || 'Planned / Target', data: campuses.map(c => byCampus[c].planned), color: 'rgba(13,110,253,0.4)' },
+      { type: 'column', name: chartDef.plannedLabel || 'Planned / Target', data: campuses.map(c => byCampus[c].planned), color: 'rgba(74,144,217,0.4)' },
       { type: 'column', name: chartDef.actualLabel || 'Actual', data: campuses.map(c => byCampus[c].actual), color: '#0a3d62' },
     );
   }
 
   const options: Highcharts.Options = {
-    chart: { type: 'column', height: 280, style: { fontFamily: 'Inter, sans-serif' } },
+    chart: { type: 'column', height: 280, style: { fontFamily: "'Segoe UI', Arial, sans-serif" } },
     title: { text: undefined },
     xAxis: { categories: campuses, labels: { style: { fontSize: '10px' } } },
     yAxis: { title: { text: null }, gridLineColor: '#f0f0f0' },
@@ -112,6 +116,17 @@ function KpiBarChart({ chartDef, rows }: { chartDef: typeof KPI_CHARTS[0]; rows:
   };
 
   return <HighchartsReact highcharts={Highcharts} options={options} />;
+}
+
+function SyncBadge({ syncedAt }: { syncedAt: string }) {
+  const mins = Math.round((Date.now() - new Date(syncedAt).getTime()) / 60000);
+  let label: string;
+  let cls: string;
+  if (mins < 5) { label = 'Just now'; cls = 'sync-fresh'; }
+  else if (mins < 60) { label = `${mins} min ago`; cls = 'sync-fresh'; }
+  else if (mins < 1440) { label = `${Math.round(mins / 60)} hr ago`; cls = 'sync-stale'; }
+  else { label = `${Math.round(mins / 1440)} days ago`; cls = 'sync-old'; }
+  return <span className={`sync-badge ${cls}`}>Synced {label}</span>;
 }
 
 export default function Dashboard() {
@@ -148,7 +163,7 @@ export default function Dashboard() {
       const rows = getRows(card.key);
       const agg = aggregate(rows);
       if (card.unit === 'pct') {
-        const pct = agg.planned > 0 ? Math.round(agg.actual / agg.planned * 100) : 0;
+        const pct = agg.planned > 0 ? Math.min(Math.round(agg.actual / agg.planned * 100), 100) : 0;
         return { ...card, display: `${pct}%`, sub: `${agg.actual} / ${agg.planned}` };
       }
       if (card.unit === 'val') {
@@ -159,8 +174,6 @@ export default function Dashboard() {
       return { ...card, display: String(val), sub: `${data.campuses.length} campuses` };
     });
   }, [data, getRows]);
-
-  const syncLabel = data ? `Synced ${Math.round((Date.now() - new Date(data.syncedAt).getTime()) / 3600000)} hr ago` : '';
 
   return (
     <div className="dashboard">
@@ -188,7 +201,7 @@ export default function Dashboard() {
           <label>Quarter
             <select value={quarter} onChange={e => { setQuarter(e.target.value); if (e.target.value !== 'ALL') setMonth('ALL'); }}>
               <option value="ALL">All Quarters</option>
-              {Object.keys(QUARTERS).map(q => <option key={q} value={q}>{q}</option>)}
+              {Object.keys(QUARTERS).map(q => <option key={q} value={q}>{QUARTER_LABELS[q]}</option>)}
             </select>
           </label>
           <label>Month
@@ -207,7 +220,10 @@ export default function Dashboard() {
           <button className="btn-sync" onClick={doSync} disabled={loading}>
             {loading ? 'Syncing...' : 'Sync Now'}
           </button>
-          {data && <span className="sync-badge">{syncLabel}</span>}
+          <button className="btn-theme" onClick={() => {}}>Theme</button>
+          <button className="btn-export" onClick={() => {}}>Export As</button>
+          <button className="btn-report" onClick={() => {}}>Report</button>
+          {data && <SyncBadge syncedAt={data.syncedAt} />}
         </div>
       </div>
 
@@ -243,10 +259,10 @@ export default function Dashboard() {
               ))}
             </div>
             <div className="legend-row">
-              <span className="legend-dot" style={{ background: 'rgba(13,110,253,0.4)' }} /> Planned / Target
-              <span className="legend-dot" style={{ background: '#198754' }} /> Actual — Met or Exceeded
-              <span className="legend-dot" style={{ background: '#dc3545' }} /> Actual — Below Target
-              <span className="legend-dot" style={{ background: '#ffc107' }} /> No target set
+              <span className="legend-dot" style={{ background: '#4A90D9' }} /> Planned / Target
+              <span className="legend-dot" style={{ background: '#1D9E75' }} /> Actual {'\u2014'} Met or Exceeded
+              <span className="legend-dot" style={{ background: '#EA352E' }} /> Actual {'\u2014'} Below Target
+              <span className="legend-dot" style={{ background: '#F59E0B' }} /> No target set
             </div>
 
             <h3 className="section-title">KPI CHARTS</h3>
@@ -267,12 +283,40 @@ export default function Dashboard() {
               })}
             </div>
 
+            {/* WASTE SEGREGATION */}
+            <div className="placeholder-section">
+              <h4>WASTE SEGREGATION</h4>
+              <p>Data table coming soon</p>
+            </div>
+
+            {/* EXECUTIVE KPI SUMMARY */}
+            <div className="placeholder-section">
+              <h4>EXECUTIVE KPI SUMMARY</h4>
+              <p>Summary table coming soon</p>
+            </div>
+
+            {/* 6-MONTH TREND ANALYSIS */}
+            <h3 className="section-title">6-MONTH TREND ANALYSIS</h3>
+            <div className="trend-grid">
+              {['Inspection Trends', 'Findings Trends', 'Risk Assessment Trends', 'Compliance Trends'].map(t => (
+                <div key={t} className="placeholder-section">
+                  <h4>{t}</h4>
+                  <p>Coming soon</p>
+                </div>
+              ))}
+            </div>
+
             {data.errors.length > 0 && (
               <div className="sync-errors">
                 <h4>Sync Errors ({data.errors.length})</h4>
                 <ul>{data.errors.map((e, i) => <li key={i}>{e}</li>)}</ul>
               </div>
             )}
+
+            {/* FOOTER */}
+            <div className="dashboard-footer">
+              Data sourced from Smartsheet {'\u2022'} Cached 5 min {'\u2022'} Click Sync Now to force reload
+            </div>
           </>
         )}
       </div>
