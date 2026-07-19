@@ -13,7 +13,7 @@ export interface SyncSource {
   valueCol?: string;
   hasMonth: boolean;
   isolateFromCampusSet?: boolean;
-  yesNoCount?: boolean;
+  yesNoCount?: boolean;h
 }
 
 export const SYNC_SOURCES: SyncSource[] = [
@@ -27,7 +27,7 @@ export const SYNC_SOURCES: SyncSource[] = [
   { key: 'incidents', sheetId: '7165378768621444', tab: 'raw_incidents', campusCol: 'Campus Code', monthCol: 'Date Reported', valueCol: 'Total Incident', hasMonth: true },
 
   // Pie chart — Incidents by Type
-  { key: 'v2_incident_types', reportId: '3005117526954', tab: 'raw_v2_incident_types', campusCol: 'Incident Type', valueCol: 'Total Incident', monthCol: 'Date Reported', hasMonth: true, isolateFromCampusSet: true },
+  { key: 'v2_incident_types', reportId: '20949779828612', tab: 'raw_v2_incident_types', campusCol: 'Incident Type', valueCol: 'Total Incident', hasMonth: false, isolateFromCampusSet: true },
 
   // V2 KPIs — matched to GAS SyncService.gs
   { key: 'v2_hs_committee', sheetId: '435993944477572', tab: 'raw_v2_hs_committee', campusCol: 'Committee', plannedCol: 'Meeting Planned', actualCol: 'Meeting Conducted', monthCol: 'Reporting Month', hasMonth: true },
