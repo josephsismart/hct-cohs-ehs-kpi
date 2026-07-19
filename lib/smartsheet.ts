@@ -1,4 +1,5 @@
 // Smartsheet API client — mirrors SyncService.gs SYNC_SOURCES config
+// UPDATED: synced with GAS SyncService.gs.FIXED.txt (2026-07-19)
 
 export interface SyncSource {
   key: string;
@@ -16,30 +17,35 @@ export interface SyncSource {
 }
 
 export const SYNC_SOURCES: SyncSource[] = [
+  // Original 7 KPIs — matched to GAS SyncService.gs
   { key: 'drills', sheetId: '5053158949605252', tab: 'raw_drills', campusCol: 'Campus Code', monthCol: 'Reporting Month', plannedCol: 'Planned Drill? (Yes/No)', actualCol: 'Are there any submission?', hasMonth: true, yesNoCount: true },
   { key: 'ehs', sheetId: '4947401822392196', tab: 'raw_ehs', monthCol: 'Primary', campusCol: 'Campus Code', plannedCol: 'No. of EHS Inspections Planned', actualCol: 'No. of EHS Inspections Completed', hasMonth: true },
   { key: 'findings', sheetId: '4947401822392196', tab: 'raw_findings', monthCol: 'Primary', campusCol: 'Campus Code', plannedCol: 'No. of Findings in Reporting Month', actualCol: 'No. of Findings Closed', hasMonth: true },
-  { key: 'notification', reportId: '1199821531598724', tab: 'raw_notification', monthCol: 'Primary', campusCol: 'Campus', plannedCol: 'Total Incident', actualCol: 'Notification Submitted on Time', hasMonth: true },
-  { key: 'risk', reportId: '8565044722749316', tab: 'raw_risk', campusCol: 'Campus', plannedCol: 'Total Assessments Register', actualCol: 'RA Validated and Signed Off', hasMonth: false },
-  { key: 'training', reportId: '4366423609528196', tab: 'raw_training', campusCol: 'Primary', valueCol: 'Total Training Hrs', hasMonth: false },
-  { key: 'incidents', reportId: '6831846506581892', tab: 'raw_incidents', monthCol: 'Primary', campusCol: 'Campus', valueCol: 'Total Incident', hasMonth: true },
-  { key: 'v2_hs_committee', reportId: '3061649186443140', tab: 'raw_v2_hs_committee', campusCol: 'Committee', valueCol: 'No. of Committee Meeting', monthCol: 'Primary', hasMonth: true },
-  { key: 'v2_findings_on_time', reportId: '6263081167441796', tab: 'raw_v2_findings_on_time', campusCol: 'Campus Code', plannedCol: 'No. of Findings in Reporting Month', actualCol: 'No. of Findings Due', monthCol: 'Reporting Month', hasMonth: true },
-  { key: 'v2_risk_closed', reportId: '352656412331908', tab: 'raw_v2_risk_closed', campusCol: 'Campus', plannedCol: 'Total Risk Assessments Registered', actualCol: 'Risk Assessment Closed', monthCol: 'Reporting Month', hasMonth: true },
-  { key: 'v2_risk_validated', reportId: '8565044722749316', tab: 'raw_v2_risk_validated', campusCol: 'Campus', plannedCol: 'Total Assessments Register', actualCol: 'RA Validated and Signed Off', monthCol: 'Reporting Month', hasMonth: true },
-  { key: 'v2_ehs_inspection', reportId: '4046605446500228', tab: 'raw_v2_ehs_inspection', campusCol: 'Campus Code', plannedCol: 'No. of EHS Inspections Planned', actualCol: 'No. of EHS Inspections Completed', monthCol: 'Reporting Month', hasMonth: true },
-  { key: 'v2_hs_kpi_report', reportId: '4811266391494532', tab: 'raw_v2_hs_kpi_report', campusCol: 'Campuses', valueCol: 'Submitted', monthCol: 'Primary', hasMonth: false },
-  { key: 'v2_external_compliance', reportId: '1199958970552196', tab: 'raw_v2_external_compliance', campusCol: 'Campus Code', plannedCol: 'Applicable Compliance', actualCol: 'Actual Compliance', monthCol: 'Reporting Month', hasMonth: true },
-  { key: 'v2_safe_working', reportId: '385077644054404', tab: 'raw_v2_safe_working', campusCol: 'Campus', plannedCol: 'No. of SOPs Verified', actualCol: 'No. of SOPs Implemented', monthCol: 'Reporting Month', hasMonth: true },
-  { key: 'v2_permit_to_work', reportId: '6636146455957380', tab: 'raw_v2_permit_to_work', campusCol: 'Campus', plannedCol: 'No. of PTWs Issued', actualCol: 'Total Work Registered', monthCol: 'Reporting Month', hasMonth: true },
-  { key: 'v2_hazard_id', reportId: '2222036767166340', tab: 'raw_v2_hazard_id', campusCol: 'Campus', plannedCol: 'Total Control Sampled', actualCol: 'Implemented Controls', monthCol: 'Reporting Month', hasMonth: true },
-  { key: 'v2_onsite_induction', reportId: '6619039466999684', tab: 'raw_v2_onsite_induction', campusCol: 'Campus', plannedCol: 'No. of New Contractors (Individuals)', actualCol: 'Contractors Inducted in the Reporting Month', monthCol: 'Reporting Month', hasMonth: true },
-  { key: 'v2_investigation_on_time', reportId: '6831846506581892', tab: 'raw_v2_investigation_on_time', campusCol: 'Campus', plannedCol: 'Total Incident', actualCol: 'Investigation Completed on Time', monthCol: 'Reporting Month', hasMonth: true },
-  { key: 'v2_training_hours', reportId: '3729812953714564', tab: 'raw_v2_training_hours', campusCol: 'Campus', valueCol: 'No. of Trainings Hours', monthCol: 'Primary', hasMonth: false },
-  { key: 'v2_planned_training', reportId: '5332685084905348', tab: 'raw_v2_planned_training', campusCol: 'Campus', plannedCol: 'Planned Training', actualCol: 'Training Conducted', monthCol: 'Primary', hasMonth: false },
+  { key: 'notification', reportId: '1199821531598724', tab: 'raw_notification', monthCol: 'Reporting Month', campusCol: 'Campus Code', plannedCol: 'Total Incident', actualCol: 'Notification Submitted on Time', hasMonth: true },
+  { key: 'risk', reportId: '8565044722749316', tab: 'raw_risk', campusCol: 'Campus Code', monthCol: 'Reporting Month', plannedCol: 'Total Assessments Register', actualCol: 'RA Validated and Signed Off', hasMonth: true },
+  { key: 'training', sheetId: '8549734774951812', tab: 'raw_training', campusCol: 'Campus Code', valueCol: 'Total Hours', monthCol: 'Reporting Month', hasMonth: true },
+  { key: 'incidents', sheetId: '7165378768621444', tab: 'raw_incidents', campusCol: 'Campus Code', monthCol: 'Date Reported', valueCol: 'Total Incident', hasMonth: true },
+
+  // Pie chart — Incidents by Type
+  { key: 'v2_incident_types', reportId: '3005117526954', tab: 'raw_v2_incident_types', campusCol: 'Incident Type', valueCol: 'Total Incident', hasMonth: false, isolateFromCampusSet: true },
+
+  // V2 KPIs — matched to GAS SyncService.gs
+  { key: 'v2_hs_committee', sheetId: '435993944477572', tab: 'raw_v2_hs_committee', campusCol: 'Committee', plannedCol: 'Meeting Planned', actualCol: 'Meeting Conducted', monthCol: 'Reporting Month', hasMonth: true },
+  { key: 'v2_findings_on_time', sheetId: '4947401822392196', tab: 'raw_v2_findings_on_time', campusCol: 'Campus Code', plannedCol: 'No. of Findings in Reporting Month', actualCol: 'No. of Findings Due', monthCol: 'Primary', hasMonth: true },
+  { key: 'v2_risk_closed', sheetId: '7323092115214212', tab: 'raw_v2_risk_closed', campusCol: 'Campus', plannedCol: 'Total Risk Assessments Registered', actualCol: 'Risk Assessment Closed', monthCol: 'Primary', hasMonth: true },
+  { key: 'v2_risk_validated', sheetId: '7323092115214212', tab: 'raw_v2_risk_validated', campusCol: 'Campus', plannedCol: 'Total Assessments Register', actualCol: 'RA Validated and Signed Off', monthCol: 'Primary', hasMonth: true },
+  { key: 'v2_ehs_inspection', sheetId: '4947401822392196', tab: 'raw_v2_ehs_inspection', campusCol: 'Campus Code', plannedCol: 'No. of EHS Inspections Planned', actualCol: 'No. of EHS Inspections Completed', monthCol: 'Primary', hasMonth: true },
+  { key: 'v2_hs_kpi_report', reportId: '4811266391494532', tab: 'raw_v2_hs_kpi_report', campusCol: 'Campuses', valueCol: 'Submitted', monthCol: 'Primary', hasMonth: true },
+  { key: 'v2_external_compliance', sheetId: '4198632256393092', tab: 'raw_v2_external_compliance', campusCol: 'Campus Code', plannedCol: 'Applicable Compliance', actualCol: 'Actual Compliance', monthCol: 'Primary', hasMonth: true },
+  { key: 'v2_safe_working', sheetId: '1693592581001092', tab: 'raw_v2_safe_working', campusCol: 'Campus', plannedCol: 'No. of SOPs Verified', actualCol: 'No. of SOPs Implemented', monthCol: 'Primary', hasMonth: true },
+  { key: 'v2_permit_to_work', sheetId: '5899016251330436', tab: 'raw_v2_permit_to_work', campusCol: 'Campus Code', plannedCol: 'No. of PTWs Issued', actualCol: 'Total Work Registered', monthCol: 'Reporting Month', hasMonth: true },
+  { key: 'v2_hazard_id', sheetId: '7323092115214212', tab: 'raw_v2_hazard_id', campusCol: 'Campus Code', plannedCol: 'Total Controls Identified', actualCol: 'Implemented Controls', monthCol: 'Reporting Month', hasMonth: true },
+  { key: 'v2_onsite_induction', sheetId: '5899016251330436', tab: 'raw_v2_onsite_induction', campusCol: 'Campus Code', plannedCol: 'No. of New Contractors (Individuals)', actualCol: 'Contractors Inducted in the Reporting Month', monthCol: 'Reporting Month', hasMonth: true },
+  { key: 'v2_investigation_on_time', reportId: '6831846506581892', tab: 'raw_v2_investigation_on_time', campusCol: 'Campus Code', plannedCol: 'Total Incident Investigated', actualCol: 'Investigation Completed on Time', monthCol: 'Reporting Month', hasMonth: true },
+  { key: 'v2_planned_training', reportId: '5332685084905348', tab: 'raw_v2_planned_training', campusCol: 'Campus', plannedCol: 'Planned Training', actualCol: 'Training Conducted', monthCol: 'Primary', hasMonth: true },
   { key: 'v2_drills', sheetId: '5053158949605252', tab: 'raw_v2_drills', campusCol: 'Campus Code', monthCol: 'Reporting Month', plannedCol: 'Planned Drill? (Yes/No)', actualCol: 'Are there any submission?', hasMonth: true, yesNoCount: true },
-  { key: 'v2_waste_segregation', sheetId: '4947401822392196', tab: 'raw_v2_waste_segregation', campusCol: 'Campus Code', monthCol: 'Reporting Month', hasMonth: true },
-  { key: 'v2_mgmt_review_actions', reportId: '1234567890', tab: 'raw_v2_mgmt_review_actions', campusCol: 'Campus', monthCol: 'Reporting Month', hasMonth: true },
+  { key: 'v2_waste_segregation', sheetId: '8150747345538948', tab: 'raw_v2_waste_segregation', campusCol: 'Campus Code', monthCol: 'Reporting Month', hasMonth: true },
+  { key: 'v2_mgmt_review_actions', sheetId: '3267265049874308', tab: 'raw_v2_mgmt_review_actions', campusCol: 'Campus Group', monthCol: 'Reporting Month', hasMonth: true },
 ];
 
 const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
@@ -111,9 +117,21 @@ export function processSource(src: SyncSource, records: Record<string, any>[]): 
     const campus = String(r[src.campusCol] || '').trim();
     if (!campus) return null;
     const month = (src.hasMonth && src.monthCol) ? normalizeMonth(r[src.monthCol]) : null;
-    const planned = parseFloat(r[src.plannedCol || '']) || 0;
-    const actual = parseFloat(r[src.actualCol || '']) || 0;
-    const value = parseFloat(r[src.valueCol || '']) || 0;
+
+    let planned = 0, actual = 0, value = 0;
+
+    if (src.yesNoCount) {
+      // Yes/No columns: count "Yes" as 1, anything else as 0
+      const pVal = String(r[src.plannedCol || ''] || '').trim().toLowerCase();
+      const aVal = String(r[src.actualCol || ''] || '').trim().toLowerCase();
+      planned = pVal === 'yes' ? 1 : 0;
+      actual = aVal === 'yes' ? 1 : 0;
+    } else {
+      planned = parseFloat(r[src.plannedCol || '']) || 0;
+      actual = parseFloat(r[src.actualCol || '']) || 0;
+    }
+    value = parseFloat(r[src.valueCol || '']) || 0;
+
     return { campus, month, planned, actual, value } as KpiRow;
   }).filter(Boolean) as KpiRow[];
 }
