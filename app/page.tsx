@@ -154,7 +154,7 @@ function KpiPieChart({ rows }: { rows: KpiRow[] }) {
   const options: Highcharts.Options = {
     chart: { type: 'pie', height: 500, style: { fontFamily: "'Segoe UI', Arial, sans-serif" } },
     title: { text: undefined },
-    plotOptions: { pie: { dataLabels: { enabled: true, format: '<b>{point.name}</b>: {point.y}', style: { fontSize: '10px' } }, showInLegend: true } },
+    plotOptions: { pie: { dataLabels: { enabled: true, format: '{point.y}', distance: -30, style: { fontSize: '14px', fontWeight: 'bold', color: 'white', textOutline: 'none' } }, showInLegend: true } },
     legend: { align: 'right', verticalAlign: 'middle', layout: 'vertical', itemStyle: { fontSize: '11px' } },
     series: [{ type: 'pie', name: 'Incidents', data: entries.map(([name, v], i) => ({ name, y: v.value, color: PIE_COLORS[i % PIE_COLORS.length] })) }],
     credits: { enabled: false },
