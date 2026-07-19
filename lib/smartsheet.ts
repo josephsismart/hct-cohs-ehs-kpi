@@ -116,7 +116,14 @@ export function processSource(src: SyncSource, records: Record<string, any>[]): 
   return records.map(r => {
     const campus = String(r[src.campusCol] || '').trim();
     if (!campus) return null;
-    const month = (src.hasMonth && src.monthCol) ? normalizeMonth(r[src.monthCol]) : null;
+// Try configured monthCol first, then fallback columns (matches GAS SheetService logic)
+    let month: string | null = null;
+    if (src.hasMonth && src.monthCol) {
+      month = normalizeMonth(r[src.monthCol]);
+      if (!month) month = normalizeMonth(r['Reporting Month']);
+      if (!month) month = normalizeMonth(r['Date Reported']);
+      if (!month) month = normalizeMonth(r['Primary']);
+    }
 
     let planned = 0, actual = 0, value = 0;
 
