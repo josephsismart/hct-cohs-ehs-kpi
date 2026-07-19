@@ -13,7 +13,7 @@ export interface SyncSource {
   valueCol?: string;
   hasMonth: boolean;
   isolateFromCampusSet?: boolean;
-  yesNoCount?: boolean;h
+  yesNoCount?: boolean;
 }
 
 export const SYNC_SOURCES: SyncSource[] = [
