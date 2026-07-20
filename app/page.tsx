@@ -575,7 +575,12 @@ export default function Dashboard() {
 
             {/* 6-MONTH TREND ANALYSIS */}
             {(() => {
-              const trendMonths = MONTHS.filter(m => data.months.includes(m)).filter(m => { const allSrc = ['incidents','v2_ehs_inspection','training','v2_external_compliance']; return allSrc.some(k => (data.sources[k]?.rows || []).some(r => r.month === m)); });
+              // Respect dashboard filters: campus, month, quarter
+              let availableMonths = MONTHS.filter(m => data.months.includes(m));
+              if (month !== 'ALL') { availableMonths = availableMonths.filter(m => m === month); }
+              else if (quarter !== 'ALL' && QUARTERS[quarter]) { availableMonths = availableMonths.filter(m => QUARTERS[quarter].includes(m)); }
+              const allSrc = ['incidents','v2_ehs_inspection','training','v2_external_compliance'];
+              const trendMonths = availableMonths.filter(m => allSrc.some(k => { const rows = data.sources[k]?.rows || []; const filtered = campus !== 'ALL' ? rows.filter(r => r.campus === campus) : rows; return filtered.some(r => r.month === m); }));
               if (trendMonths.length === 0) return null;
               const label = `6-MONTH TREND ANALYSIS (${trendMonths[0].toUpperCase()} \u2013 ${trendMonths[trendMonths.length-1].toUpperCase()})`;
 
@@ -590,7 +595,8 @@ export default function Dashboard() {
                 <h3 className="section-title">{label}</h3>
                 <div className="trend-grid">
                   {TREND_CHARTS.map(tc => {
-                    const srcRows = data.sources[tc.sourceKey]?.rows || [];
+                    const allRows = data.sources[tc.sourceKey]?.rows || [];
+                    const srcRows = campus !== 'ALL' ? allRows.filter(r => r.campus === campus) : allRows;
                     const pts = trendMonths.map(m => {
                       const mRows = srcRows.filter(r => r.month === m);
                       if (tc.mode === 'sum') {
