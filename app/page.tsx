@@ -285,7 +285,7 @@ export default function Dashboard() {
           <label>Year
             <select value={year} onChange={e => setYear(e.target.value)}>
               <option value="ALL">All Years</option>
-              <option value="2026">2026</option><option value="2025">2025</option>
+              <option value="2026">2026</option>
             </select>
           </label>
           <label>Quarter
