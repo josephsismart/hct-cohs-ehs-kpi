@@ -160,3 +160,21 @@ body { font-family: var(--font); background: var(--light-bg); color: var(--text)
 /* TREND GRID */
 .trend-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; margin-top: 12px; }
 @media (max-width: 900px) { .trend-grid { grid-template-columns: 1fr; } }
+
+/* WASTE TABLE */
+.waste-table {
+  width: 100%; border-collapse: collapse; font-size: 12px;
+}
+.waste-table th {
+  background: var(--hct-navy); color: #fff; padding: 8px 10px;
+  text-align: right; font-weight: 600; white-space: nowrap;
+}
+.waste-table th:first-child { text-align: left; }
+.waste-table td {
+  padding: 6px 10px; border-bottom: 1px solid var(--border);
+  text-align: right; font-variant-numeric: tabular-nums;
+}
+.waste-table td:first-child { text-align: left; font-weight: 500; }
+.waste-table tbody tr:hover { background: #f0f4ff; }
+.waste-table .totals-row { background: #EAF1FB; }
+.waste-table .totals-row td { border-top: 2px solid var(--hct-navy); }
