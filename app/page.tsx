@@ -460,6 +460,9 @@ export default function Dashboard() {
                 if (!map[r.campus]) map[r.campus] = {};
                 WASTE_COLS.forEach(col => { map[r.campus][col] = (map[r.campus][col] || 0) + (r[col] || 0); });
               });
+              // Compute Total Waste as sum of subcategories (API returns 0 for formula columns)
+              const SUB_COLS = ['General Waste','Food Waste','Paper Waste','Paper Cup/Carton','PET Bottle','Single Use Plastic'];
+              Object.keys(map).forEach(c => { map[c]['Total Waste'] = SUB_COLS.reduce((s, col) => s + (map[c][col] || 0), 0); });
               const campuses = Object.keys(map).sort();
               if (campuses.length === 0) return <div className="placeholder-section"><h4>WASTE SEGREGATION</h4><p>No data available</p></div>;
               // Compute totals row
