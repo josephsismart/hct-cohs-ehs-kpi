@@ -224,6 +224,26 @@ export default function Dashboard() {
   const [month, setMonth] = useState('ALL');
   const [quarter, setQuarter] = useState('ALL');
   const [year, setYear] = useState('ALL');
+  const [pptRegion, setPptRegion] = useState('Abu Dhabi');
+  const [pptLoading, setPptLoading] = useState(false);
+
+  const downloadPpt = useCallback(async () => {
+    setPptLoading(true);
+    try {
+      const pptMonth = month !== 'ALL' ? month : MONTHS[new Date().getMonth() - 1] || 'December';
+      const pptYear = year !== 'ALL' ? year : String(new Date().getFullYear());
+      const url = `/api/generate-ppt?region=${encodeURIComponent(pptRegion)}&month=${encodeURIComponent(pptMonth)}&year=${pptYear}`;
+      const res = await fetch(url);
+      if (!res.ok) { const err = await res.json(); throw new Error(err.error || `HTTP ${res.status}`); }
+      const blob = await res.blob();
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `HCT_KPI_Committee_${pptRegion.replace(/ /g, '_')}_${pptMonth}_${pptYear}.pptx`;
+      a.click();
+      URL.revokeObjectURL(a.href);
+    } catch (e: any) { alert('PPT generation failed: ' + e.message); }
+    finally { setPptLoading(false); }
+  }, [pptRegion, month, year]);
 
   const doSync = useCallback(async () => {
     setLoading(true); setError('');
@@ -312,6 +332,14 @@ export default function Dashboard() {
           </button>
           <button className="btn-theme" onClick={() => {}}>Theme</button>
           <button className="btn-export" onClick={() => {}}>Export As</button>
+          <label>PPT Region
+            <select value={pptRegion} onChange={e => setPptRegion(e.target.value)}>
+              {['Abu Dhabi','AD Al Ain','AD Remote','Dubai','Fujairah','Sharjah','Ras Al Khaimah'].map(r => <option key={r} value={r}>{r}</option>)}
+            </select>
+          </label>
+          <button className="btn-sync" onClick={downloadPpt} disabled={pptLoading} style={{background:'#198754'}}>
+            {pptLoading ? 'Generating...' : 'Download PPT'}
+          </button>
           <button className="btn-report" onClick={() => {}}>Report</button>
           {data && <SyncBadge syncedAt={data.syncedAt} />}
         </div>
