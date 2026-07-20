@@ -76,7 +76,11 @@ export async function fetchSheet(sheetId: string, token: string): Promise<Record
     const rec: Record<string, any> = {};
     (row.cells || []).forEach((cell: any) => {
       const title = colMap[cell.columnId];
-      if (title) rec[title] = cell.displayValue ?? cell.value ?? '';
+      if (title) {
+        const raw = cell.value;
+        const display = cell.displayValue;
+        rec[title] = (typeof raw === 'number') ? raw : (display ?? raw ?? '');
+      }
     });
     return rec;
   }).filter((r: any) => Object.keys(r).length > 0);
@@ -98,7 +102,12 @@ export async function fetchReport(reportId: string, token: string): Promise<Reco
     (row.cells || []).forEach((cell: any) => {
       const colId = cell.virtualColumnId || cell.columnId;
       const title = colMap[colId];
-      if (title) rec[title] = cell.displayValue ?? cell.value ?? '';
+      if (title) {
+        // Prefer raw numeric value over displayValue so sums are correct
+        const raw = cell.value;
+        const display = cell.displayValue;
+        rec[title] = (typeof raw === 'number') ? raw : (display ?? raw ?? '');
+      }
     });
     return rec;
   }).filter((r: any) => Object.keys(r).length > 0);
