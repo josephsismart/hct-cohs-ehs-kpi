@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { SYNC_SOURCES, fetchSheet, fetchReport, processSource, normalizeMonth, KpiRow } from '@/lib/smartsheet';
+import { SYNC_SOURCES, fetchSheet, fetchReport, processSource, KpiRow } from '@/lib/smartsheet';
 
 export const dynamic = 'force-dynamic';
 
