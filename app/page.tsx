@@ -14,7 +14,7 @@ const QUARTER_LABELS: Record<string, string> = {
 };
 
 const SUMMARY_CARDS = [
-  { key: 'v2_incident_types', label: 'Total Incidents', unit: 'count', color: '#dc3545' },
+  { key: 'incidents', label: 'Total Incidents', unit: 'count', color: '#dc3545' },
   { key: 'training', label: 'Training Hours', unit: 'val', color: '#0d6efd' },
   { key: 'ehs', label: 'EHS Inspection Rate', unit: 'pct', color: '#198754' },
   { key: 'drills', label: 'Drills Completion', unit: 'pct', color: '#20c997' },
