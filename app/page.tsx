@@ -574,15 +574,54 @@ export default function Dashboard() {
             })()}
 
             {/* 6-MONTH TREND ANALYSIS */}
-            <h3 className="section-title">6-MONTH TREND ANALYSIS</h3>
-            <div className="trend-grid">
-              {['Inspection Trends', 'Findings Trends', 'Risk Assessment Trends', 'Compliance Trends'].map(t => (
-                <div key={t} className="placeholder-section">
-                  <h4>{t}</h4>
-                  <p>Coming soon</p>
+            {(() => {
+              const trendMonths = MONTHS.filter(m => data.months.includes(m));
+              if (trendMonths.length === 0) return null;
+              const label = `6-MONTH TREND ANALYSIS (${trendMonths[0].toUpperCase()} \u2013 ${trendMonths[trendMonths.length-1].toUpperCase()})`;
+
+              const TREND_CHARTS: { title: string; sourceKey: string; mode: 'sum'|'pct'; color: string; fillColor: string }[] = [
+                { title: 'Total Incidents \u2014 Monthly Trend', sourceKey: 'incidents', mode: 'sum', color: '#dc3545', fillColor: 'rgba(220,53,69,0.12)' },
+                { title: 'EHS Inspection Rate % \u2014 Monthly Trend', sourceKey: 'v2_ehs_inspection', mode: 'pct', color: '#198754', fillColor: 'rgba(25,135,84,0.10)' },
+                { title: 'Training Hours \u2014 Monthly Trend', sourceKey: 'training', mode: 'sum', color: '#4A90D9', fillColor: 'rgba(74,144,217,0.12)' },
+                { title: 'Compliance Rate % \u2014 Monthly Trend', sourceKey: 'v2_external_compliance', mode: 'pct', color: '#1A1F71', fillColor: 'rgba(26,31,113,0.10)' },
+              ];
+
+              return (<>
+                <h3 className="section-title">{label}</h3>
+                <div className="trend-grid">
+                  {TREND_CHARTS.map(tc => {
+                    const srcRows = data.sources[tc.sourceKey]?.rows || [];
+                    const pts = trendMonths.map(m => {
+                      const mRows = srcRows.filter(r => r.month === m);
+                      if (tc.mode === 'sum') {
+                        return mRows.reduce((s, r) => s + (r.value || r.actual || 0), 0);
+                      } else {
+                        const p = mRows.reduce((s, r) => s + r.planned, 0);
+                        const a = mRows.reduce((s, r) => s + r.actual, 0);
+                        return p > 0 ? Math.round(a / p * 100) : 0;
+                      }
+                    });
+                    const opts: Highcharts.Options = {
+                      chart: { type: 'areaspline', height: 220, style: { fontFamily: 'var(--font)' } },
+                      title: { text: tc.title, style: { fontSize: '13px', fontWeight: '700', fontStyle: 'italic' } },
+                      xAxis: { categories: trendMonths, labels: { style: { fontSize: '10px' } } },
+                      yAxis: { title: { text: '' }, labels: { style: { fontSize: '10px' } }, min: 0 },
+                      legend: { enabled: false },
+                      credits: { enabled: false },
+                      plotOptions: { areaspline: { fillColor: tc.fillColor, marker: { enabled: true, radius: 4, fillColor: tc.color }, lineColor: tc.color, lineWidth: 2, dataLabels: { enabled: true, style: { fontSize: '10px', fontWeight: '600' } } } },
+                      series: [{ type: 'areaspline', name: tc.title, data: pts, color: tc.color }],
+                    };
+                    return (
+                      <div key={tc.sourceKey} className="chart-card">
+                        <div className="chart-card-body">
+                          <HighchartsReact highcharts={Highcharts} options={opts} />
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
-              ))}
-            </div>
+              </>);
+            })()}
 
             {data.errors.length > 0 && (
               <div className="sync-errors">
