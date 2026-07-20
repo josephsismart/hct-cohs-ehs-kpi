@@ -490,10 +490,88 @@ export default function Dashboard() {
             })()}
 
             {/* EXECUTIVE KPI SUMMARY */}
-            <div className="placeholder-section">
-              <h4>EXECUTIVE KPI SUMMARY</h4>
-              <p>Summary table coming soon</p>
-            </div>
+            <h3 className="section-title">EXECUTIVE KPI SUMMARY — BY CAMPUS</h3>
+            {(() => {
+              const EXEC_KPIS = [
+                { key: 'drills', label: 'Drills Completion', type: 'pct' },
+                { key: 'ehs', label: 'EHS Inspection', type: 'pct' },
+                { key: 'findings', label: 'Findings Closed', type: 'pct' },
+                { key: 'notification', label: 'Incident Notification', type: 'pct' },
+                { key: 'risk', label: 'Risk Assessment', type: 'pct' },
+                { key: 'training', label: 'Training Hours', type: 'val' },
+                { key: 'incidents', label: 'Total Incidents', type: 'count' },
+              ];
+              // Get all campuses from the data
+              const campusSet = new Set<string>();
+              EXEC_KPIS.forEach(kpi => {
+                const rows = getRows(kpi.key);
+                rows.forEach(r => { if (r.campus) campusSet.add(r.campus); });
+              });
+              const allCampuses = [...campusSet].sort();
+              if (allCampuses.length === 0) return <div className="placeholder-section"><h4>EXECUTIVE KPI SUMMARY</h4><p>No data available</p></div>;
+
+              // Compute per-campus values
+              const campusData: Record<string, Record<string, { planned: number; actual: number; value: number }>> = {};
+              allCampuses.forEach(c => { campusData[c] = {}; });
+              EXEC_KPIS.forEach(kpi => {
+                const rows = getRows(kpi.key);
+                allCampuses.forEach(c => {
+                  const cr = rows.filter(r => r.campus === c);
+                  const agg = cr.reduce((a, r) => ({ planned: a.planned + r.planned, actual: a.actual + r.actual, value: a.value + r.value }), { planned: 0, actual: 0, value: 0 });
+                  campusData[c][kpi.key] = agg;
+                });
+              });
+
+              // Color function
+              const pctColor = (pct: number) => {
+                if (pct >= 100) return '#c6efce';
+                if (pct >= 75) return '#ffeb9c';
+                if (pct >= 50) return '#fdd';
+                return '#ffc7ce';
+              };
+
+              // Total row
+              const totals: Record<string, { planned: number; actual: number; value: number }> = {};
+              EXEC_KPIS.forEach(kpi => {
+                totals[kpi.key] = allCampuses.reduce((a, c) => {
+                  const d = campusData[c][kpi.key];
+                  return { planned: a.planned + d.planned, actual: a.actual + d.actual, value: a.value + d.value };
+                }, { planned: 0, actual: 0, value: 0 });
+              });
+
+              const renderCell = (kpi: typeof EXEC_KPIS[0], d: { planned: number; actual: number; value: number }) => {
+                if (kpi.type === 'val') return <td style={{ background: '#dce6f1' }}>{d.value ? d.value.toLocaleString() + ' hrs' : '—'}</td>;
+                if (kpi.type === 'count') return <td style={{ background: d.value > 0 ? '#ffc7ce' : '#c6efce' }}>{d.value || '—'}</td>;
+                if (!d.planned) return <td style={{ background: '#f0f0f0' }}>{'—'}</td>;
+                const pct = Math.min(100, Math.round((d.actual / d.planned) * 100));
+                return <td style={{ background: pctColor(pct) }}>{pct}%</td>;
+              };
+
+              return (
+                <div className="chart-card" style={{ overflowX: 'auto' }}>
+                  <table className="waste-table">
+                    <thead>
+                      <tr><th>Campus</th>{EXEC_KPIS.map(k => <th key={k.key}>{k.label}</th>)}</tr>
+                    </thead>
+                    <tbody>
+                      {allCampuses.map(c => (
+                        <tr key={c}><td>{c}</td>{EXEC_KPIS.map(kpi => renderCell(kpi, campusData[c][kpi.key]))}</tr>
+                      ))}
+                      <tr className="totals-row">
+                        <td><strong>TOTAL / AVG</strong></td>
+                        {EXEC_KPIS.map(kpi => {
+                          const d = totals[kpi.key];
+                          if (kpi.type === 'val') return <td key={kpi.key} style={{ background: '#dce6f1' }}><strong>{d.value ? d.value.toLocaleString() + ' hrs' : '—'}</strong></td>;
+                          if (kpi.type === 'count') return <td key={kpi.key} style={{ background: '#ffc7ce' }}><strong>{d.value}</strong></td>;
+                          const pct = d.planned ? Math.min(100, Math.round((d.actual / d.planned) * 100)) : 0;
+                          return <td key={kpi.key} style={{ background: pctColor(pct) }}><strong>{pct}%</strong></td>;
+                        })}
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              );
+            })()}
 
             {/* 6-MONTH TREND ANALYSIS */}
             <h3 className="section-title">6-MONTH TREND ANALYSIS</h3>
