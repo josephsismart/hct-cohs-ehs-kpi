@@ -123,8 +123,12 @@ export interface KpiRow {
 
 export function processSource(src: SyncSource, records: Record<string, any>[]): KpiRow[] {
   return records.map(r => {
-    const campus = String(r[src.campusCol] || '').trim();
-    if (!campus) return null;
+    let campus = String(r[src.campusCol] || '').trim();
+    if (!campus) {
+      // For isolated sources (e.g. pie charts), keep rows with empty category as "Unclassified"
+      if (src.isolateFromCampusSet) campus = 'Unclassified';
+      else return null;
+    }
     // Try configured monthCol first, then fallback columns (matches GAS SheetService logic)
     let month: string | null = null;
     if (src.hasMonth && src.monthCol) {
