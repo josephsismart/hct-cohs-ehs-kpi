@@ -26,7 +26,7 @@ export const SYNC_SOURCES: SyncSource[] = [
   { key: 'training', sheetId: '8549734774951812', tab: 'raw_training', campusCol: 'Campus Code', valueCol: 'Total Hours', monthCol: 'Reporting Month', hasMonth: true },
   { key: 'incidents', sheetId: '7165378768621444', tab: 'raw_incidents', campusCol: 'Campus Code', monthCol: 'Date Reported', valueCol: 'Total Incident', hasMonth: true },
 
-  // Pie chart — Incidents by Type
+  // Pie chart — Incidents by Type (uses report like GAS)
   { key: 'v2_incident_types', reportId: '20949779828612', tab: 'raw_v2_incident_types', campusCol: 'Incident Type', valueCol: 'Total Incident', monthCol: 'Reporting Month', hasMonth: true, isolateFromCampusSet: true },
 
   // V2 KPIs — matched to GAS SyncService.gs
@@ -42,7 +42,7 @@ export const SYNC_SOURCES: SyncSource[] = [
   { key: 'v2_hazard_id', sheetId: '7323092115214212', tab: 'raw_v2_hazard_id', campusCol: 'Campus Code', plannedCol: 'Total Controls Identified', actualCol: 'Implemented Controls', monthCol: 'Reporting Month', hasMonth: true },
   { key: 'v2_onsite_induction', sheetId: '5899016251330436', tab: 'raw_v2_onsite_induction', campusCol: 'Campus Code', plannedCol: 'No. of New Contractors (Individuals)', actualCol: 'Contractors Inducted in the Reporting Month', monthCol: 'Reporting Month', hasMonth: true },
   { key: 'v2_investigation_on_time', reportId: '6831846506581892', tab: 'raw_v2_investigation_on_time', campusCol: 'Campus Code', plannedCol: 'Total Incident Investigated', actualCol: 'Investigation Completed on Time', monthCol: 'Reporting Month', hasMonth: true },
-  { key: 'v2_planned_training', reportId: '5332685084905348', tab: 'raw_v2_planned_training', campusCol: 'Campus', plannedCol: 'Planned Training', actualCol: 'Training Conducted', monthCol: 'Primary', hasMonth: true },
+  { key: 'v2_planned_training', reportId: '3005116378047', tab: 'raw_v2_planned_training', campusCol: 'Campus Code', plannedCol: 'Planned (Yes/No)', actualCol: 'Planned (Yes/No)', monthCol: 'Reporting Month', hasMonth: true, yesNoCount: true },
   { key: 'v2_drills', sheetId: '5053158949605252', tab: 'raw_v2_drills', campusCol: 'Campus Code', monthCol: 'Reporting Month', plannedCol: 'Planned Drill? (Yes/No)', actualCol: 'Are there any submission?', hasMonth: true, yesNoCount: true },
   { key: 'v2_waste_segregation', sheetId: '8150747345538948', tab: 'raw_v2_waste_segregation', campusCol: 'Campus Code', monthCol: 'Reporting Month', hasMonth: true },
   { key: 'v2_mgmt_review_actions', sheetId: '3267265049874308', tab: 'raw_v2_mgmt_review_actions', campusCol: 'Campus Group', monthCol: 'Reporting Month', hasMonth: true },
@@ -116,7 +116,7 @@ export function processSource(src: SyncSource, records: Record<string, any>[]): 
   return records.map(r => {
     const campus = String(r[src.campusCol] || '').trim();
     if (!campus) return null;
-// Try configured monthCol first, then fallback columns (matches GAS SheetService logic)
+    // Try configured monthCol first, then fallback columns (matches GAS SheetService logic)
     let month: string | null = null;
     if (src.hasMonth && src.monthCol) {
       month = normalizeMonth(r[src.monthCol]);
