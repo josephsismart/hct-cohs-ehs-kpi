@@ -13,5 +13,11 @@
       "runtime": "@vercel/python@4.5.0",
       "maxDuration": 60
     }
-  }
+  },
+    "crons": [
+          {
+                  "path": "/api/sync",
+                  "schedule": "*/10 * * * *"
+          }
+    ]
 }
