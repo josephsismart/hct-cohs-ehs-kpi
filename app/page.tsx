@@ -9,8 +9,8 @@ const QUARTERS: Record<string, string[]> = {
   Q3: ['July','August','September'], Q4: ['October','November','December'],
 };
 const QUARTER_LABELS: Record<string, string> = {
-  Q1: 'Q1 (Jan–Mar)', Q2: 'Q2 (Apr–Jun)',
-  Q3: 'Q3 (Jul–Sep)', Q4: 'Q4 (Oct–Dec)',
+  Q1: 'Q1 (JanâMar)', Q2: 'Q2 (AprâJun)',
+  Q3: 'Q3 (JulâSep)', Q4: 'Q4 (OctâDec)',
 };
 
 const SUMMARY_CARDS = [
@@ -42,24 +42,24 @@ const SMARTSHEET_LINKS: Record<string, string> = {
 };
 
 const KPI_CHARTS = [
-  { key: 'v2_onsite_induction', label: 'Contractor Activity', plannedLabel: 'No. of New Contractors (Individuals)', actualLabel: 'Contractors Inducted in the Reporting Month — Met/Exceeded', belowLabel: 'Contractors Inducted in the Reporting Month — Below Target', type: 'planned_actual_below' },
+  { key: 'v2_onsite_induction', label: 'Contractor Activity', plannedLabel: 'No. of New Contractors (Individuals)', actualLabel: 'Contractors Inducted in the Reporting Month â Met/Exceeded', belowLabel: 'Contractors Inducted in the Reporting Month â Below Target', type: 'planned_actual_below' },
   { key: 'v2_permit_to_work', label: 'Permit to Work', plannedLabel: 'No. of PTWs Issued', actualLabel: 'Total Work Registered', type: 'planned_actual' },
-  { key: 'v2_hazard_id', label: 'Implemented Control Measures', plannedLabel: 'Total Control Sampled', actualLabel: 'Implemented Controls — Met/Exceeded', belowLabel: 'Implemented Controls — Below Target', type: 'planned_actual_below' },
-  { key: 'v2_risk_closed', label: 'Risk Assessment Closed', plannedLabel: 'Total Risk Assessments Registered', actualLabel: 'Risk Assessment Closed — Met/Exceeded', belowLabel: 'Risk Assessment Closed — Below Target', type: 'planned_actual_below' },
-  { key: 'v2_risk_validated', label: 'Risk Assessment Validated & Signed Off', plannedLabel: 'Total Assessments Register', actualLabel: 'RA Validated and Signed Off — Met/Exceeded', belowLabel: 'RA Validated and Signed Off — Below Target', type: 'planned_actual_below' },
-  { key: 'v2_safe_working', label: 'Safe Working Procedure', plannedLabel: 'No. of SOPs Verified', actualLabel: 'No. of SOPs Implemented — Met/Exceeded', belowLabel: 'No. of SOPs Implemented — Below Target', type: 'planned_actual_below' },
-  { key: 'v2_findings_on_time', label: 'Findings Closed On Time', plannedLabel: 'No. of Findings in Reporting Month', actualLabel: 'No. of Findings Closed — Met/Exceeded', belowLabel: 'No. of Findings Closed — Below Target', type: 'planned_actual_below' },
-  { key: 'v2_ehs_inspection', label: 'Scheduled EHS Inspection', plannedLabel: 'No. of EHS Inspections Planned', actualLabel: 'No. of EHS Inspections Completed — Met/Exceeded', belowLabel: 'No. of EHS Inspections Completed — Below Target', type: 'planned_actual_below' },
+  { key: 'v2_hazard_id', label: 'Implemented Control Measures', plannedLabel: 'Total Control Sampled', actualLabel: 'Implemented Controls â Met/Exceeded', belowLabel: 'Implemented Controls â Below Target', type: 'planned_actual_below' },
+  { key: 'v2_risk_closed', label: 'Risk Assessment Closed', plannedLabel: 'Total Risk Assessments Registered', actualLabel: 'Risk Assessment Closed â Met/Exceeded', belowLabel: 'Risk Assessment Closed â Below Target', type: 'planned_actual_below' },
+  { key: 'v2_risk_validated', label: 'Risk Assessment Validated & Signed Off', plannedLabel: 'Total Assessments Register', actualLabel: 'RA Validated and Signed Off â Met/Exceeded', belowLabel: 'RA Validated and Signed Off â Below Target', type: 'planned_actual_below' },
+  { key: 'v2_safe_working', label: 'Safe Working Procedure', plannedLabel: 'No. of SOPs Verified', actualLabel: 'No. of SOPs Implemented â Met/Exceeded', belowLabel: 'No. of SOPs Implemented â Below Target', type: 'planned_actual_below' },
+  { key: 'v2_findings_on_time', label: 'Findings Closed On Time', plannedLabel: 'No. of Findings in Reporting Month', actualLabel: 'No. of Findings Closed â Met/Exceeded', belowLabel: 'No. of Findings Closed â Below Target', type: 'planned_actual_below' },
+  { key: 'v2_ehs_inspection', label: 'Scheduled EHS Inspection', plannedLabel: 'No. of EHS Inspections Planned', actualLabel: 'No. of EHS Inspections Completed â Met/Exceeded', belowLabel: 'No. of EHS Inspections Completed â Below Target', type: 'planned_actual_below' },
   { key: 'v2_hs_committee', label: 'EHS Committee Meeting', valueLabel: 'No. of Committee Meeting', type: 'value' },
-  { key: 'v2_planned_training', label: 'Planned Training Report', plannedLabel: 'Planned Training', actualLabel: 'Training Conducted — Met/Exceeded', belowLabel: 'Training Conducted — Below Target', type: 'planned_actual_below' },
-  { key: 'v2_hs_kpi_report', label: 'HS KPI Report', valueLabel: 'Submitted', type: 'value' },
-  { key: 'v2_external_compliance', label: 'External Authority Compliance', plannedLabel: 'Applicable Compliance', actualLabel: 'Actual Compliance — Met/Exceeded', belowLabel: 'Actual Compliance — Below Target', type: 'planned_actual_below' },
+  { key: 'v2_planned_training', label: 'Planned Training Report', plannedLabel: 'Planned Training', actualLabel: 'Training Conducted â Met/Exceeded', belowLabel: 'Training Conducted â Below Target', type: 'planned_actual_below' },
+  // { key: 'v2_hs_kpi_report', label: 'HS KPI Report', valueLabel: 'Submitted', type: 'value' }, // Hidden: reportId 404
+  { key: 'v2_external_compliance', label: 'External Authority Compliance', plannedLabel: 'Applicable Compliance', actualLabel: 'Actual Compliance â Met/Exceeded', belowLabel: 'Actual Compliance â Below Target', type: 'planned_actual_below' },
   { key: 'v2_investigation_on_time', label: 'Investigation Completed on Time', plannedLabel: 'Total Incident', actualLabel: 'Investigation Completed on Time', type: 'planned_actual' },
   { key: 'notification', label: 'Notification on Time', plannedLabel: 'Total Incident', actualLabel: 'Notification Submitted on Time', type: 'planned_actual' },
 ];
 
 const EXTRA_CHARTS = [
-  { key: 'incidents', label: 'Total Incidents', subtitle: 'Incident count by campus — lower is better', valueLabel: 'Incidents', type: 'value' },
+  { key: 'incidents', label: 'Total Incidents', subtitle: 'Incident count by campus â lower is better', valueLabel: 'Incidents', type: 'value' },
   { key: 'v2_incident_types', label: 'Incidents by Type', subtitle: 'Count of incidents per category', type: 'pie' },
   { key: 'training', label: 'Total Training Hours by Campus', subtitle: 'Actual training hours per campus', valueLabel: 'Hours', type: 'value_hours' },
   { key: 'ehs_rate', label: 'EHS Inspection Rate', subtitle: 'Scheduled vs Completed EHS Inspections', sourceKey: 'ehs', type: 'rate_pct' },
@@ -395,8 +395,8 @@ export default function Dashboard() {
             </div>
             <div className="legend-row">
               <span className="legend-dot" style={{ background: '#4A90D9' }} /> Planned / Target
-              <span className="legend-dot" style={{ background: '#1D9E75' }} /> Actual {'—'} Met or Exceeded
-              <span className="legend-dot" style={{ background: '#EA352E' }} /> Actual {'—'} Below Target
+              <span className="legend-dot" style={{ background: '#1D9E75' }} /> Actual {'â'} Met or Exceeded
+              <span className="legend-dot" style={{ background: '#EA352E' }} /> Actual {'â'} Below Target
               <span className="legend-dot" style={{ background: '#F59E0B' }} /> No target set
             </div>
 
@@ -477,7 +477,7 @@ export default function Dashboard() {
 
             {/* FOOTER */}
             <div className="dashboard-footer">
-              Data sourced from Smartsheet {'•'} Last synced: {data.syncedAt ? new Date(data.syncedAt).toLocaleString() : 'N/A'} {'•'} Click Sync Now to force reload
+              Data sourced from Smartsheet {'â¢'} Last synced: {data.syncedAt ? new Date(data.syncedAt).toLocaleString() : 'N/A'} {'â¢'} Click Sync Now to force reload
             </div>
           </>
         )}
