@@ -11,7 +11,7 @@ export interface SyncSource {
   plannedCol?: string;
   actualCol?: string;
   valueCol?: string;
-  hasMonth: boolean;h
+  hasMonth: boolean;
   isolateFromCampusSet?: boolean;
   yesNoCount?: boolean;
 }
