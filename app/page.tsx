@@ -73,6 +73,7 @@ interface SyncData {
   campuses: string[];
   months: string[];
   errors: string[];
+  wasteData?: Record<string, any>[];
 }
 
 function filterRows(rows: KpiRow[], campus: string, month: string, quarter: string): KpiRow[] {
@@ -446,10 +447,44 @@ export default function Dashboard() {
             </div>
 
             {/* WASTE SEGREGATION */}
-            <div className="placeholder-section">
-              <h4>WASTE SEGREGATION</h4>
-              <p>Data table coming soon</p>
-            </div>
+            <h3 className="section-title">WASTE SEGREGATION</h3>
+            {(() => {
+              const WASTE_COLS = ['Total Waste','General Waste','Food Waste','Paper Waste','Paper Cup/Carton','PET Bottle','Single Use Plastic'];
+              let wd = data.wasteData || [];
+              if (campus !== 'ALL') wd = wd.filter((r: any) => r.campus === campus);
+              if (month !== 'ALL') wd = wd.filter((r: any) => r.month === month);
+              else if (quarter !== 'ALL' && QUARTERS[quarter]) wd = wd.filter((r: any) => r.month && QUARTERS[quarter].includes(r.month));
+              // Aggregate by campus
+              const map: Record<string, Record<string, number>> = {};
+              wd.forEach((r: any) => {
+                if (!map[r.campus]) map[r.campus] = {};
+                WASTE_COLS.forEach(col => { map[r.campus][col] = (map[r.campus][col] || 0) + (r[col] || 0); });
+              });
+              const campuses = Object.keys(map).sort();
+              if (campuses.length === 0) return <div className="placeholder-section"><h4>WASTE SEGREGATION</h4><p>No data available</p></div>;
+              // Compute totals row
+              const totals: Record<string, number> = {};
+              WASTE_COLS.forEach(col => { totals[col] = campuses.reduce((s, c) => s + (map[c][col] || 0), 0); });
+              return (
+                <div className="chart-card" style={{ overflowX: 'auto' }}>
+                  <div className="chart-card-header">
+                    <span>Waste Segregation by Campus (kg)</span>
+                    <a className="btn-smartsheet" href="https://app.smartsheet.com/reports/FwPfmrvwgpxRMmvp8VX6m59WvpvQ5RGvFCXF8Wx1" target="_blank" rel="noopener noreferrer">View in Smartsheet</a>
+                  </div>
+                  <table className="waste-table">
+                    <thead>
+                      <tr><th>Campus</th>{WASTE_COLS.map(c => <th key={c}>{c}</th>)}</tr>
+                    </thead>
+                    <tbody>
+                      {campuses.map(c => (
+                        <tr key={c}><td>{c}</td>{WASTE_COLS.map(col => <td key={col}>{(map[c][col] || 0).toLocaleString(undefined, {maximumFractionDigits: 1})}</td>)}</tr>
+                      ))}
+                      <tr className="totals-row"><td><strong>Total</strong></td>{WASTE_COLS.map(col => <td key={col}><strong>{totals[col].toLocaleString(undefined, {maximumFractionDigits: 1})}</strong></td>)}</tr>
+                    </tbody>
+                  </table>
+                </div>
+              );
+            })()}
 
             {/* EXECUTIVE KPI SUMMARY */}
             <div className="placeholder-section">
