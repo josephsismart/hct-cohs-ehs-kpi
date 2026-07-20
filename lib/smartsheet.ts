@@ -24,10 +24,10 @@ export const SYNC_SOURCES: SyncSource[] = [
   { key: 'notification', reportId: '1199821531598724', tab: 'raw_notification', monthCol: 'Reporting Month', campusCol: 'Campus Code', plannedCol: 'Total Incident', actualCol: 'Notification Submitted on Time', hasMonth: true },
   { key: 'risk', reportId: '8565044722749316', tab: 'raw_risk', campusCol: 'Campus Code', monthCol: 'Reporting Month', plannedCol: 'Total Assessments Register', actualCol: 'RA Validated and Signed Off', hasMonth: true },
   { key: 'training', sheetId: '8549734774951812', tab: 'raw_training', campusCol: 'Campus Code', valueCol: 'Total Hours', monthCol: 'Reporting Month', hasMonth: true },
-  { key: 'incidents', sheetId: '7165378768621444', tab: 'raw_incidents', campusCol: 'Campus Code', monthCol: 'Date Reported', valueCol: 'Total Incident', hasMonth: true },
+  { key: 'incidents', sheetId: '7165378768621444', tab: 'raw_incidents', campusCol: 'Campus Code', monthCol: 'Reporting Month', valueCol: 'Total Incident', hasMonth: true },
 
   // Pie chart — Incidents by Type (uses sheet directly — report API returns wrong values)
-  { key: 'v2_incident_types', sheetId: '7165378768621444', tab: 'raw_v2_incident_types', campusCol: 'Incident Type', valueCol: 'Total Incident', monthCol: 'Date Reported', hasMonth: true, isolateFromCampusSet: true },
+  { key: 'v2_incident_types', sheetId: '7165378768621444', tab: 'raw_v2_incident_types', campusCol: 'Incident Type', valueCol: 'Total Incident', monthCol: 'Reporting Month', hasMonth: true, isolateFromCampusSet: true },
 
   // V2 KPIs — matched to GAS SyncService.gs
   { key: 'v2_hs_committee', sheetId: '435993944477572', tab: 'raw_v2_hs_committee', campusCol: 'Committee', plannedCol: 'Meeting Planned', actualCol: 'Meeting Conducted', monthCol: 'Reporting Month', hasMonth: true },
