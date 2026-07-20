@@ -575,7 +575,7 @@ export default function Dashboard() {
 
             {/* 6-MONTH TREND ANALYSIS */}
             {(() => {
-              const trendMonths = MONTHS.filter(m => data.months.includes(m));
+              const trendMonths = MONTHS.filter(m => data.months.includes(m)).filter(m => { const allSrc = ['incidents','v2_ehs_inspection','training','v2_external_compliance']; return allSrc.some(k => (data.sources[k]?.rows || []).some(r => r.month === m)); });
               if (trendMonths.length === 0) return null;
               const label = `6-MONTH TREND ANALYSIS (${trendMonths[0].toUpperCase()} \u2013 ${trendMonths[trendMonths.length-1].toUpperCase()})`;
 
@@ -594,7 +594,7 @@ export default function Dashboard() {
                     const pts = trendMonths.map(m => {
                       const mRows = srcRows.filter(r => r.month === m);
                       if (tc.mode === 'sum') {
-                        return mRows.reduce((s, r) => s + (r.value || r.actual || 0), 0);
+                        return Math.round(mRows.reduce((s, r) => s + (r.value || r.actual || 0), 0) * 10) / 10;
                       } else {
                         const p = mRows.reduce((s, r) => s + r.planned, 0);
                         const a = mRows.reduce((s, r) => s + r.actual, 0);
