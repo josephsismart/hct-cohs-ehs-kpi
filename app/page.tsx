@@ -226,24 +226,35 @@ export default function Dashboard() {
   const [year, setYear] = useState('ALL');
   const [pptRegion, setPptRegion] = useState('Abu Dhabi');
   const [pptLoading, setPptLoading] = useState(false);
+  const [wordLoading, setWordLoading] = useState(false);
+  const [pdfLoading, setPdfLoading] = useState(false);
 
-  const downloadPpt = useCallback(async () => {
-    setPptLoading(true);
+  const getReportParams = useCallback(() => {
+    const m = month !== 'ALL' ? month : MONTHS[new Date().getMonth() - 1] || 'December';
+    const y = year !== 'ALL' ? year : String(new Date().getFullYear());
+    return { month: m, year: y };
+  }, [month, year]);
+
+  const downloadFile = useCallback(async (endpoint: string, ext: string, setLoading: (v: boolean) => void) => {
+    setLoading(true);
     try {
-      const pptMonth = month !== 'ALL' ? month : MONTHS[new Date().getMonth() - 1] || 'December';
-      const pptYear = year !== 'ALL' ? year : String(new Date().getFullYear());
-      const url = `/api/generate-ppt?region=${encodeURIComponent(pptRegion)}&month=${encodeURIComponent(pptMonth)}&year=${pptYear}`;
+      const { month: m, year: y } = getReportParams();
+      const url = `/api/${endpoint}?region=${encodeURIComponent(pptRegion)}&month=${encodeURIComponent(m)}&year=${y}`;
       const res = await fetch(url);
       if (!res.ok) { const err = await res.json(); throw new Error(err.error || `HTTP ${res.status}`); }
       const blob = await res.blob();
       const a = document.createElement('a');
       a.href = URL.createObjectURL(blob);
-      a.download = `HCT_KPI_Committee_${pptRegion.replace(/ /g, '_')}_${pptMonth}_${pptYear}.pptx`;
+      a.download = `HCT_KPI_${pptRegion.replace(/ /g, '_')}_${m}_${y}.${ext}`;
       a.click();
       URL.revokeObjectURL(a.href);
-    } catch (e: any) { alert('PPT generation failed: ' + e.message); }
-    finally { setPptLoading(false); }
-  }, [pptRegion, month, year]);
+    } catch (e: any) { alert(`${ext.toUpperCase()} generation failed: ` + e.message); }
+    finally { setLoading(false); }
+  }, [pptRegion, getReportParams]);
+
+  const downloadPpt = useCallback(() => downloadFile('generate-ppt', 'pptx', setPptLoading), [downloadFile]);
+  const downloadWord = useCallback(() => downloadFile('generate-word', 'docx', setWordLoading), [downloadFile]);
+  const downloadPdf = useCallback(() => downloadFile('generate-pdf', 'pdf', setPdfLoading), [downloadFile]);
 
   const doSync = useCallback(async () => {
     setLoading(true); setError('');
@@ -338,7 +349,13 @@ export default function Dashboard() {
             </select>
           </label>
           <button className="btn-sync" onClick={downloadPpt} disabled={pptLoading} style={{background:'#198754'}}>
-            {pptLoading ? 'Generating...' : 'Download PPT'}
+            {pptLoading ? 'Generating...' : '\u{1F4CA} PPT'}
+          </button>
+          <button className="btn-sync" onClick={downloadWord} disabled={wordLoading} style={{background:'#2B579A'}}>
+            {wordLoading ? 'Generating...' : '\u{1F4DD} Word'}
+          </button>
+          <button className="btn-sync" onClick={downloadPdf} disabled={pdfLoading} style={{background:'#D32F2F'}}>
+            {pdfLoading ? 'Generating...' : '\u{1F4C4} PDF'}
           </button>
           <button className="btn-report" onClick={() => {}}>Report</button>
           {data && <SyncBadge syncedAt={data.syncedAt} />}
