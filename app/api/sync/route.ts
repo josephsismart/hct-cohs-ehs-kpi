@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { SYNC_SOURCES, fetchSheet, fetchReport, processSource, KpiRow } from '../../../lib/smartsheet';
+import { SYNC_SOURCES, fetchSheet, fetchReport, processSource, KpiRow } from '@/lib/smartsheet';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
@@ -11,20 +11,27 @@ export async function GET() {
   const results: Record<string, { rows: KpiRow[]; error?: string }> = {};
   const errors: string[] = [];
 
+  const debug: Record<string, any> = {};
   await Promise.allSettled(
     SYNC_SOURCES.map(async (src) => {
       try {
         const raw = src.sheetId
           ? await fetchSheet(src.sheetId, token)
           : await fetchReport(src.reportId!, token);
-        results[src.key] = { rows: processSource(src, raw) };
+        // Debug: capture column names for sources with 0 processed rows
+        const processed = processSource(src, raw);
+        if (processed.length === 0 && raw.length > 0) {
+          debug[src.key] = { rawCount: raw.length, columns: Object.keys(raw[0]), sample: raw[0], config: { campusCol: src.campusCol, monthCol: src.monthCol, plannedCol: src.plannedCol, actualCol: src.actualCol, valueCol: src.valueCol } };
+        }
+        results[src.key] = { rows: processed };
       } catch (e: any) {
         results[src.key] = { rows: [], error: e.message };
-        errors.push(src.key + ': ' + e.message);
+        errors.push(`${src.key}: ${e.message}`);
       }
     })
   );
 
+  // Extract unique campuses and months
   const campusSet = new Set<string>();
   const monthSet = new Set<string>();
   Object.values(results).forEach(({ rows }) => {
@@ -37,8 +44,9 @@ export async function GET() {
   return NextResponse.json({
     syncedAt: new Date().toISOString(),
     sources: results,
-    campuses: Array.from(campusSet).sort(),
-    months: Array.from(monthSet),
+    campuses: [...campusSet].sort(),
+    months: [...monthSet],
     errors,
+    debug,
   });
 }
