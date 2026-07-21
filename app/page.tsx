@@ -244,6 +244,13 @@ export default function Dashboard() {
     }
     return defaultCfg;
   });
+  const [dragIdx, setDragIdx] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('hct-chart-config', JSON.stringify(chartConfig));
+    }
+  }, [chartConfig]);
 
   const getReportParams = useCallback(() => {
     const m = month !== 'ALL' ? month : MONTHS[new Date().getMonth() - 1] || 'December';
@@ -414,7 +421,7 @@ export default function Dashboard() {
             <button className="btn-sync" onClick={doSync} disabled={loading}>
               <i className="fa fa-sync"></i> {loading ? 'Syncing...' : 'Sync Now'}
             </button>
-            <button className="btn-customize" onClick={() => setShowCustomize(!showCustomize)}>Customize</button>
+            <button className="btn-customize" onClick={() => setShowCustomize(!showCustomize)}><i className="fa fa-sliders"></i> Customize</button>
                 <button className="btn-theme" onClick={() => setDarkMode(!darkMode)}>
               <i className={darkMode ? 'fa fa-sun' : 'fa fa-moon'}></i> {darkMode ? 'Light' : 'Dark'}
             </button>
@@ -682,31 +689,57 @@ export default function Dashboard() {
             )}
 
             {showCustomize && (
-              <div className="customize-panel">
-                <div className="customize-header">
-                  <h3>Customize Dashboard</h3>
-                  <button onClick={() => setShowCustomize(false)}>&times;</button>
-                </div>
-                <div className="customize-body">
-                  {chartConfig.map((item, idx) => (
-                    <div key={item.key} className="customize-item">
-                      <label>
-                        <input type="checkbox" checked={item.visible} onChange={() => {
-                          const next = [...chartConfig];
-                          next[idx] = { ...next[idx], visible: !next[idx].visible };
-                          setChartConfig(next);
-                        }} />
-                        {item.label}
-                      </label>
-                    </div>
-                  ))}
-                </div>
-                <div className="customize-footer">
-                  <button onClick={() => setChartConfig(defaultChartConfig())}>Reset</button>
-                  <button onClick={() => { localStorage.setItem('hct-chart-config', JSON.stringify(chartConfig)); setShowCustomize(false); }}>Save</button>
-                </div>
+            <div className="customize-panel">
+              <div className="customize-header">
+                <h3>Customize Dashboard</h3>
+                <p>Drag to reorder. Toggle visibility. Auto-saved.</p>
+                <button onClick={() => setShowCustomize(false)}>&times;</button>
               </div>
-            )}
+              <div className="customize-list">
+                {chartConfig.map((item, idx) => (
+                  <div
+                    key={item.key}
+                    className={"customize-item" + (dragIdx === idx ? " dragging" : "")}
+                    draggable
+                    onDragStart={() => setDragIdx(idx)}
+                    onDragOver={(e) => { e.preventDefault(); }}
+                    onDrop={() => {
+                      if (dragIdx === null || dragIdx === idx) return;
+                      const next = [...chartConfig];
+                      const [moved] = next.splice(dragIdx, 1);
+                      next.splice(idx, 0, moved);
+                      setChartConfig(next);
+                      setDragIdx(null);
+                    }}
+                    onDragEnd={() => setDragIdx(null)}
+                  >
+                    <span className="drag-handle">&#9776;</span>
+                    <input type="checkbox" checked={item.visible} onChange={() => {
+                      const next = [...chartConfig];
+                      next[idx] = { ...next[idx], visible: !next[idx].visible };
+                      setChartConfig(next);
+                    }} />
+                    <span className={"chart-name" + (!item.visible ? " chart-hidden" : "")}>{item.label}</span>
+                    <div className="customize-arrows">
+                      <button disabled={idx === 0} onClick={() => {
+                        const next = [...chartConfig];
+                        [next[idx - 1], next[idx]] = [next[idx], next[idx - 1]];
+                        setChartConfig(next);
+                      }}>&uarr;</button>
+                      <button disabled={idx === chartConfig.length - 1} onClick={() => {
+                        const next = [...chartConfig];
+                        [next[idx], next[idx + 1]] = [next[idx + 1], next[idx]];
+                        setChartConfig(next);
+                      }}>&darr;</button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div className="customize-footer">
+                <button onClick={() => setChartConfig(defaultChartConfig())}>Reset to Default</button>
+              </div>
+            </div>
+          )}
 
             {/* FOOTER */}
             <div className="dashboard-footer">
