@@ -429,6 +429,54 @@ class KPIReport(FPDF):
             self.ln()
 
 
+    def executive_summary_table(self, kpi_data, region_cfg):
+        """Executive KPI Summary by Campus table."""
+        self.add_page()
+        self.set_font('Helvetica', 'B', 14)
+        self.set_text_color(24, 14, 63)
+        self.cell(0, 10, '4. Executive KPI Summary by Campus', ln=True)
+        self.ln(3)
+        self.set_font('Helvetica', '', 9)
+        self.set_text_color(0, 0, 0)
+
+        headers = ['Campus', 'Drills', 'EHS Insp.', 'Findings', 'Notification', 'Risk Asmt', 'Incidents']
+        kpi_rows_map = [13, 16, 17, 19, 8]
+        col_w = [25, 25, 25, 25, 28, 25, 22]
+
+        # Header
+        self.set_fill_color(24, 14, 63)
+        self.set_text_color(255, 255, 255)
+        self.set_font('Helvetica', 'B', 8)
+        for i, h in enumerate(headers):
+            self.cell(col_w[i], 7, h, 1, 0, 'C', True)
+        self.ln()
+
+        # Data rows
+        self.set_font('Helvetica', '', 8)
+        for si, sheet in enumerate(region_cfg['sheets']):
+            campus = kpi_data.get(sheet, {})
+            fill = si % 2 == 0
+            if fill:
+                self.set_fill_color(240, 240, 250)
+            self.set_text_color(0, 0, 0)
+            self.cell(col_w[0], 6, sheet, 1, 0, 'C', fill)
+            for ki, kr in enumerate(kpi_rows_map):
+                d = campus.get(kr, {})
+                pct = round(d.get('calc', 0) * 100)
+                if pct >= 90:
+                    self.set_text_color(0, 128, 0)
+                elif pct >= 70:
+                    self.set_text_color(200, 150, 0)
+                else:
+                    self.set_text_color(255, 0, 0)
+                self.cell(col_w[ki + 1], 6, str(pct) + '%', 1, 0, 'C', fill)
+            self.set_text_color(0, 0, 0)
+            incidents = int(campus.get(19, {}).get('planned', 0))
+            self.cell(col_w[6], 6, str(incidents), 1, 0, 'C', fill)
+            self.ln()
+        self.ln(5)
+
+
 def generate_pdf(region_name, month_name, year, token):
     region_cfg = REGIONS.get(region_name)
     if not region_cfg:
@@ -454,7 +502,9 @@ def generate_pdf(region_name, month_name, year, token):
     pdf.add_page()
     pdf.set_font('Helvetica', 'B', 16)
     pdf.set_text_color(24, 14, 63)
-    pdf.cell(0, 10, '4. Recommendations & Action Items', new_x='LMARGIN', new_y='NEXT')
+    pdf.executive_summary_table(kpi_data, region_cfg)
+
+    pdf.cell(0, 10, '5. Recommendations & Action Items', new_x='LMARGIN', new_y='NEXT')
     pdf.ln(4)
     pdf.set_font('Helvetica', 'I', 11)
     pdf.set_text_color(89, 89, 89)
