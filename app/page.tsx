@@ -303,6 +303,7 @@ export default function Dashboard() {
     setReportName(parts.join(' - '));
   }, [year, quarter, month, campus]);
 
+    useEffect(() => {
     doSync();
     // Auto-poll every 60 seconds for near real-time updates
     const interval = setInterval(() => {
