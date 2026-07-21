@@ -45,6 +45,8 @@ const SMARTSHEET_LINKS: Record<string, string> = {
   findings_rate: 'https://app.smartsheet.com/reports/wC59JHJM3x57Q6vFCRFmVpgc93gXr8GxxQ2gwXq1',
 };
 
+const REPORT_REGIONS = ['AD Al Ain','Abu Dhabi','AD Remote','Dubai','Fujairah','Sharjah','Ras Al Khaimah'];
+
 const KPI_CHARTS = [
   { key: 'v2_onsite_induction', label: 'Contractor Activity', plannedLabel: 'No. of New Contractors (Individuals)', actualLabel: 'Contractors Inducted in the Reporting Month \u2014 Met/Exceeded', belowLabel: 'Contractors Inducted in the Reporting Month \u2014 Below Target', type: 'planned_actual_below' },
   { key: 'v2_permit_to_work', label: 'Permit to Work', plannedLabel: 'No. of PTWs Issued', actualLabel: 'Total Work Registered', type: 'planned_actual' },
@@ -236,7 +238,7 @@ export default function Dashboard() {
   const [darkMode, setDarkMode] = useState(false);
   const [showReport, setShowReport] = useState(false);
   const [reportName, setReportName] = useState('');
-  const [pptRegion, setPptRegion] = useState('Abu Dhabi');
+  const [pptRegion, setPptRegion] = useState('All');
   const [pptLoading, setPptLoading] = useState(false);
   const [wordLoading, setWordLoading] = useState(false);
   const [pdfLoading, setPdfLoading] = useState(false);
@@ -279,9 +281,9 @@ export default function Dashboard() {
     finally { setLoading(false); }
   }, [pptRegion, getReportParams]);
 
-  const downloadPpt = useCallback(() => downloadFile('generate-ppt', 'pptx', setPptLoading), [downloadFile]);
-  const downloadWord = useCallback(() => downloadFile('generate-word', 'docx', setWordLoading), [downloadFile]);
-  const downloadPdf = useCallback(() => downloadFile('generate-pdf', 'pdf', setPdfLoading), [downloadFile]);
+  const downloadPpt = useCallback(() => { if (pptRegion === 'All') { downloadAllAsZip('ppt'); return; } downloadFile('generate-ppt'); }, [downloadFile, pptRegion, downloadAllAsZip]);
+  const downloadWord = useCallback(() => { if (pptRegion === 'All') { downloadAllAsZip('word'); return; } downloadFile('generate-word'); }, [downloadFile, pptRegion, downloadAllAsZip]);
+  const downloadPdf = useCallback(() => { if (pptRegion === 'All') { downloadAllAsZip('pdf'); return; } downloadFile('generate-pdf'); }, [downloadFile, pptRegion, downloadAllAsZip]);
 
   const doSync = useCallback(async () => {
     setLoading(true); setError('');
@@ -303,7 +305,17 @@ export default function Dashboard() {
         .then(d => { if (d) setData(d); })
         .catch(() => {});
     }, 60000);
-    return () => clearInterval(interval);
+    
+  const downloadAllAsZip = useCallback(async (format: string) => {
+    const { month: m, year: y } = getReportParams();
+    for (let i = 0; i < REPORT_REGIONS.length; i++) {
+      const region = REPORT_REGIONS[i];
+      const url = '/api/generate-' + format + '?region=' + encodeURIComponent(region) + '&month=' + encodeURIComponent(m) + '&year=' + y + '&name=' + encodeURIComponent(reportName);
+      setTimeout(() => window.open(url), i * 500);
+    }
+    setShowReport(false);
+  }, [reportName, getReportParams]);
+return () => clearInterval(interval);
   }, [doSync]);
 
   // Dark mode toggle
@@ -361,6 +373,11 @@ export default function Dashboard() {
             <div className="modal-body">
               <label>Report Name</label>
               <input type="text" value={reportName} onChange={e => setReportName(e.target.value)} placeholder="Enter report name..." />
+              <label>Region</label>
+              <select value={pptRegion} onChange={e => setPptRegion(e.target.value)} style={{width:'100%',padding:'8px',marginBottom:'12px',borderRadius:'4px',border:'1px solid #ccc'}}>
+                <option value="All">All (ZIP download)</option>
+                {REPORT_REGIONS.map(r => <option key={r} value={r}>{r}</option>)}
+              </select>
               <label>Choose Format</label>
               <div className="report-buttons">
                 <button className="report-btn ppt" onClick={() => { { const {month:m,year:y} = getReportParams(); window.open('/api/generate-ppt?region=' + encodeURIComponent(pptRegion) + '&month=' + encodeURIComponent(m) + '&year=' + y + '&name=' + encodeURIComponent(reportName)); }; setShowReport(false); }}>
