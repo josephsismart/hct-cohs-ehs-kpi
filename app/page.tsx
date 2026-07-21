@@ -159,9 +159,9 @@ function KpiPieChart({ rows }: { rows: KpiRow[] }) {
   const entries = Object.entries(byCampus).sort((a, b) => b[1].value - a[1].value);
   if (entries.length === 0) return <div className="no-data">No data available</div>;
   const options: Highcharts.Options = {
-    chart: { type: 'pie', height: 400, style: { fontFamily: "'Segoe UI', Arial, sans-serif" } },
+    chart: { type: 'pie', height: 550, style: { fontFamily: "'Segoe UI', Arial, sans-serif" } },
     title: { text: undefined },
-    plotOptions: { pie: { size: '80%', dataLabels: { enabled: true, format: '{point.y}', distance: -15, style: { fontSize: '11px', fontWeight: 'bold', color: 'white', textOutline: 'none' } }, showInLegend: true } },
+    plotOptions: { pie: { dataLabels: { enabled: true, format: '{point.y}', distance: -15, style: { fontSize: '11px', fontWeight: 'bold', color: 'white', textOutline: 'none' } }, showInLegend: true } },
     legend: { align: 'center', verticalAlign: 'bottom', layout: 'horizontal', itemStyle: { fontSize: '11px' } },
     series: [{ type: 'pie', name: 'Incidents', data: entries.map(([name, v], i) => ({ name, y: v.value, color: PIE_COLORS[i % PIE_COLORS.length] })) }],
     credits: { enabled: false },
