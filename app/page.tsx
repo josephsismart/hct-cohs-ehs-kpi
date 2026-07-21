@@ -13,7 +13,7 @@ const QUARTER_LABELS: Record<string, string> = {
   Q3: 'Q3 (Jul\u2013Sep)', Q4: 'Q4 (Oct\u2013Dec)',
 };
 
-const SUMMARY_CARDS = [
+const SUMMARY_CARDS = [h
   { key: 'incidents', label: 'Total Incidents', unit: 'count', color: '#dc3545' },
   { key: 'training', label: 'Training Hours', unit: 'val', color: '#0d6efd' },
   { key: 'ehs', label: 'EHS Inspection Rate', unit: 'pct', color: '#198754' },
@@ -386,7 +386,7 @@ export default function Dashboard() {
                           if (!res.ok) throw new Error('Failed: ' + r);
                           blobs.push({name: 'HCT_KPI_' + r.replace(/ /g,'_') + '_' + m + '_' + y + '.pptx', data: await res.arrayBuffer()});
                         }
-                        const {default: JSZip} = await import(/* webpackIgnore: true */ 'https://cdn.jsdelivr.net/npm/jszip@3.10.1/+esm');
+              const JSZip = await new Promise<any>((resolve) => { const s = document.createElement('script'); s.src = 'https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js'; s.onload = () => resolve((window as any).JSZip); document.head.appendChild(s); });
                         const zip = new JSZip();
                         blobs.forEach(b => zip.file(b.name, b.data));
                         const zb = await zip.generateAsync({type:'blob'});
