@@ -363,15 +363,15 @@ export default function Dashboard() {
               <input type="text" value={reportName} onChange={e => setReportName(e.target.value)} placeholder="Enter report name..." />
               <label>Choose Format</label>
               <div className="report-buttons">
-                <button className="report-btn ppt" onClick={() => { window.open('/api/generate-ppt?name=' + encodeURIComponent(reportName)); setShowReport(false); }}>
+                <button className="report-btn ppt" onClick={() => { { const {month:m,year:y} = getReportParams(); window.open('/api/generate-ppt?region=' + encodeURIComponent(pptRegion) + '&month=' + encodeURIComponent(m) + '&year=' + y + '&name=' + encodeURIComponent(reportName)); }; setShowReport(false); }}>
                   <i className="fa fa-file-powerpoint"></i>
                   <span>PowerPoint</span>
                 </button>
-                <button className="report-btn word" onClick={() => { window.open('/api/generate-word?name=' + encodeURIComponent(reportName)); setShowReport(false); }}>
+                <button className="report-btn word" onClick={() => { { const {month:m,year:y} = getReportParams(); window.open('/api/generate-word?region=' + encodeURIComponent(pptRegion) + '&month=' + encodeURIComponent(m) + '&year=' + y + '&name=' + encodeURIComponent(reportName)); }; setShowReport(false); }}>
                   <i className="fa fa-file-word"></i>
                   <span>Word</span>
                 </button>
-                <button className="report-btn pdf" onClick={() => { window.open('/api/generate-pdf?name=' + encodeURIComponent(reportName)); setShowReport(false); }}>
+                <button className="report-btn pdf" onClick={() => { { const {month:m,year:y} = getReportParams(); window.open('/api/generate-pdf?region=' + encodeURIComponent(pptRegion) + '&month=' + encodeURIComponent(m) + '&year=' + y + '&name=' + encodeURIComponent(reportName)); }; setShowReport(false); }}>
                   <i className="fa fa-file-pdf"></i>
                   <span>PDF</span>
                 </button>
