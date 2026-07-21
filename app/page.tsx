@@ -268,7 +268,17 @@ export default function Dashboard() {
   }, []);
 
   // Auto-sync on first load
-  useEffect(() => { doSync(); }, [doSync]);
+  useEffect(() => {
+    doSync();
+    // Auto-poll every 60 seconds for near real-time updates
+    const interval = setInterval(() => {
+      fetch('/api/sync', { cache: 'no-store' })
+        .then(res => res.ok ? res.json() : null)
+        .then(d => { if (d) setData(d); })
+        .catch(() => {});
+    }, 60000);
+    return () => clearInterval(interval);
+  }, [doSync]);
 
   const getRows = useCallback((key: string): KpiRow[] => {
     if (!data?.sources[key]) return [];
