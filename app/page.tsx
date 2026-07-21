@@ -377,26 +377,21 @@ export default function Dashboard() {
                 <button className="report-btn ppt" disabled={pptLoading} onClick={async () => {
                     const {month:m,year:y} = getReportParams();
                     if (pptRegion === 'All') {
-                      setPptLoading(true); setShowReport(false);
-                      try {
-                        const regions = ['AD Al Ain','Abu Dhabi','AD Remote','Dubai','Fujairah','Sharjah','Ras Al Khaimah'];
-                        const blobs: {name:string,data:ArrayBuffer}[] = [];
-                        for (const r of regions) {
-                          const res = await fetch('/api/generate-ppt' + '?' + 'region=' + encodeURIComponent(r) + '&month=' + encodeURIComponent(m) + '&year=' + y);
-                          if (!res.ok) throw new Error('Failed: ' + r);
-                          blobs.push({name: 'HCT_KPI_' + r.replace(/ /g,'_') + '_' + m + '_' + y + '.pptx', data: await res.arrayBuffer()});
-                        }
-              const JSZip = await new Promise((resolve) => { const s = document.createElement('script'); s.src = 'https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js'; s.onload = () => resolve((window as any).JSZip); document.head.appendChild(s); });
-                        const zip = new JSZip();
-                        blobs.forEach(b => zip.file(b.name, b.data));
-                        const zb = await zip.generateAsync({type:'blob'});
-                        const a = document.createElement('a');
-                        a.href = URL.createObjectURL(zb);
-                        a.download = 'HCT_KPI_All_' + m + '_' + y + '.zip';
-                        a.click(); URL.revokeObjectURL(a.href);
-                      } catch(e: any) { alert('PPT generation failed: ' + e.message); }
-                      finally { setPptLoading(false); }
-                    } else {
+            setPptLoading(true); setShowReport(false);
+            try {
+              const regions = ['AD Al Ain','Abu Dhabi','AD Remote','Dubai','Fujairah','Sharjah','Ras Al Khaimah'];
+              for (const r of regions) {
+                const res = await fetch('/api/generate-ppt' + '?' + 'region=' + encodeURIComponent(r) + '&month=' + encodeURIComponent(m) + '&year=' + y);
+                if (!res.ok) throw new Error('Failed: ' + r);
+                const blob = await res.blob();
+                const a = document.createElement('a');
+                a.href = URL.createObjectURL(blob);
+                a.download = 'HCT_KPI_' + r.replace(/ /g,'_') + '_' + m + '_' + y + '.pptx';
+                a.click(); URL.revokeObjectURL(a.href);
+              }
+            } catch(e: any) { alert('PPT generation failed: ' + e.message); }
+            finally { setPptLoading(false); }
+          } else {
                       window.open('/api/generate-ppt' + '?' + 'region=' + encodeURIComponent(pptRegion) + '&month=' + encodeURIComponent(m) + '&year=' + y + '&name=' + encodeURIComponent(reportName));
                       setShowReport(false);
                     }
