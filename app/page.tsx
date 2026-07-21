@@ -9,8 +9,8 @@ const QUARTERS: Record<string, string[]> = {
   Q3: ['July','August','September'], Q4: ['October','November','December'],
 };
 const QUARTER_LABELS: Record<string, string> = {
-  Q1: 'Q1 (JanÃ¢ÂÂMar)', Q2: 'Q2 (AprÃ¢ÂÂJun)',
-  Q3: 'Q3 (JulÃ¢ÂÂSep)', Q4: 'Q4 (OctÃ¢ÂÂDec)',
+  Q1: 'Q1 (Jan–Mar)', Q2: 'Q2 (Apr–Jun)',
+  Q3: 'Q3 (Jul–Sep)', Q4: 'Q4 (Oct–Dec)',
 };
 
 const SUMMARY_CARDS = [
@@ -36,30 +36,34 @@ const SMARTSHEET_LINKS: Record<string, string> = {
   v2_planned_training: 'https://app.smartsheet.com/reports/6wXHp4RpPR378F6F2r7Q9FpvjmMqhFmcgGwXcmp1',
   incidents: 'https://app.smartsheet.com/reports/Gcg9cW5qG3FGXR3xcwcrHHwxMR8w9QxXp9JxHVC1',
   v2_incident_types: 'https://app.smartsheet.com/reports/pJJP7hJ3WghvVfC9w7GPx73mMwVCvRq4X3fC2Cx1',
+  v2_hs_kpi_report: 'https://app.smartsheet.com/reports/Gcg9cW5qG3FGXR3xcwcrHHwxMR8w9QxXp9JxHVC1',
+  v2_external_compliance: 'https://app.smartsheet.com/reports/pJJP7hJ3WghvVfC9w7GPx73mMwVCvRq4X3fC2Cx1',
+  v2_investigation_on_time: 'https://app.smartsheet.com/reports/Gcg9cW5qG3FGXR3xcwcrHHwxMR8w9QxXp9JxHVC1',
+  notification: 'https://app.smartsheet.com/reports/Gcg9cW5qG3FGXR3xcwcrHHwxMR8w9QxXp9JxHVC1',
   training: 'https://app.smartsheet.com/reports/v5VMcRR6j97qWvFjJm9rjr9WPVmpGcfg3jfvg561',
   ehs_rate: 'https://app.smartsheet.com/reports/FmV6pG8cXJg5cfhxgppGWwwJM94Qv4QQWfPh2j61',
   findings_rate: 'https://app.smartsheet.com/reports/wC59JHJM3x57Q6vFCRFmVpgc93gXr8GxxQ2gwXq1',
 };
 
 const KPI_CHARTS = [
-  { key: 'v2_onsite_induction', label: 'Contractor Activity', plannedLabel: 'No. of New Contractors (Individuals)', actualLabel: 'Contractors Inducted in the Reporting Month Ã¢ÂÂ Met/Exceeded', belowLabel: 'Contractors Inducted in the Reporting Month Ã¢ÂÂ Below Target', type: 'planned_actual_below' },
+  { key: 'v2_onsite_induction', label: 'Contractor Activity', plannedLabel: 'No. of New Contractors (Individuals)', actualLabel: 'Contractors Inducted in the Reporting Month — Met/Exceeded', belowLabel: 'Contractors Inducted in the Reporting Month — Below Target', type: 'planned_actual_below' },
   { key: 'v2_permit_to_work', label: 'Permit to Work', plannedLabel: 'No. of PTWs Issued', actualLabel: 'Total Work Registered', type: 'planned_actual' },
-  { key: 'v2_hazard_id', label: 'Implemented Control Measures', plannedLabel: 'Total Control Sampled', actualLabel: 'Implemented Controls Ã¢ÂÂ Met/Exceeded', belowLabel: 'Implemented Controls Ã¢ÂÂ Below Target', type: 'planned_actual_below' },
-  { key: 'v2_risk_closed', label: 'Risk Assessment Closed', plannedLabel: 'Total Risk Assessments Registered', actualLabel: 'Risk Assessment Closed Ã¢ÂÂ Met/Exceeded', belowLabel: 'Risk Assessment Closed Ã¢ÂÂ Below Target', type: 'planned_actual_below' },
-  { key: 'v2_risk_validated', label: 'Risk Assessment Validated & Signed Off', plannedLabel: 'Total Assessments Register', actualLabel: 'RA Validated and Signed Off Ã¢ÂÂ Met/Exceeded', belowLabel: 'RA Validated and Signed Off Ã¢ÂÂ Below Target', type: 'planned_actual_below' },
-  { key: 'v2_safe_working', label: 'Safe Working Procedure', plannedLabel: 'No. of SOPs Verified', actualLabel: 'No. of SOPs Implemented Ã¢ÂÂ Met/Exceeded', belowLabel: 'No. of SOPs Implemented Ã¢ÂÂ Below Target', type: 'planned_actual_below' },
-  { key: 'v2_findings_on_time', label: 'Findings Closed On Time', plannedLabel: 'No. of Findings in Reporting Month', actualLabel: 'No. of Findings Closed Ã¢ÂÂ Met/Exceeded', belowLabel: 'No. of Findings Closed Ã¢ÂÂ Below Target', type: 'planned_actual_below' },
-  { key: 'v2_ehs_inspection', label: 'Scheduled EHS Inspection', plannedLabel: 'No. of EHS Inspections Planned', actualLabel: 'No. of EHS Inspections Completed Ã¢ÂÂ Met/Exceeded', belowLabel: 'No. of EHS Inspections Completed Ã¢ÂÂ Below Target', type: 'planned_actual_below' },
+  { key: 'v2_hazard_id', label: 'Implemented Control Measures', plannedLabel: 'Total Control Sampled', actualLabel: 'Implemented Controls — Met/Exceeded', belowLabel: 'Implemented Controls — Below Target', type: 'planned_actual_below' },
+  { key: 'v2_risk_closed', label: 'Risk Assessment Closed', plannedLabel: 'Total Risk Assessments Registered', actualLabel: 'Risk Assessment Closed — Met/Exceeded', belowLabel: 'Risk Assessment Closed — Below Target', type: 'planned_actual_below' },
+  { key: 'v2_risk_validated', label: 'Risk Assessment Validated & Signed Off', plannedLabel: 'Total Assessments Register', actualLabel: 'RA Validated and Signed Off — Met/Exceeded', belowLabel: 'RA Validated and Signed Off — Below Target', type: 'planned_actual_below' },
+  { key: 'v2_safe_working', label: 'Safe Working Procedure', plannedLabel: 'No. of SOPs Verified', actualLabel: 'No. of SOPs Implemented — Met/Exceeded', belowLabel: 'No. of SOPs Implemented — Below Target', type: 'planned_actual_below' },
+  { key: 'v2_findings_on_time', label: 'Findings Closed On Time', plannedLabel: 'No. of Findings in Reporting Month', actualLabel: 'No. of Findings Closed — Met/Exceeded', belowLabel: 'No. of Findings Closed — Below Target', type: 'planned_actual_below' },
+  { key: 'v2_ehs_inspection', label: 'Scheduled EHS Inspection', plannedLabel: 'No. of EHS Inspections Planned', actualLabel: 'No. of EHS Inspections Completed — Met/Exceeded', belowLabel: 'No. of EHS Inspections Completed — Below Target', type: 'planned_actual_below' },
   { key: 'v2_hs_committee', label: 'EHS Committee Meeting', valueLabel: 'No. of Committee Meeting', type: 'value' },
-  { key: 'v2_planned_training', label: 'Planned Training Report', plannedLabel: 'Planned Training', actualLabel: 'Training Conducted Ã¢ÂÂ Met/Exceeded', belowLabel: 'Training Conducted Ã¢ÂÂ Below Target', type: 'planned_actual_below' },
+  { key: 'v2_planned_training', label: 'Planned Training Report', plannedLabel: 'Planned Training', actualLabel: 'Training Conducted — Met/Exceeded', belowLabel: 'Training Conducted — Below Target', type: 'planned_actual_below' },
   { key: 'v2_hs_kpi_report', label: 'HS KPI Report', valueLabel: 'Submitted', type: 'value' },
-  { key: 'v2_external_compliance', label: 'External Authority Compliance', plannedLabel: 'Applicable Compliance', actualLabel: 'Actual Compliance Ã¢ÂÂ Met/Exceeded', belowLabel: 'Actual Compliance Ã¢ÂÂ Below Target', type: 'planned_actual_below' },
+  { key: 'v2_external_compliance', label: 'External Authority Compliance', plannedLabel: 'Applicable Compliance', actualLabel: 'Actual Compliance — Met/Exceeded', belowLabel: 'Actual Compliance — Below Target', type: 'planned_actual_below' },
   { key: 'v2_investigation_on_time', label: 'Investigation Completed on Time', plannedLabel: 'Total Incident', actualLabel: 'Investigation Completed on Time', type: 'planned_actual' },
   { key: 'notification', label: 'Notification on Time', plannedLabel: 'Total Incident', actualLabel: 'Notification Submitted on Time', type: 'planned_actual' },
 ];
 
 const EXTRA_CHARTS = [
-  { key: 'incidents', label: 'Total Incidents', subtitle: 'Incident count by campus Ã¢ÂÂ lower is better', valueLabel: 'Incidents', type: 'value' },
+  { key: 'incidents', label: 'Total Incidents', subtitle: 'Incident count by campus — lower is better', valueLabel: 'Incidents', type: 'value' },
   { key: 'v2_incident_types', label: 'Incidents by Type', subtitle: 'Count of incidents per category', type: 'pie' },
   { key: 'training', label: 'Total Training Hours by Campus', subtitle: 'Actual training hours per campus', valueLabel: 'Hours', type: 'value_hours' },
   { key: 'ehs_rate', label: 'EHS Inspection Rate', subtitle: 'Scheduled vs Completed EHS Inspections', sourceKey: 'ehs', type: 'rate_pct' },
@@ -466,8 +470,8 @@ export default function Dashboard() {
             </div>
             <div className="legend-row">
               <span className="legend-dot" style={{ background: '#4A90D9' }} /> Planned / Target
-              <span className="legend-dot" style={{ background: '#1D9E75' }} /> Actual {'Ã¢ÂÂ'} Met or Exceeded
-              <span className="legend-dot" style={{ background: '#EA352E' }} /> Actual {'Ã¢ÂÂ'} Below Target
+              <span className="legend-dot" style={{ background: '#1D9E75' }} /> Actual {'—'} Met or Exceeded
+              <span className="legend-dot" style={{ background: '#EA352E' }} /> Actual {'—'} Below Target
               <span className="legend-dot" style={{ background: '#F59E0B' }} /> No target set
             </div>
 
@@ -542,7 +546,7 @@ export default function Dashboard() {
             })()}
 
             {/* EXECUTIVE KPI SUMMARY */}
-            <h3 className="section-title">EXECUTIVE KPI SUMMARY Ã¢ÂÂ BY CAMPUS</h3>
+            <h3 className="section-title">EXECUTIVE KPI SUMMARY — BY CAMPUS</h3>
             {(() => {
               const EXEC_KPIS = [
                 { key: 'drills', label: 'Drills Completion', type: 'pct' },
@@ -592,9 +596,9 @@ export default function Dashboard() {
               });
 
               const renderCell = (kpi: typeof EXEC_KPIS[0], d: { planned: number; actual: number; value: number }) => {
-                if (kpi.type === 'val') return <td style={{ background: '#dce6f1' }}>{d.value ? d.value.toLocaleString() + ' hrs' : 'Ã¢ÂÂ'}</td>;
-                if (kpi.type === 'count') return <td style={{ background: d.value > 0 ? '#ffc7ce' : '#c6efce' }}>{d.value || 'Ã¢ÂÂ'}</td>;
-                if (!d.planned) return <td style={{ background: '#f0f0f0' }}>{'Ã¢ÂÂ'}</td>;
+                if (kpi.type === 'val') return <td style={{ background: '#dce6f1' }}>{d.value ? d.value.toLocaleString() + ' hrs' : '—'}</td>;
+                if (kpi.type === 'count') return <td style={{ background: d.value > 0 ? '#ffc7ce' : '#c6efce' }}>{d.value || '—'}</td>;
+                if (!d.planned) return <td style={{ background: '#f0f0f0' }}>{'—'}</td>;
                 const pct = Math.min(100, Math.round((d.actual / d.planned) * 100));
                 return <td style={{ background: pctColor(pct) }}>{pct}%</td>;
               };
@@ -613,7 +617,7 @@ export default function Dashboard() {
                         <td><strong>TOTAL / AVG</strong></td>
                         {EXEC_KPIS.map(kpi => {
                           const d = totals[kpi.key];
-                          if (kpi.type === 'val') return <td key={kpi.key} style={{ background: '#dce6f1' }}><strong>{d.value ? d.value.toLocaleString() + ' hrs' : 'Ã¢ÂÂ'}</strong></td>;
+                          if (kpi.type === 'val') return <td key={kpi.key} style={{ background: '#dce6f1' }}><strong>{d.value ? d.value.toLocaleString() + ' hrs' : '—'}</strong></td>;
                           if (kpi.type === 'count') return <td key={kpi.key} style={{ background: '#ffc7ce' }}><strong>{d.value}</strong></td>;
                           const pct = d.planned ? Math.min(100, Math.round((d.actual / d.planned) * 100)) : 0;
                           return <td key={kpi.key} style={{ background: pctColor(pct) }}><strong>{pct}%</strong></td>;
@@ -743,7 +747,7 @@ export default function Dashboard() {
 
             {/* FOOTER */}
             <div className="dashboard-footer">
-              Data sourced from Smartsheet {'ÃÂ¢ÃÂÃÂ¢'} Last synced: {data.syncedAt ? new Date(data.syncedAt).toLocaleString() : 'N/A'} {'ÃÂ¢ÃÂÃÂ¢'} Click Sync Now to force reload
+              Data sourced from Smartsheet {'•'} Last synced: {data.syncedAt ? new Date(data.syncedAt).toLocaleString() : 'N/A'} {'•'} Click Sync Now to force reload
             </div>
           </>
         )}
