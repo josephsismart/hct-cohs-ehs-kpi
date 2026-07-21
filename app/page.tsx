@@ -274,7 +274,8 @@ export default function Dashboard() {
       const blob = await res.blob();
       const a = document.createElement('a');
       a.href = URL.createObjectURL(blob);
-      a.download = `HCT_KPI_${pptRegion.replace(/ /g, '_')}_${m}_${y}.${ext}`;
+      const fileExt = pptRegion === 'All' ? 'zip' : ext;
+      a.download = `HCT_KPI_${pptRegion.replace(/ /g, '_')}_${m}_${y}.${fileExt}`;
       a.click();
       URL.revokeObjectURL(a.href);
     } catch (e: any) { alert(`${ext.toUpperCase()} generation failed: ` + e.message); }
