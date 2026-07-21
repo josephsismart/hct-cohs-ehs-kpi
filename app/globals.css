@@ -178,3 +178,88 @@ body { font-family: var(--font); background: var(--light-bg); color: var(--text)
 .waste-table tbody tr:hover { background: #f0f4ff; }
 .waste-table .totals-row { background: #EAF1FB; }
 .waste-table .totals-row td { border-top: 2px solid var(--hct-navy); }
+
+
+/* DARK MODE */
+.dark { --light-bg: #0f1219; --card-bg: #1a1f2e; --border: #2a3042; --text: #e2e8f0; --navy: #0f1219; --hct-navy: #7b8cff; }
+.dark body, .dark .dashboard { background: var(--light-bg); color: var(--text); }
+.dark .brand-header { background: #141824; border-bottom-color: var(--border); }
+.dark .brand-title { background: #1e2438; color: #a5b4fc; }
+.dark .filter-bar { background: #141824; }
+.dark .kpi-summary-card { background: var(--card-bg); border-color: var(--border); }
+.dark .kpi-summary-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,.3); }
+.dark .kpi-card-label { color: #94a3b8; }
+.dark .kpi-card-sub { color: #64748b; }
+.dark .chart-card { background: var(--card-bg); border-color: var(--border); }
+.dark .chart-card-header { color: #a5b4fc; border-bottom-color: var(--border); }
+.dark .placeholder-section { background: var(--card-bg); border-color: var(--border); color: #64748b; }
+.dark .placeholder-section h4 { color: #a5b4fc; }
+.dark .section-title { color: #a5b4fc; }
+.dark .legend-row { color: #94a3b8; }
+.dark .dashboard-footer { color: #64748b; }
+.dark .sync-errors { background: #2a2000; }
+.dark .sync-errors h4 { color: #fbbf24; }
+.dark .alert-error { background: #3b1014; color: #fca5a5; }
+.dark .waste-table th { background: #1e2438; }
+.dark .waste-table td { border-bottom-color: var(--border); }
+.dark .waste-table tbody tr:hover { background: #1e2438; }
+.dark .waste-table .totals-row { background: #1e2438; }
+.dark .waste-table .totals-row td { border-top-color: #4f5a80; }
+.dark .no-data { color: #64748b; }
+
+/* REPORT MODAL */
+.modal-overlay {
+  position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,.5); backdrop-filter: blur(4px);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 1000; animation: fadeIn .2s;
+}
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+.modal-content {
+  background: var(--card-bg); border-radius: 12px; padding: 28px;
+  width: 440px; max-width: 90vw; box-shadow: 0 20px 60px rgba(0,0,0,.3);
+  border: 1px solid var(--border); animation: slideUp .25s ease-out;
+}
+@keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+.modal-header {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 20px;
+}
+.modal-header h3 { font-size: 18px; font-weight: 700; color: var(--text); }
+.modal-close {
+  background: none; border: none; font-size: 20px; cursor: pointer;
+  color: #999; padding: 4px 8px; border-radius: 4px;
+}
+.modal-close:hover { background: rgba(0,0,0,.08); color: var(--text); }
+.modal-body label {
+  display: block; font-size: 12px; font-weight: 600; color: #777;
+  margin-bottom: 6px; text-transform: uppercase; letter-spacing: .5px;
+}
+.modal-body input[type="text"] {
+  width: 100%; padding: 10px 12px; border: 1px solid var(--border);
+  border-radius: 6px; font-size: 14px; margin-bottom: 20px;
+  background: var(--light-bg); color: var(--text);
+  font-family: var(--font);
+}
+.modal-body input[type="text"]:focus {
+  outline: none; border-color: var(--blue);
+  box-shadow: 0 0 0 3px rgba(74,144,217,.15);
+}
+.report-buttons { display: flex; gap: 10px; }
+.report-btn {
+  flex: 1; padding: 14px 12px; border: 1px solid var(--border);
+  border-radius: 8px; background: var(--card-bg); cursor: pointer;
+  text-align: center; transition: all .2s;
+  display: flex; flex-direction: column; align-items: center; gap: 8px;
+}
+.report-btn:hover { border-color: var(--blue); background: #eef4ff; transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,.08); }
+.dark .report-btn:hover { background: #1e2438; }
+.report-btn i { font-size: 28px; }
+.report-btn span { font-size: 12px; font-weight: 600; color: var(--text); }
+.report-btn.ppt i { color: #d04423; }
+.report-btn.word i { color: #2b579a; }
+.report-btn.pdf i { color: #e2574c; }
+
+/* BUTTON ICONS */
+.filter-controls button i { margin-right: 5px; }
+.btn-group { display: flex; gap: 6px; align-items: center; }
