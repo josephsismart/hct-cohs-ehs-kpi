@@ -792,11 +792,11 @@ class handler(BaseHTTPRequestHandler):
             self.wfile.write(json.dumps({'error': 'SMARTSHEET_TOKEN not set'}).encode())
             return
 
-        if region not in REGIONS:
+        if region != 'All' and region not in REGIONS:
             self.send_response(400)
             self.send_header('Content-Type', 'application/json')
             self.end_headers()
-            self.wfile.write(json.dumps({'error': f'Invalid region. Available: {list(REGIONS.keys())}'}).encode())
+            self.wfile.write(json.dumps({'error': f'Invalid region. Available: {["All"] + list(REGIONS.keys())}'}).encode())
             return
 
         try:
@@ -813,25 +813,49 @@ class handler(BaseHTTPRequestHandler):
                 template_bytes = f.read()
 
             period = f"{month} {year}"
-            pptx_bytes, error = generate_presentation(template_bytes, region, period, kpi_data, waste_data)
 
-            if error:
-                self.send_response(500)
-                self.send_header('Content-Type', 'application/json')
+            if region == 'All':
+                # Generate all regions and zip them
+                zip_buf = io.BytesIO()
+                with zipfile.ZipFile(zip_buf, 'w', zipfile.ZIP_DEFLATED) as zf:
+                    for rname in REGIONS:
+                        pptx_bytes, error = generate_presentation(template_bytes, rname, period, kpi_data, waste_data)
+                        if error:
+                            continue
+                        safe_name = rname.replace(' ', '_')
+                        fname = f"HCT_KPI_Committee_{safe_name}_{month}_{year}.pptx"
+                        zf.writestr(fname, pptx_bytes)
+
+                zip_bytes = zip_buf.getvalue()
+                filename = f"HCT_KPI_All_Regions_{month}_{year}.zip"
+
+                self.send_response(200)
+                self.send_header('Content-Type', 'application/zip')
+                self.send_header('Content-Disposition', f'attachment; filename="{filename}"')
+                self.send_header('Content-Length', str(len(zip_bytes)))
+                self.send_header('Access-Control-Allow-Origin', '*')
                 self.end_headers()
-                self.wfile.write(json.dumps({'error': error}).encode())
-                return
+                self.wfile.write(zip_bytes)
+            else:
+                pptx_bytes, error = generate_presentation(template_bytes, region, period, kpi_data, waste_data)
 
-            safe_name = region.replace(' ', '_')
-            filename = f"HCT_KPI_Committee_{safe_name}_{month}_{year}.pptx"
+                if error:
+                    self.send_response(500)
+                    self.send_header('Content-Type', 'application/json')
+                    self.end_headers()
+                    self.wfile.write(json.dumps({'error': error}).encode())
+                    return
 
-            self.send_response(200)
-            self.send_header('Content-Type', 'application/vnd.openxmlformats-officedocument.presentationml.presentation')
-            self.send_header('Content-Disposition', f'attachment; filename="{filename}"')
-            self.send_header('Content-Length', str(len(pptx_bytes)))
-            self.send_header('Access-Control-Allow-Origin', '*')
-            self.end_headers()
-            self.wfile.write(pptx_bytes)
+                safe_name = region.replace(' ', '_')
+                filename = f"HCT_KPI_Committee_{safe_name}_{month}_{year}.pptx"
+
+                self.send_response(200)
+                self.send_header('Content-Type', 'application/vnd.openxmlformats-officedocument.presentationml.presentation')
+                self.send_header('Content-Disposition', f'attachment; filename="{filename}"')
+                self.send_header('Content-Length', str(len(pptx_bytes)))
+                self.send_header('Access-Control-Allow-Origin', '*')
+                self.end_headers()
+                self.wfile.write(pptx_bytes)
 
         except Exception as e:
             import traceback
