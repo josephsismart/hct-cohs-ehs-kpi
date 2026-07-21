@@ -3,8 +3,8 @@ Fetches live data from Smartsheet API and generates downloadable PDF files.
 Uses fpdf2 (pure Python, no system dependencies).
 """
 
-import os, io, json
-from http.server import BaseHTThPRequestHandler
+import os, io, json, zipfile
+from http.server import BaseHTTPRequestHandler
 from urllib.parse import urlparse, parse_qs
 from urllib.request import Request, urlopen
 from fpdf import FPDF
@@ -473,11 +473,18 @@ class handler(BaseHTTPRequestHandler):
         month = qs.get('month', [None])[0]
         year = qs.get('year', ['2026'])[0]
 
-        if not region or not month:
+        if not month:
             self.send_response(400)
             self.send_header('Content-Type', 'application/json')
             self.end_headers()
-            self.wfile.write(json.dumps({'error': 'region and month required'}).encode())
+            self.wfile.write(json.dumps({'error': 'month required'}).encode())
+            return
+
+        if region != 'All' and region not in REGIONS:
+            self.send_response(400)
+            self.send_header('Content-Type', 'application/json')
+            self.end_headers()
+            self.wfile.write(json.dumps({'error': f'Invalid region. Available: {["All"] + list(REGIONS.keys())}'}).encode())
             return
 
         token = os.environ.get('SMARTSHEET_TOKEN', '')
@@ -489,14 +496,30 @@ class handler(BaseHTTPRequestHandler):
             return
 
         try:
-            pdf_bytes = generate_pdf(region, month, year, token)
-            filename = f'KPI_Report_{region.replace(" ", "_")}_{month}_{year}.pdf'
-            self.send_response(200)
-            self.send_header('Content-Type', 'application/pdf')
-            self.send_header('Content-Disposition', f'attachment; filename="{filename}"')
-            self.send_header('Content-Length', str(len(pdf_bytes)))
-            self.end_headers()
-            self.wfile.write(pdf_bytes)
+            if region == 'All':
+                zip_buf = io.BytesIO()
+                with zipfile.ZipFile(zip_buf, 'w', zipfile.ZIP_DEFLATED) as zf:
+                    for rname in REGIONS:
+                        pdf_bytes = generate_pdf(rname, month, year, token)
+                        fname = f'KPI_Report_{rname.replace(" ", "_")}_{month}_{year}.pdf'
+                        zf.writestr(fname, pdf_bytes)
+                zip_bytes = zip_buf.getvalue()
+                filename = f'KPI_Report_All_Regions_{month}_{year}.zip'
+                self.send_response(200)
+                self.send_header('Content-Type', 'application/zip')
+                self.send_header('Content-Disposition', f'attachment; filename="{filename}"')
+                self.send_header('Content-Length', str(len(zip_bytes)))
+                self.end_headers()
+                self.wfile.write(zip_bytes)
+            else:
+                pdf_bytes = generate_pdf(region, month, year, token)
+                filename = f'KPI_Report_{region.replace(" ", "_")}_{month}_{year}.pdf'
+                self.send_response(200)
+                self.send_header('Content-Type', 'application/pdf')
+                self.send_header('Content-Disposition', f'attachment; filename="{filename}"')
+                self.send_header('Content-Length', str(len(pdf_bytes)))
+                self.end_headers()
+                self.wfile.write(pdf_bytes)
         except Exception as e:
             self.send_response(500)
             self.send_header('Content-Type', 'application/json')
