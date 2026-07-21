@@ -159,7 +159,7 @@ function KpiPieChart({ rows }: { rows: KpiRow[] }) {
   const entries = Object.entries(byCampus).sort((a, b) => b[1].value - a[1].value);
   if (entries.length === 0) return <div className="no-data">No data available</div>;
   const options: Highcharts.Options = {
-    chart: { type: 'pie', height: 550, style: { fontFamily: "'Segoe UI', Arial, sans-serif" } },
+    chart: { type: 'pie', height: 380, style: { fontFamily: "'Segoe UI', Arial, sans-serif" } },
     title: { text: undefined },
     plotOptions: { pie: { dataLabels: { enabled: true, format: '{point.y}', distance: -15, style: { fontSize: '11px', fontWeight: 'bold', color: 'white', textOutline: 'none' } }, showInLegend: true } },
     legend: { align: 'center', verticalAlign: 'bottom', layout: 'horizontal', itemStyle: { fontSize: '11px' } },
@@ -374,10 +374,36 @@ export default function Dashboard() {
               </select>
               <label>Choose Format</label>
               <div className="report-buttons">
-                <button className="report-btn ppt" onClick={() => { { const {month:m,year:y} = getReportParams(); window.open('/api/generate-ppt?region=' + encodeURIComponent(pptRegion) + '&month=' + encodeURIComponent(m) + '&year=' + y + '&name=' + encodeURIComponent(reportName)); }; setShowReport(false); }}>
-                  <i className="fa fa-file-powerpoint"></i>
-                  <span>PowerPoint</span>
-                </button>
+                <button className="report-btn ppt" disabled={pptLoading} onClick={async () => {
+                    const {month:m,year:y} = getReportParams();
+                    if (pptRegion === 'All') {
+                      setPptLoading(true); setShowReport(false);
+                      try {
+                        const regions = ['AD Al Ain','Abu Dhabi','AD Remote','Dubai','Fujairah','Sharjah','Ras Al Khaimah'];
+                        const blobs: {name:string,data:ArrayBuffer}[] = [];
+                        for (const r of regions) {
+                          const res = await fetch('/api/generate-ppt' + '?' + 'region=' + encodeURIComponent(r) + '&month=' + encodeURIComponent(m) + '&year=' + y);
+                          if (!res.ok) throw new Error('Failed: ' + r);
+                          blobs.push({name: 'HCT_KPI_' + r.replace(/ /g,'_') + '_' + m + '_' + y + '.pptx', data: await res.arrayBuffer()});
+                        }
+                        const {default: JSZip} = await import(/* webpackIgnore: true */ 'https://cdn.jsdelivr.net/npm/jszip@3.10.1/+esm');
+                        const zip = new JSZip();
+                        blobs.forEach(b => zip.file(b.name, b.data));
+                        const zb = await zip.generateAsync({type:'blob'});
+                        const a = document.createElement('a');
+                        a.href = URL.createObjectURL(zb);
+                        a.download = 'HCT_KPI_All_' + m + '_' + y + '.zip';
+                        a.click(); URL.revokeObjectURL(a.href);
+                      } catch(e: any) { alert('PPT generation failed: ' + e.message); }
+                      finally { setPptLoading(false); }
+                    } else {
+                      window.open('/api/generate-ppt' + '?' + 'region=' + encodeURIComponent(pptRegion) + '&month=' + encodeURIComponent(m) + '&year=' + y + '&name=' + encodeURIComponent(reportName));
+                      setShowReport(false);
+                    }
+                  }}>
+                    <i className="fa fa-file-powerpoint"></i>
+                    <span>{pptLoading ? 'Generating...' : 'PowerPoint'}</span>
+                  </button>
                 <button className="report-btn word" onClick={() => { { const {month:m,year:y} = getReportParams(); window.open('/api/generate-word?region=' + encodeURIComponent(pptRegion) + '&month=' + encodeURIComponent(m) + '&year=' + y + '&name=' + encodeURIComponent(reportName)); }; setShowReport(false); }}>
                   <i className="fa fa-file-word"></i>
                   <span>Word</span>
@@ -557,7 +583,7 @@ export default function Dashboard() {
             })()}
 
             {/* EXECUTIVE KPI SUMMARY */}
-            <h3 className="section-title">EXECUTIVE KPI SUMMARY \u2014 BY CAMPUS</h3>
+            <h3 className="section-title">EXECUTIVE KPI SUMMARY {'\u2014'} BY CAMPUS</h3>
             {(() => {
               const EXEC_KPIS = [
                 { key: 'drills', label: 'Drills Completion', type: 'pct' },
