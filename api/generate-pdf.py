@@ -4,14 +4,14 @@ Uses fpdf2 (pure Python, no system dependencies).
 """
 
 import os, io, json
-from http.server import BaseHTTPRequestHandler
+from http.server import BaseHTThPRequestHandler
 from urllib.parse import urlparse, parse_qs
 from urllib.request import Request, urlopen
 from fpdf import FPDF
 
 # ── Regions ──
 REGIONS = {
-    'AD Al Ain':       {'sheets': ['AAF','AAZ'], 'short': ['Falaj Hazza','Zakhir'],        'subtitle': 'Al Ain Falaj Hazza & Al Ain Zakhir'},
+    'AD Al Ain':       {'sheets': ['AAF','AAZ'], 'short': ['Falaj Hahhzza','Zakhir'],        'subtitle': 'Al Ain Falaj Hazza & Al Ain Zakhir'},
     'Abu Dhabi':       {'sheets': ['ADA','ADB'], 'short': ['Baniyas A','Baniyas B'],       'subtitle': 'Abu Dhabi Baniyas A & Abu Dhabi Baniyas B'},
     'AD Remote':       {'sheets': ['ADH','MZY'], 'short': ['Al Dhanna','Madinat Zayed'],   'subtitle': 'Al Dhanna Ruwais & Al Dhafra Madinat Zayed City'},
     'Dubai':           {'sheets': ['DMC','DBN'], 'short': ['Academic City','Al Nahda'],     'subtitle': 'Dubai Academic City & Dubai Al Nahda'},
@@ -380,7 +380,7 @@ class KPIReport(FPDF):
             score = round(region_data['avg_pillar'][i] * 100)
             self.set_font('Helvetica', 'B', 11)
             self.set_text_color(28, 35, 64)
-            self.cell(0, 8, f'{pillar["pillar"]}  —  {score}%  (Weight: {int(pillar["weight"]*100)}%)',
+            self.cell(0, 8, f'{pillar["pillar"]}  -  {score}%  (Weight: {int(pillar["weight"]*100)}%)',
                       new_x='LMARGIN', new_y='NEXT')
 
             for ci, c in enumerate(region_data['campuses']):
@@ -435,7 +435,7 @@ def generate_pdf(region_name, month_name, year, token):
         raise ValueError(f'Unknown region: {region_name}')
 
     period = f'{month_name} {year}'
-    print(f'Generating PDF report for {region_name} — {period}')
+    print(f'Generating PDF report for {region_name} - {period}')
 
     kpi_data = fetch_kpi_data(token, month_name)
     waste_data = fetch_waste_data(token, month_name)
