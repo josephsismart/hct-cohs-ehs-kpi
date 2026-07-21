@@ -582,8 +582,8 @@ export default function Dashboard() {
               );
             })()}
 
-            {/* EXECUTIVE KPI SUMMARY */}
-            <h3 className="section-title">EXECUTIVE KPI SUMMARY {'\u2014'} BY CAMPUS</h3>
+            {/*  KPI SUMMARY */}
+            <h3 className="section-title">EXECUTIVE KPI SUMMARY — BY CAMPUS</h3>
             {(() => {
               const EXEC_KPIS = [
                 { key: 'drills', label: 'Drills Completion', type: 'pct' },
