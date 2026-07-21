@@ -14,7 +14,7 @@ const QUARTER_LABELS: Record<string, string> = {
 };
 
 const SUMMARY_CARDS = [
-  { key: 'incidents', label: 'Total Incidents', unit: 'count', color: '#dc3545' },
+  { key: 'incidents', label: 'Total Incidents', unit: 'count', colorh: '#dc3545' },
   { key: 'training', label: 'Training Hours', unit: 'val', color: '#0d6efd' },
   { key: 'ehs', label: 'EHS Inspection Rate', unit: 'pct', color: '#198754' },
   { key: 'drills', label: 'Drills Completion', unit: 'pct', color: '#20c997' },
@@ -260,7 +260,7 @@ export default function Dashboard() {
   const doSync = useCallback(async () => {
     setLoading(true); setError('');
     try {
-      const res = await fetch('/api/sync');
+      const res = await fetch('/api/sync', { cache: 'no-store' });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       setData(await res.json());
     } catch (e: any) { setError(e.message); }
