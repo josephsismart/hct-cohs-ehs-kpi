@@ -469,6 +469,38 @@ def make_waste_table(waste_data, region_cfg):
     return tbl
 
 
+def make_executive_summary_table(kpi_data, region_cfg):
+    """Executive KPI Summary by Campus table."""
+    tbl = make_tbl()
+    headers = ['Campus', 'Drills Completion', 'EHS Inspection', 'Findings Closed',
+               'Incident Notification', 'Risk Assessment', 'Total Incidents']
+    kpi_rows_map = [13, 16, 17, 19, 8]  # KPI row numbers for percentage columns
+    widths = [1300, 1300, 1300, 1300, 1400, 1300, 1360]
+
+    # Header row
+    tr = w_el('tr')
+    for h, wd in zip(headers, widths):
+        tr.append(make_cell(h, wd, bold=True, size=8, fill=BRAND, center=True))
+    tbl.append(tr)
+
+    # Data rows
+    for sheet in region_cfg['sheets']:
+        campus = kpi_data.get(sheet, {})
+        tr = w_el('tr')
+        tr.append(make_cell(sheet, 1300, size=9, bold=True))
+        for kr in kpi_rows_map:
+            d = campus.get(kr, {'calc': 0})
+            pct = round(d.get('calc', 0) * 100)
+            clr = '00B050' if pct >= 90 else ('FFC000' if pct >= 70 else 'FF0000')
+            tr.append(make_cell(str(pct) + '%', widths[kpi_rows_map.index(kr) + 1], size=9, center=True, color=clr))
+        # Total Incidents from notification source (planned = total incidents)
+        incidents = int(campus.get(19, {}).get('planned', 0))
+        tr.append(make_cell(str(incidents), 1360, size=9, center=True))
+        tbl.append(tr)
+
+    return tbl
+
+
 # ── Build DOCX ──
 
 STYLES_XML = """<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
@@ -590,8 +622,16 @@ def generate_report(region_name, month_name, year, token):
     body.append(make_waste_table(waste_data, region_cfg))
     body.append(make_para('', space_after=200))
 
-    # Section 4: Recommendations
-    body.append(make_para('4. Recommendations & Action Items', style='Heading1'))
+    # Section 4: Executive KPI Summary by Campus
+    body.append(make_para('4. Executive KPI Summary by Campus', style='Heading1'))
+    body.append(make_para(f'Per-campus KPI performance summary for {region_name} during {period}.',
+                          size=11, space_after=120))
+    body.append(make_executive_summary_table(kpi_data, region_cfg))
+    body.append(make_para('', space_after=120))
+    body.append(make_page_break())
+
+    # Section 5: Recommendations
+    body.append(make_para('5. Recommendations & Action Items', style='Heading1'))
     body.append(make_para('(To be completed by the EHS team)', italic=True, size=11, color=GREY, space_after=200))
 
     # sectPr
