@@ -281,19 +281,11 @@ export default function Dashboard() {
     finally { setLoading(false); }
   }, [pptRegion, getReportParams]);
 
-  const downloadAllAsZip = useCallback(async (format: string) => {
-    const { month: m, year: y } = getReportParams();
-    for (let i = 0; i < REPORT_REGIONS.length; i++) {
-      const region = REPORT_REGIONS[i];
-      const url = '/api/generate-' + format + '?region=' + encodeURIComponent(region) + '&month=' + encodeURIComponent(m) + '&year=' + y + '&name=' + encodeURIComponent(reportName);
-      setTimeout(() => window.open(url), i * 500);
-    }
-    setShowReport(false);
-  }, [reportName, getReportParams]);
+  
 
-  const downloadPpt = useCallback(() => { if (pptRegion === 'All') { downloadAllAsZip('ppt'); return; } downloadFile('generate-ppt'); }, [downloadFile, pptRegion, downloadAllAsZip]);
-  const downloadWord = useCallback(() => { if (pptRegion === 'All') { downloadAllAsZip('word'); return; } downloadFile('generate-word'); }, [downloadFile, pptRegion, downloadAllAsZip]);
-  const downloadPdf = useCallback(() => { if (pptRegion === 'All') { downloadAllAsZip('pdf'); return; } downloadFile('generate-pdf'); }, [downloadFile, pptRegion, downloadAllAsZip]);
+    const downloadPpt = useCallback(() => { downloadFile('generate-ppt', 'pptx', setPptLoading); }, [downloadFile, setPptLoading]);
+    const downloadWord = useCallback(() => { downloadFile('generate-word', 'docx', setWordLoading); }, [downloadFile, setWordLoading]);
+    const downloadPdf = useCallback(() => { downloadFile('generate-pdf', 'pdf', setPdfLoading); }, [downloadFile, setPdfLoading]);
 
   const doSync = useCallback(async () => {
     setLoading(true); setError('');
