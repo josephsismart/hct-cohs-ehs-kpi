@@ -227,6 +227,19 @@ export default function Dashboard() {
   const [year, setYear] = useState('ALL');
   const [darkMode, setDarkMode] = useState(false);
   const [showReport, setShowReport] = useState(false);
+  const [reportName, setReportName] = useState('HCT EHS KPI Report');
+  const [showCustomize, setShowCustomize] = useState(false);
+
+  const defaultChartConfig = () => [...KPI_CHARTS, ...EXTRA_CHARTS].map(c => ({ key: c.key, label: c.label, visible: true }));
+  const [chartConfig, setChartConfig] = useState(() => {
+    if (typeof window !== 'undefined') {
+      try { const saved = localStorage.getItem('hct-chart-config'); if (saved) return JSON.parse(saved); } catch {}
+    }
+    return defaultChartConfig();
+  });
+
+  const [darkMode, setDarkMode] = useState(false);
+  const [showReport, setShowReport] = useState(false);
   const [reportName, setReportName] = useState('');
   const [pptRegion, setPptRegion] = useState('Abu Dhabi');
   const [pptLoading, setPptLoading] = useState(false);
@@ -270,8 +283,26 @@ export default function Dashboard() {
     finally { setLoading(false); }
   }, []);
 
-  // Auto-sync on first load
+  // Auto-sync on first load + auto-poll every 60s
   useEffect(() => {
+    doSync();
+    const interval = setInterval(() => { fetch('/api/sync', { cache: 'no-store' }).then(r => r.json()).then(d => setData(d)).catch(() => {}); }, 60000);
+    return () => clearInterval(interval);
+  }, [doSync]);
+
+  // Dark mode toggle
+  useEffect(() => { document.documentElement.classList.toggle('dark', darkMode); }, [darkMode]);
+
+  // Report name generator
+  useEffect(() => {
+    const parts = ['HCT EHS KPI Report'];
+    if (year !== 'ALL') parts.push(year);
+    if (quarter !== 'ALL') parts.push(quarter);
+    if (month !== 'ALL') parts.push(month);
+    if (campus !== 'ALL') parts.push(campus);
+    setReportName(parts.join(' - '));
+  }, [year, quarter, month, campus]);
+
     doSync();
     // Auto-poll every 60 seconds for near real-time updates
     const interval = setInterval(() => {
@@ -398,16 +429,12 @@ export default function Dashboard() {
             </select>
           </label>
           <div className="btn-group">
-            <button className="btn-refresh" onClick={() => { setCampus('ALL'); setMonth('ALL'); setQuarter('ALL'); setYear('ALL'); }}><i className="fa fa-redo"></i> Refresh</button>
-            <button className="btn-sync" onClick={doSync} disabled={loading}>
-              <i className="fa fa-sync"></i> {loading ? 'Syncing...' : 'Sync Now'}
-            </button>
-            <button className="btn-theme" onClick={() => setDarkMode(!darkMode)}>
-              <i className={darkMode ? 'fa fa-sun' : 'fa fa-moon'}></i> {darkMode ? 'Light' : 'Dark'}
-            </button>
-            <button className="btn-report" onClick={() => setShowReport(true)}>
-              <i className="fa fa-file-export"></i> Export Report
-            </button>
+          <div className="btn-group">
+            <button onClick={() => { setCampus('ALL'); setMonth('ALL'); setQuarter('ALL'); setYear('ALL'); }}><i className="fa-solid fa-redo"></i> Refresh</button>
+            <button onClick={doSync} disabled={loading}><i className="fa-solid fa-sync"></i> {loading ? 'Syncing...' : 'Sync Now'}</button>
+            <button onClick={() => setDarkMode(!darkMode)}><i className={"fa-solid " + (darkMode ? "fa-sun" : "fa-moon")}></i> {darkMode ? 'Light' : 'Dark'}</button>
+            <button onClick={() => setShowReport(true)}><i className="fa-solid fa-file-export"></i> Export Report</button>
+            <button onClick={() => setShowCustomize(true)}><i className="fa-solid fa-sliders"></i> Customize</button>
           </div>
           {data && <SyncBadge syncedAt={data.syncedAt} />}
         </div>
@@ -453,26 +480,9 @@ export default function Dashboard() {
 
             <h3 className="section-title">KPI CHARTS</h3>
             <div className="charts-grid">
-              {KPI_CHARTS.map(chartDef => {
-                const rows = getRows(chartDef.key);
-                const ssLink = SMARTSHEET_LINKS[chartDef.key];
-                return (
-                  <div key={chartDef.key} className="chart-card">
-                    <div className="chart-card-header">
-                      <span>{chartDef.label}</span>
-                      {ssLink ? <a className="btn-smartsheet" href={ssLink} target="_blank" rel="noopener noreferrer">View in Smartsheet</a> : null}
-                    </div>
-                    <div className="chart-card-body">
-                      <KpiBarChart chartDef={chartDef} rows={rows} />
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-
-            <h3 className="section-title">ADDITIONAL REPORTS</h3>
-            <div className="charts-grid">
-              {EXTRA_CHARTS.map(chartDef => {
+              {chartConfig.filter(c => c.visible).map(item => {
+                const chartDef = [...KPI_CHARTS, ...EXTRA_CHARTS].find(d => d.key === item.key);
+                if (!chartDef) return null;
                 const sourceKey = (chartDef as any).sourceKey || chartDef.key;
                 const rows = getRows(sourceKey);
                 const ssLink = SMARTSHEET_LINKS[chartDef.key];
@@ -481,10 +491,21 @@ export default function Dashboard() {
                     <div className="chart-card-header">
                       <div>
                         <span>{chartDef.label}</span>
-                        {chartDef.subtitle && <div style={{ fontSize: '10px', color: '#999', fontWeight: 400 }}>{chartDef.subtitle}</div>}
+                        {(chartDef as any).subtitle && <div style={{ fontSize: '10px', color: '#999', fontWeight: 400 }}>{(chartDef as any).subtitle}</div>}
                       </div>
                       {ssLink ? <a className="btn-smartsheet" href={ssLink} target="_blank" rel="noopener noreferrer">View in Smartsheet</a> : null}
                     </div>
+                    <div className="chart-card-body">
+                      {chartDef.type === 'pie' ? <KpiPieChart rows={rows} /> :
+                       chartDef.type === 'rate_pct' ? <KpiRateChart rows={rows} /> :
+                       chartDef.type === 'value_hours' ? <KpiValueHoursChart rows={rows} /> :
+                       <KpiBarChart chartDef={chartDef as any} rows={rows} />}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
                     <div className="chart-card-body">
                       {chartDef.type === 'pie' ? <KpiPieChart rows={rows} /> :
                        chartDef.type === 'rate_pct' ? <KpiRateChart rows={rows} /> :
@@ -690,6 +711,64 @@ export default function Dashboard() {
             <div className="dashboard-footer">
               Data sourced from Smartsheet {'â¢'} Last synced: {data.syncedAt ? new Date(data.syncedAt).toLocaleString() : 'N/A'} {'â¢'} Click Sync Now to force reload
             </div>
+
+            {/* REPORT MODAL */}
+            {showReport && (
+              <div className="modal-overlay" onClick={() => setShowReport(false)}>
+                <div className="modal-content" onClick={e => e.stopPropagation()}>
+                  <h3>Export Report</h3>
+                  <label>Report Name
+                    <input type="text" value={reportName} onChange={e => setReportName(e.target.value)} style={{width:'100%',padding:'8px',marginTop:4,borderRadius:6,border:'1px solid var(--border)'}} />
+                  </label>
+                  <div className="report-buttons">
+                    <button className="report-btn report-ppt"><i className="fa-solid fa-file-powerpoint"></i> PowerPoint</button>
+                    <button className="report-btn report-word"><i className="fa-solid fa-file-word"></i> Word</button>
+                    <button className="report-btn report-pdf"><i className="fa-solid fa-file-pdf"></i> PDF</button>
+                  </div>
+                  <button className="btn-close-modal" onClick={() => setShowReport(false)}>Close</button>
+                </div>
+              </div>
+            )}
+
+            {/* CUSTOMIZE PANEL */}
+            {showCustomize && (
+              <div className="customize-panel">
+                <div className="customize-header">
+                  <h3>Customize Dashboard</h3>
+                  <button onClick={() => setShowCustomize(false)}>&times;</button>
+                </div>
+                <div className="customize-body">
+                  {chartConfig.map((item, idx) => (
+                    <div key={item.key} className="customize-item">
+                      <label>
+                        <input type="checkbox" checked={item.visible} onChange={() => {
+                          const next = [...chartConfig];
+                          next[idx] = { ...next[idx], visible: !next[idx].visible };
+                          setChartConfig(next);
+                        }} />
+                        {item.label}
+                      </label>
+                      <div className="customize-arrows">
+                        <button disabled={idx === 0} onClick={() => {
+                          const next = [...chartConfig];
+                          [next[idx - 1], next[idx]] = [next[idx], next[idx - 1]];
+                          setChartConfig(next);
+                        }}><i className="fa-solid fa-arrow-up"></i></button>
+                        <button disabled={idx === chartConfig.length - 1} onClick={() => {
+                          const next = [...chartConfig];
+                          [next[idx + 1], next[idx]] = [next[idx], next[idx + 1]];
+                          setChartConfig(next);
+                        }}><i className="fa-solid fa-arrow-down"></i></button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div className="customize-footer">
+                  <button onClick={() => { setChartConfig(defaultChartConfig()); }}>Reset</button>
+                  <button onClick={() => { localStorage.setItem('hct-chart-config', JSON.stringify(chartConfig)); setShowCustomize(false); }}>Save</button>
+                </div>
+              </div>
+            )}
           </>
         )}
       </div>
