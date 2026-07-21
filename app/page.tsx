@@ -388,7 +388,7 @@ export default function Dashboard() {
                           if (!res.ok) { setDownloadProgress(prev => prev.map((p,idx) => idx === i ? {...p,status:'failed'} : p)); continue; }
                           const blob = await res.blob();
                           const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
-                          a.download = 'HCT_KPI_' + regions[i].replace(/ /g,'_') + '_' + m + '_' + y + '.pptx';
+                          a.download = reportName + '_' + regions[i].replace(/ /g,'_') + '.pptx';
                           a.click(); URL.revokeObjectURL(a.href);
                           setDownloadProgress(prev => prev.map((p,idx) => idx === i ? {...p,status:'done'} : p));
                         }
@@ -415,7 +415,7 @@ export default function Dashboard() {
                           if (!res.ok) { setDownloadProgress(prev => prev.map((p,idx) => idx === i ? {...p,status:'failed'} : p)); continue; }
                           const blob = await res.blob();
                           const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
-                          a.download = 'HCT_KPI_' + regions[i].replace(/ /g,'_') + '_' + m + '_' + y + '.docx';
+                          a.download = reportName + '_' + regions[i].replace(/ /g,'_') + '.docx';
                           a.click(); URL.revokeObjectURL(a.href);
                           setDownloadProgress(prev => prev.map((p,idx) => idx === i ? {...p,status:'done'} : p));
                         }
@@ -442,7 +442,7 @@ export default function Dashboard() {
                           if (!res.ok) { setDownloadProgress(prev => prev.map((p,idx) => idx === i ? {...p,status:'failed'} : p)); continue; }
                           const blob = await res.blob();
                           const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
-                          a.download = 'HCT_KPI_' + regions[i].replace(/ /g,'_') + '_' + m + '_' + y + '.pdf';
+                          a.download = reportName + '_' + regions[i].replace(/ /g,'_') + '.pdf';
                           a.click(); URL.revokeObjectURL(a.href);
                           setDownloadProgress(prev => prev.map((p,idx) => idx === i ? {...p,status:'done'} : p));
                         }
