@@ -65,7 +65,7 @@ export function normalizeMonth(v: any): string | null {
 }
 
 export async function fetchSheet(sheetId: string, token: string): Promise<Record<string, any>[]> {
-  const url = `https://api.smartsheet.com/2.0/sheets/${sheetId}?pageSize=500`;
+  const url = `https://api.smartsheet.com/2.0/sheets/${sheetId}?pageSize=500&include=objectValue&_t=${Date.now()}`;
   const res = await fetch(url, { headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' } });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   const data = await res.json();
@@ -87,7 +87,7 @@ export async function fetchSheet(sheetId: string, token: string): Promise<Record
 }
 
 export async function fetchReport(reportId: string, token: string): Promise<Record<string, any>[]> {
-  const url = `https://api.smartsheet.com/2.0/reports/${reportId}?pageSize=500&level=1`;
+  const url = `https://api.smartsheet.com/2.0/reports/${reportId}?pageSize=500&level=1&_t=${Date.now()}`;
   const res = await fetch(url, { headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' } });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   const data = await res.json();
