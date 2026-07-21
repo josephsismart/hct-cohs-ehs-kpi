@@ -225,6 +225,9 @@ export default function Dashboard() {
   const [month, setMonth] = useState('ALL');
   const [quarter, setQuarter] = useState('ALL');
   const [year, setYear] = useState('ALL');
+  const [darkMode, setDarkMode] = useState(false);
+  const [showReport, setShowReport] = useState(false);
+  const [reportName, setReportName] = useState('');
   const [pptRegion, setPptRegion] = useState('Abu Dhabi');
   const [pptLoading, setPptLoading] = useState(false);
   const [wordLoading, setWordLoading] = useState(false);
@@ -280,6 +283,21 @@ export default function Dashboard() {
     return () => clearInterval(interval);
   }, [doSync]);
 
+  // Dark mode toggle
+  useEffect(() => {
+    document.documentElement.classList.toggle('dark', darkMode);
+  }, [darkMode]);
+
+  // Generate report name from filters
+  useEffect(() => {
+    const parts = ['HCT_COHS_EHS_KPI'];
+    if (year !== 'ALL') parts.push(year);
+    if (quarter !== 'ALL') parts.push(quarter);
+    if (month !== 'ALL') parts.push(month);
+    if (campus !== 'ALL') parts.push(campus);
+    setReportName(parts.join('_'));
+  }, [year, quarter, month, campus]);
+
   const getRows = useCallback((key: string): KpiRow[] => {
     if (!data?.sources[key]) return [];
     const rows = data.sources[key].rows;
@@ -308,7 +326,38 @@ export default function Dashboard() {
   }, [data, getRows]);
 
   return (
-    <div className="dashboard">
+    <div className={`dashboard${darkMode ? " dark" : ""}`}>
+      {/* REPORT MODAL */}
+      {showReport && (
+        <div className="modal-overlay" onClick={() => setShowReport(false)}>
+          <div className="modal-content" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3><i className="fa fa-file-export" style={{ marginRight: 8 }}></i>Export Report</h3>
+              <button className="modal-close" onClick={() => setShowReport(false)}><i className="fa fa-times"></i></button>
+            </div>
+            <div className="modal-body">
+              <label>Report Name</label>
+              <input type="text" value={reportName} onChange={e => setReportName(e.target.value)} placeholder="Enter report name..." />
+              <label>Choose Format</label>
+              <div className="report-buttons">
+                <button className="report-btn ppt" onClick={() => { window.open('/api/generate-ppt?name=' + encodeURIComponent(reportName)); setShowReport(false); }}>
+                  <i className="fa fa-file-powerpoint"></i>
+                  <span>PowerPoint</span>
+                </button>
+                <button className="report-btn word" onClick={() => { window.open('/api/generate-word?name=' + encodeURIComponent(reportName)); setShowReport(false); }}>
+                  <i className="fa fa-file-word"></i>
+                  <span>Word</span>
+                </button>
+                <button className="report-btn pdf" onClick={() => { window.open('/api/generate-pdf?name=' + encodeURIComponent(reportName)); setShowReport(false); }}>
+                  <i className="fa fa-file-pdf"></i>
+                  <span>PDF</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* HEADER */}
       <div className="brand-header">
         <div className="brand-logo brand-ohs">
@@ -348,27 +397,18 @@ export default function Dashboard() {
               {data?.campuses.map(c => <option key={c} value={c}>{c}</option>)}
             </select>
           </label>
-          <button className="btn-refresh" onClick={() => { setCampus('ALL'); setMonth('ALL'); setQuarter('ALL'); setYear('ALL'); }}>Refresh</button>
-          <button className="btn-sync" onClick={doSync} disabled={loading}>
-            {loading ? 'Syncing...' : 'Sync Now'}
-          </button>
-          <button className="btn-theme" onClick={() => {}}>Theme</button>
-          <button className="btn-export" onClick={() => {}}>Export As</button>
-          <label>PPT Region
-            <select value={pptRegion} onChange={e => setPptRegion(e.target.value)}>
-              {['Abu Dhabi','AD Al Ain','AD Remote','Dubai','Fujairah','Sharjah','Ras Al Khaimah'].map(r => <option key={r} value={r}>{r}</option>)}
-            </select>
-          </label>
-          <button className="btn-sync" onClick={downloadPpt} disabled={pptLoading} style={{background:'#198754'}}>
-            {pptLoading ? 'Generating...' : '\u{1F4CA} PPT'}
-          </button>
-          <button className="btn-sync" onClick={downloadWord} disabled={wordLoading} style={{background:'#2B579A'}}>
-            {wordLoading ? 'Generating...' : '\u{1F4DD} Word'}
-          </button>
-          <button className="btn-sync" onClick={downloadPdf} disabled={pdfLoading} style={{background:'#D32F2F'}}>
-            {pdfLoading ? 'Generating...' : '\u{1F4C4} PDF'}
-          </button>
-          <button className="btn-report" onClick={() => {}}>Report</button>
+          <div className="btn-group">
+            <button className="btn-refresh" onClick={() => { setCampus('ALL'); setMonth('ALL'); setQuarter('ALL'); setYear('ALL'); }}><i className="fa fa-redo"></i> Refresh</button>
+            <button className="btn-sync" onClick={doSync} disabled={loading}>
+              <i className="fa fa-sync"></i> {loading ? 'Syncing...' : 'Sync Now'}
+            </button>
+            <button className="btn-theme" onClick={() => setDarkMode(!darkMode)}>
+              <i className={darkMode ? 'fa fa-sun' : 'fa fa-moon'}></i> {darkMode ? 'Light' : 'Dark'}
+            </button>
+            <button className="btn-report" onClick={() => setShowReport(true)}>
+              <i className="fa fa-file-export"></i> Export Report
+            </button>
+          </div>
           {data && <SyncBadge syncedAt={data.syncedAt} />}
         </div>
       </div>
