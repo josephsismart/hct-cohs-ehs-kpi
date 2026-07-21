@@ -634,11 +634,18 @@ class handler(BaseHTTPRequestHandler):
         month = qs.get('month', [None])[0]
         year = qs.get('year', ['2026'])[0]
 
-        if not region or not month:
+        if not month:
             self.send_response(400)
             self.send_header('Content-Type', 'application/json')
             self.end_headers()
-            self.wfile.write(json.dumps({'error': 'region and month required'}).encode())
+            self.wfile.write(json.dumps({'error': 'month required'}).encode())
+            return
+
+        if region != 'All' and region not in REGIONS:
+            self.send_response(400)
+            self.send_header('Content-Type', 'application/json')
+            self.end_headers()
+            self.wfile.write(json.dumps({'error': f'Invalid region. Available: {["All"] + list(REGIONS.keys())}'}).encode())
             return
 
         token = os.environ.get('SMARTSHEET_TOKEN', '')
@@ -650,14 +657,30 @@ class handler(BaseHTTPRequestHandler):
             return
 
         try:
-            docx_bytes = generate_report(region, month, year, token)
-            filename = f'KPI_Report_{region.replace(" ", "_")}_{month}_{year}.docx'
-            self.send_response(200)
-            self.send_header('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document')
-            self.send_header('Content-Disposition', f'attachment; filename="{filename}"')
-            self.send_header('Content-Length', str(len(docx_bytes)))
-            self.end_headers()
-            self.wfile.write(docx_bytes)
+            if region == 'All':
+                zip_buf = io.BytesIO()
+                with zipfile.ZipFile(zip_buf, 'w', zipfile.ZIP_DEFLATED) as zf:
+                    for rname in REGIONS:
+                        docx_bytes = generate_report(rname, month, year, token)
+                        fname = f'KPI_Report_{rname.replace(" ", "_")}_{month}_{year}.docx'
+                        zf.writestr(fname, docx_bytes)
+                zip_bytes = zip_buf.getvalue()
+                filename = f'KPI_Report_All_Regions_{month}_{year}.zip'
+                self.send_response(200)
+                self.send_header('Content-Type', 'application/zip')
+                self.send_header('Content-Disposition', f'attachment; filename="{filename}"')
+                self.send_header('Content-Length', str(len(zip_bytes)))
+                self.end_headers()
+                self.wfile.write(zip_bytes)
+            else:
+                docx_bytes = generate_report(region, month, year, token)
+                filename = f'KPI_Report_{region.replace(" ", "_")}_{month}_{year}.docx'
+                self.send_response(200)
+                self.send_header('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document')
+                self.send_header('Content-Disposition', f'attachment; filename="{filename}"')
+                self.send_header('Content-Length', str(len(docx_bytes)))
+                self.end_headers()
+                self.wfile.write(docx_bytes)
         except Exception as e:
             self.send_response(500)
             self.send_header('Content-Type', 'application/json')
