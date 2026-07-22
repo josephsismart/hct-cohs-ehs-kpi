@@ -1,5 +1,5 @@
 'use client';
-import { useState, useMemo, useCallback, useEffect } from 'react';
+import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import Highcharts from 'highcharts';
 import HighchartsReact from 'highcharts-react-official';
 
@@ -243,6 +243,7 @@ export default function Dashboard() {
   const [wordLoading, setWordLoading] = useState(false);
   const [pdfLoading, setPdfLoading] = useState(false);
   const [downloadProgress, setDownloadProgress] = useState<{region:string;status:string}[]>([]);
+  const downloadCancelledRef = useRef(false);
   const [showCustomize, setShowCustomize] = useState(false);
   const [chartConfig, setChartConfig] = useState(() => {
     const defaultCfg = defaultChartConfig();
@@ -379,10 +380,12 @@ export default function Dashboard() {
                     const {month:m,year:y} = getReportParams();
                     if (pptRegion === 'All') {
                       setPptLoading(true);
+                      downloadCancelledRef.current = false;
                       const regions = ['AD Al Ain','Abu Dhabi','AD Remote','Dubai','Fujairah','Sharjah','Ras Al Khaimah'];
                       setDownloadProgress(regions.map(r => ({region:r,status:'pending'})));
                       try {
                         for (let i = 0; i < regions.length; i++) {
+                          if (downloadCancelledRef.current) { setDownloadProgress(prev => prev.map((p,idx) => p.status==='pending' ? {...p,status:'cancelled'} : p)); break; }
                           setDownloadProgress(prev => prev.map((p,idx) => idx === i ? {...p,status:'downloading'} : p));
                           const res = await fetch('/api/generate-ppt?region=' + encodeURIComponent(regions[i]) + '&month=' + encodeURIComponent(m) + '&year=' + y);
                           if (!res.ok) { setDownloadProgress(prev => prev.map((p,idx) => idx === i ? {...p,status:'failed'} : p)); continue; }
@@ -406,10 +409,12 @@ export default function Dashboard() {
                     const {month:m,year:y} = getReportParams();
                     if (pptRegion === 'All') {
                       setWordLoading(true);
+                      downloadCancelledRef.current = false;
                       const regions = ['AD Al Ain','Abu Dhabi','AD Remote','Dubai','Fujairah','Sharjah','Ras Al Khaimah'];
                       setDownloadProgress(regions.map(r => ({region:r,status:'pending'})));
                       try {
                         for (let i = 0; i < regions.length; i++) {
+                          if (downloadCancelledRef.current) { setDownloadProgress(prev => prev.map((p,idx) => p.status==='pending' ? {...p,status:'cancelled'} : p)); break; }
                           setDownloadProgress(prev => prev.map((p,idx) => idx === i ? {...p,status:'downloading'} : p));
                           const res = await fetch('/api/generate-word?region=' + encodeURIComponent(regions[i]) + '&month=' + encodeURIComponent(m) + '&year=' + y);
                           if (!res.ok) { setDownloadProgress(prev => prev.map((p,idx) => idx === i ? {...p,status:'failed'} : p)); continue; }
@@ -433,10 +438,12 @@ export default function Dashboard() {
                     const {month:m,year:y} = getReportParams();
                     if (pptRegion === 'All') {
                       setPdfLoading(true);
+                      downloadCancelledRef.current = false;
                       const regions = ['AD Al Ain','Abu Dhabi','AD Remote','Dubai','Fujairah','Sharjah','Ras Al Khaimah'];
                       setDownloadProgress(regions.map(r => ({region:r,status:'pending'})));
                       try {
                         for (let i = 0; i < regions.length; i++) {
+                          if (downloadCancelledRef.current) { setDownloadProgress(prev => prev.map((p,idx) => p.status==='pending' ? {...p,status:'cancelled'} : p)); break; }
                           setDownloadProgress(prev => prev.map((p,idx) => idx === i ? {...p,status:'downloading'} : p));
                           const res = await fetch('/api/generate-pdf?region=' + encodeURIComponent(regions[i]) + '&month=' + encodeURIComponent(m) + '&year=' + y);
                           if (!res.ok) { setDownloadProgress(prev => prev.map((p,idx) => idx === i ? {...p,status:'failed'} : p)); continue; }
@@ -463,12 +470,17 @@ export default function Dashboard() {
                   {downloadProgress.map((p,i) => (
                     <div key={i} style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'6px 8px',borderBottom:i < downloadProgress.length-1 ? '1px solid #e9ecef' : 'none',fontSize:'13px'}}>
                       <span>{p.region}</span>
-                      <span style={{fontWeight:500,color: p.status==='done' ? '#198754' : p.status==='downloading' ? '#0d6efd' : p.status==='failed' ? '#dc3545' : '#6c757d'}}>
-                        {p.status==='pending' ? 'Waiting...' : p.status==='downloading' ? 'Downloading...' : p.status==='done' ? '\u2714 Done' : '\u2718 Failed'}
+                      <span style={{fontWeight:500,color: p.status==='done' ? '#198754' : p.status==='downloading' ? '#0d6efd' : p.status==='failed' ? '#dc3545' : p.status==='cancelled' ? '#fd7e14' : '#6c757d'}}>
+                        {p.status==='pending' ? 'Waiting...' : p.status==='downloading' ? 'Downloading...' : p.status==='done' ? '\u2714 Done' : p.status==='cancelled' ? '\u26D4 Cancelled' : '\u2718 Failed'}
                       </span>
                     </div>
                   ))}
-                  {downloadProgress.every(p => p.status==='done' || p.status==='failed') && (
+                  {(pptLoading || wordLoading || pdfLoading) && (
+                    <div style={{textAlign:'center',marginTop:'10px'}}>
+                      <button onClick={() => { downloadCancelledRef.current = true; setPptLoading(false); setWordLoading(false); setPdfLoading(false); }} style={{padding:'6px 20px',background:'#dc3545',color:'white',border:'none',borderRadius:'4px',cursor:'pointer',fontSize:'13px'}}>Cancel Downloads</button>
+                    </div>
+                  )}
+                  {downloadProgress.every(p => p.status==='done' || p.status==='failed' || p.status==='cancelled') && (
                     <div style={{textAlign:'center',marginTop:'10px'}}>
                       <button onClick={() => { setDownloadProgress([]); setShowReport(false); }} style={{padding:'6px 20px',background:'#1A1F71',color:'white',border:'none',borderRadius:'4px',cursor:'pointer',fontSize:'13px'}}>Close</button>
                     </div>
