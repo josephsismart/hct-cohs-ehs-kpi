@@ -244,6 +244,7 @@ export default function Dashboard() {
   const [pdfLoading, setPdfLoading] = useState(false);
   const [downloadProgress, setDownloadProgress] = useState<{region:string;status:string}[]>([]);
   const downloadCancelledRef = useRef(false);
+  const [selectedFormat, setSelectedFormat] = useState('');
   const [showCustomize, setShowCustomize] = useState(false);
   const [chartConfig, setChartConfig] = useState(() => {
     const defaultCfg = defaultChartConfig();
@@ -376,94 +377,55 @@ export default function Dashboard() {
               </select>
               <label>Choose Format</label>
               <div className="report-buttons">
-                <button className="report-btn ppt" disabled={pptLoading || wordLoading || pdfLoading} onClick={async () => {
-                    const {month:m,year:y} = getReportParams();
-                    if (pptRegion === 'All') {
-                      setPptLoading(true);
-                      downloadCancelledRef.current = false;
-                      const regions = ['AD Al Ain','Abu Dhabi','AD Remote','Dubai','Fujairah','Sharjah','Ras Al Khaimah'];
-                      setDownloadProgress(regions.map(r => ({region:r,status:'pending'})));
-                      try {
-                        for (let i = 0; i < regions.length; i++) {
-                          if (downloadCancelledRef.current) { setDownloadProgress(prev => prev.map((p,idx) => p.status==='pending' ? {...p,status:'cancelled'} : p)); break; }
-                          setDownloadProgress(prev => prev.map((p,idx) => idx === i ? {...p,status:'downloading'} : p));
-                          const res = await fetch('/api/generate-ppt?region=' + encodeURIComponent(regions[i]) + '&month=' + encodeURIComponent(m) + '&year=' + y);
-                          if (!res.ok) { setDownloadProgress(prev => prev.map((p,idx) => idx === i ? {...p,status:'failed'} : p)); continue; }
-                          const blob = await res.blob();
-                          const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
-                          a.download = reportName + '_' + regions[i].replace(/ /g,'_') + '.pptx';
-                          a.click(); URL.revokeObjectURL(a.href);
-                          setDownloadProgress(prev => prev.map((p,idx) => idx === i ? {...p,status:'done'} : p));
-                        }
-                      } catch(e: any) { alert('PPT generation failed: ' + e.message); }
-                      finally { setPptLoading(false); }
-                    } else {
-                      window.open('/api/generate-ppt' + '?' + 'region=' + encodeURIComponent(pptRegion) + '&month=' + encodeURIComponent(m) + '&year=' + y + '&name=' + encodeURIComponent(reportName));
-                      setShowReport(false);
-                    }
-                  }}>
+                <button className={"report-btn ppt" + (selectedFormat==='ppt' ? ' selected' : '')} onClick={() => setSelectedFormat('ppt')} style={selectedFormat==='ppt' ? {outline:'3px solid #1A1F71',outlineOffset:'2px'} : {}}>
                     <i className="fa fa-file-powerpoint"></i>
-                    <span>{pptLoading ? 'Generating...' : 'PowerPoint'}</span>
+                    <span>PowerPoint</span>
                   </button>
-                <button className="report-btn word" disabled={pptLoading || wordLoading || pdfLoading} onClick={async () => {
-                    const {month:m,year:y} = getReportParams();
-                    if (pptRegion === 'All') {
-                      setWordLoading(true);
-                      downloadCancelledRef.current = false;
-                      const regions = ['AD Al Ain','Abu Dhabi','AD Remote','Dubai','Fujairah','Sharjah','Ras Al Khaimah'];
-                      setDownloadProgress(regions.map(r => ({region:r,status:'pending'})));
-                      try {
-                        for (let i = 0; i < regions.length; i++) {
-                          if (downloadCancelledRef.current) { setDownloadProgress(prev => prev.map((p,idx) => p.status==='pending' ? {...p,status:'cancelled'} : p)); break; }
-                          setDownloadProgress(prev => prev.map((p,idx) => idx === i ? {...p,status:'downloading'} : p));
-                          const res = await fetch('/api/generate-word?region=' + encodeURIComponent(regions[i]) + '&month=' + encodeURIComponent(m) + '&year=' + y);
-                          if (!res.ok) { setDownloadProgress(prev => prev.map((p,idx) => idx === i ? {...p,status:'failed'} : p)); continue; }
-                          const blob = await res.blob();
-                          const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
-                          a.download = reportName + '_' + regions[i].replace(/ /g,'_') + '.docx';
-                          a.click(); URL.revokeObjectURL(a.href);
-                          setDownloadProgress(prev => prev.map((p,idx) => idx === i ? {...p,status:'done'} : p));
-                        }
-                      } catch(e: any) { alert('Word generation failed: ' + e.message); }
-                      finally { setWordLoading(false); }
-                    } else {
-                      window.open('/api/generate-word?region=' + encodeURIComponent(pptRegion) + '&month=' + encodeURIComponent(m) + '&year=' + y + '&name=' + encodeURIComponent(reportName));
-                      setShowReport(false);
-                    }
-                  }}>
+                <button className={"report-btn word" + (selectedFormat==='word' ? ' selected' : '')} onClick={() => setSelectedFormat('word')} style={selectedFormat==='word' ? {outline:'3px solid #1A1F71',outlineOffset:'2px'} : {}}>
                   <i className="fa fa-file-word"></i>
-                  <span>{wordLoading ? 'Generating...' : 'Word'}</span>
+                  <span>Word</span>
                 </button>
-                <button className="report-btn pdf" disabled={pptLoading || wordLoading || pdfLoading} onClick={async () => {
-                    const {month:m,year:y} = getReportParams();
-                    if (pptRegion === 'All') {
-                      setPdfLoading(true);
-                      downloadCancelledRef.current = false;
-                      const regions = ['AD Al Ain','Abu Dhabi','AD Remote','Dubai','Fujairah','Sharjah','Ras Al Khaimah'];
-                      setDownloadProgress(regions.map(r => ({region:r,status:'pending'})));
-                      try {
-                        for (let i = 0; i < regions.length; i++) {
-                          if (downloadCancelledRef.current) { setDownloadProgress(prev => prev.map((p,idx) => p.status==='pending' ? {...p,status:'cancelled'} : p)); break; }
-                          setDownloadProgress(prev => prev.map((p,idx) => idx === i ? {...p,status:'downloading'} : p));
-                          const res = await fetch('/api/generate-pdf?region=' + encodeURIComponent(regions[i]) + '&month=' + encodeURIComponent(m) + '&year=' + y);
-                          if (!res.ok) { setDownloadProgress(prev => prev.map((p,idx) => idx === i ? {...p,status:'failed'} : p)); continue; }
-                          const blob = await res.blob();
-                          const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
-                          a.download = reportName + '_' + regions[i].replace(/ /g,'_') + '.pdf';
-                          a.click(); URL.revokeObjectURL(a.href);
-                          setDownloadProgress(prev => prev.map((p,idx) => idx === i ? {...p,status:'done'} : p));
-                        }
-                      } catch(e: any) { alert('PDF generation failed: ' + e.message); }
-                      finally { setPdfLoading(false); }
-                    } else {
-                      window.open('/api/generate-pdf?region=' + encodeURIComponent(pptRegion) + '&month=' + encodeURIComponent(m) + '&year=' + y + '&name=' + encodeURIComponent(reportName));
-                      setShowReport(false);
-                    }
-                  }}>
+                <button className={"report-btn pdf" + (selectedFormat==='pdf' ? ' selected' : '')} onClick={() => setSelectedFormat('pdf')} style={selectedFormat==='pdf' ? {outline:'3px solid #1A1F71',outlineOffset:'2px'} : {}}>
                   <i className="fa fa-file-pdf"></i>
-                  <span>{pdfLoading ? 'Generating...' : 'PDF'}</span>
+                  <span>PDF</span>
                 </button>
               </div>
+              {selectedFormat && (
+                <button disabled={pptLoading || wordLoading || pdfLoading} onClick={async () => {
+                  const {month:m,year:y} = getReportParams();
+                  const apiMap: Record<string,{endpoint:string;ext:string;setLoading:(v:boolean)=>void;label:string}> = {
+                    ppt: {endpoint:'generate-ppt',ext:'.pptx',setLoading:setPptLoading,label:'PPT'},
+                    word: {endpoint:'generate-word',ext:'.docx',setLoading:setWordLoading,label:'Word'},
+                    pdf: {endpoint:'generate-pdf',ext:'.pdf',setLoading:setPdfLoading,label:'PDF'},
+                  };
+                  const {endpoint,ext,setLoading,label} = apiMap[selectedFormat];
+                  if (pptRegion === 'All') {
+                    setLoading(true);
+                    downloadCancelledRef.current = false;
+                    const regions = ['AD Al Ain','Abu Dhabi','AD Remote','Dubai','Fujairah','Sharjah','Ras Al Khaimah'];
+                    setDownloadProgress(regions.map(r => ({region:r,status:'pending'})));
+                    try {
+                      for (let i = 0; i < regions.length; i++) {
+                        if (downloadCancelledRef.current) { setDownloadProgress(prev => prev.map((p,idx) => p.status==='pending' ? {...p,status:'cancelled'} : p)); break; }
+                        setDownloadProgress(prev => prev.map((p,idx) => idx === i ? {...p,status:'downloading'} : p));
+                        const res = await fetch('/api/' + endpoint + '?region=' + encodeURIComponent(regions[i]) + '&month=' + encodeURIComponent(m) + '&year=' + y);
+                        if (!res.ok) { setDownloadProgress(prev => prev.map((p,idx) => idx === i ? {...p,status:'failed'} : p)); continue; }
+                        const blob = await res.blob();
+                        const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+                        a.download = reportName + '_' + regions[i].replace(/ /g,'_') + ext;
+                        a.click(); URL.revokeObjectURL(a.href);
+                        setDownloadProgress(prev => prev.map((p,idx) => idx === i ? {...p,status:'done'} : p));
+                      }
+                    } catch(e: any) { alert(label + ' generation failed: ' + e.message); }
+                    finally { setLoading(false); }
+                  } else {
+                    window.open('/api/' + endpoint + '?region=' + encodeURIComponent(pptRegion) + '&month=' + encodeURIComponent(m) + '&year=' + y + '&name=' + encodeURIComponent(reportName));
+                    setShowReport(false);
+                  }
+                }} style={{width:'100%',padding:'10px',marginTop:'12px',background:'#1A1F71',color:'white',border:'none',borderRadius:'6px',cursor:'pointer',fontSize:'14px',fontWeight:600}}>
+                  {(pptLoading || wordLoading || pdfLoading) ? 'Generating...' : '\u2B07 Download ' + (selectedFormat==='ppt' ? 'PowerPoint' : selectedFormat==='word' ? 'Word' : 'PDF')}
+                </button>
+              )}
               {downloadProgress.length > 0 && (
                 <div style={{marginTop:'16px',padding:'12px',background:'#f8f9fa',borderRadius:'8px',border:'1px solid #e9ecef'}}>
                   <div style={{fontWeight:600,marginBottom:'8px',fontSize:'13px'}}>Download Progress</div>
