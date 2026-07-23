@@ -368,11 +368,11 @@ export default function Dashboard() {
             <div className="modal-body">
               <label>Report Name</label>
               <input type="text" value={reportName} onChange={e => setReportName(e.target.value)} placeholder="Enter report name..." />
-              <label>Region</label>
+              {selectedFormat !== 'word' && (<><label>Region</label>
               <select value={pptRegion} onChange={e => setPptRegion(e.target.value)} style={{width:'100%',padding:'8px',marginBottom:'12px',borderRadius:'4px',border:'1px solid #ccc'}}>
                 <option value="All">All</option>
                 {REPORT_REGIONS.map(r => <option key={r} value={r}>{r}</option>)}
-              </select>
+              </select></>)}
               <label>Choose Format</label>
               <div className="report-buttons">
                 <button className={"report-btn ppt" + (selectedFormat==='ppt' ? ' selected' : '')} onClick={() => setSelectedFormat('ppt')} style={selectedFormat==='ppt' ? {outline:'3px solid #1A1F71',outlineOffset:'2px'} : {}}>
@@ -397,6 +397,12 @@ export default function Dashboard() {
                     
                   };
                   const {endpoint,ext,setLoading,label} = apiMap[selectedFormat];
+                  // Word is always overall — single file, no region loop
+                  if (selectedFormat === 'word') {
+                    window.open('/api/' + endpoint + '?month=' + encodeURIComponent(m) + '&year=' + y + '&name=' + encodeURIComponent(reportName));
+                    setShowReport(false);
+                    return;
+                  }
                   if (pptRegion === 'All') {
                     setLoading(true);
                     downloadCancelledRef.current = false;
