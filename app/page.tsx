@@ -261,7 +261,7 @@ export default function Dashboard() {
   }, [chartConfig]);
 
   const getReportParams = useCallback(() => {
-    const m = month !== 'ALL' ? month : MONTHS[new Date().getMonth() - 1] || 'December';
+    const m = month !== 'ALL' ? month : '';
     const y = year !== 'ALL' ? year : String(new Date().getFullYear());
     return { month: m, year: y };
   }, [month, year]);
@@ -277,7 +277,7 @@ export default function Dashboard() {
       const a = document.createElement('a');
       a.href = URL.createObjectURL(blob);
       const fileExt = pptRegion === 'All' ? 'zip' : ext;
-      a.download = `HCT_KPI_${pptRegion.replace(/ /g, '_')}_${m}_${y}.${fileExt}`;
+      a.download = `${reportName || 'HCT_KPI_Report'}.${fileExt}`;
       a.click();
       URL.revokeObjectURL(a.href);
     } catch (e: any) { alert(`${ext.toUpperCase()} generation failed: ` + e.message); }
