@@ -241,7 +241,6 @@ export default function Dashboard() {
   const [pptRegion, setPptRegion] = useState('All');
   const [pptLoading, setPptLoading] = useState(false);
   const [wordLoading, setWordLoading] = useState(false);
-  const [pdfLoading, setPdfLoading] = useState(false);
   const [downloadProgress, setDownloadProgress] = useState<{region:string;status:string}[]>([]);
   const downloadCancelledRef = useRef(false);
   const [selectedFormat, setSelectedFormat] = useState('');
@@ -289,7 +288,6 @@ export default function Dashboard() {
 
     const downloadPpt = useCallback(() => { downloadFile('generate-ppt', 'pptx', setPptLoading); }, [downloadFile, setPptLoading]);
     const downloadWord = useCallback(() => { downloadFile('generate-word', 'docx', setWordLoading); }, [downloadFile, setWordLoading]);
-    const downloadPdf = useCallback(() => { downloadFile('generate-pdf', 'pdf', setPdfLoading); }, [downloadFile, setPdfLoading]);
 
   const doSync = useCallback(async () => {
     setLoading(true); setError('');
@@ -385,18 +383,18 @@ export default function Dashboard() {
                   <i className="fa fa-file-word"></i>
                   <span>Word</span>
                 </button>
-                <button className={"report-btn pdf" + (selectedFormat==='pdf' ? ' selected' : '')} onClick={() => setSelectedFormat('pdf')} style={selectedFormat==='pdf' ? {outline:'3px solid #1A1F71',outlineOffset:'2px'} : {}}>
-                  <i className="fa fa-file-pdf"></i>
-                  <span>PDF</span>
-                </button>
+
+
+
+
               </div>
               {selectedFormat && (
-                <button disabled={pptLoading || wordLoading || pdfLoading} onClick={async () => {
+                <button disabled={pptLoading || wordLoading} onClick={async () => {
                   const {month:m,year:y} = getReportParams();
                   const apiMap: Record<string,{endpoint:string;ext:string;setLoading:(v:boolean)=>void;label:string}> = {
                     ppt: {endpoint:'generate-ppt',ext:'.pptx',setLoading:setPptLoading,label:'PPT'},
                     word: {endpoint:'generate-word',ext:'.docx',setLoading:setWordLoading,label:'Word'},
-                    pdf: {endpoint:'generate-pdf',ext:'.pdf',setLoading:setPdfLoading,label:'PDF'},
+                    
                   };
                   const {endpoint,ext,setLoading,label} = apiMap[selectedFormat];
                   if (pptRegion === 'All') {
@@ -423,7 +421,7 @@ export default function Dashboard() {
                     setShowReport(false);
                   }
                 }} style={{width:'100%',padding:'10px',marginTop:'12px',background:'#1A1F71',color:'white',border:'none',borderRadius:'6px',cursor:'pointer',fontSize:'14px',fontWeight:600}}>
-                  {(pptLoading || wordLoading || pdfLoading) ? 'Generating...' : '\u2B07 Download ' + (selectedFormat==='ppt' ? 'PowerPoint' : selectedFormat==='word' ? 'Word' : 'PDF')}
+                  {(pptLoading || wordLoading) ? 'Generating...' : '\u2B07 Download ' + (selectedFormat==='ppt' ? 'PowerPoint' : selectedFormat==='word' ? 'Word' : 'Report')}
                 </button>
               )}
               {downloadProgress.length > 0 && (
@@ -437,9 +435,9 @@ export default function Dashboard() {
                       </span>
                     </div>
                   ))}
-                  {(pptLoading || wordLoading || pdfLoading) && (
+                  {(pptLoading || wordLoading) && (
                     <div style={{textAlign:'center',marginTop:'10px'}}>
-                      <button onClick={() => { downloadCancelledRef.current = true; setPptLoading(false); setWordLoading(false); setPdfLoading(false); }} style={{padding:'6px 20px',background:'#dc3545',color:'white',border:'none',borderRadius:'4px',cursor:'pointer',fontSize:'13px'}}>Cancel Downloads</button>
+                      <button onClick={() => { downloadCancelledRef.current = true; setPptLoading(false); setWordLoading(false); }} style={{padding:'6px 20px',background:'#dc3545',color:'white',border:'none',borderRadius:'4px',cursor:'pointer',fontSize:'13px'}}>Cancel Downloads</button>
                     </div>
                   )}
                   {downloadProgress.every(p => p.status==='done' || p.status==='failed' || p.status==='cancelled') && (
