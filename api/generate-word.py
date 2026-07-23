@@ -3,11 +3,18 @@ Unzips the client's template docx, replaces chart data with live Smartsheet
 values, updates text placeholders, and rezips.
 """
 
-import os, io, json, zipfile, re
+import os
+import io
+import json
+import zipfile
+import re
+import traceback
 from http.server import BaseHTTPRequestHandler
 from urllib.parse import urlparse, parse_qs
 from urllib.request import Request, urlopen
 from xml.etree import ElementTree as ET
+
+_INIT_ERROR = None
 
 # ── Namespaces ──
 C_NS = 'http://schemas.openxmlformats.org/drawingml/2006/chart'
@@ -196,7 +203,8 @@ def fetch_training_hours(token, month_filter):
     for row in rows:
         campus = str(row.get(TRAINING_SOURCE['campusCol'], '')).strip()
         month = normalize_month(row.get(TRAINING_SOURCE['monthCol']))
-        if not campus or month != month_filter: continue
+        if not campus: continue
+        if month_filter and month != month_filter: continue
         hours[campus] = hours.get(campus, 0) + safe_float(row.get(TRAINING_SOURCE['hoursCol']))
     return hours
 
@@ -344,7 +352,8 @@ def update_document_text(doc_xml_bytes, month_name, year):
 
 def generate_report(month_name, year, token):
     """Generate Word report by modifying template with live data."""
-    print(f'Generating Word report — {month_name} {year}')
+    display_month = month_name if month_name else 'Overall'
+    print(f'Generating Word report — {display_month} {year}')
 
     # Load template
     template_path = os.path.join(os.path.dirname(__file__), '..', 'templates', 'word_template.docx')
@@ -357,7 +366,7 @@ def generate_report(month_name, year, token):
     with open(template_path, 'rb') as f:
         template_bytes = f.read()
 
-    # Fetch live data
+    # Fetch live data (pass None for all-months aggregation)
     kpi_data = fetch_kpi_data(token, month_name)
     training_hours = fetch_training_hours(token, month_name)
     chart_data = build_chart_data(kpi_data, training_hours)
@@ -382,7 +391,7 @@ def generate_report(month_name, year, token):
 
             # Replace document text (month names)
             if item.filename == 'word/document.xml':
-                data = update_document_text(data, month_name, year)
+                data = update_document_text(data, display_month, year)
 
             zout.writestr(item, data)
 
@@ -394,16 +403,20 @@ def generate_report(month_name, year, token):
 
 class handler(BaseHTTPRequestHandler):
     def do_GET(self):
+        if _INIT_ERROR:
+            self.send_response(500)
+            self.send_header('Content-Type', 'application/json')
+            self.end_headers()
+            self.wfile.write(json.dumps({'error': 'Init error', 'detail': _INIT_ERROR}).encode())
+            return
+
         parsed = urlparse(self.path)
         qs = parse_qs(parsed.query)
         month = qs.get('month', [''])[0]
         year = qs.get('year', ['2026'])[0]
         report_name = qs.get('name', [''])[0]
 
-        # If no month specified, use current month
-        if not month:
-            from datetime import datetime
-            month = MONTH_NAMES[datetime.now().month - 1]
+        month = month if month else None  # None = aggregate all months
 
         token = os.environ.get('SMARTSHEET_TOKEN', '')
         if not token:
@@ -424,9 +437,8 @@ class handler(BaseHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(docx_bytes)
         except Exception as e:
-            import traceback
             traceback.print_exc()
             self.send_response(500)
             self.send_header('Content-Type', 'application/json')
             self.end_headers()
-            self.wfile.write(json.dumps({'error': str(e)}).encode())
+            self.wfile.write(json.dumps({'error': str(e), 'trace': traceback.format_exc()}).encode())
