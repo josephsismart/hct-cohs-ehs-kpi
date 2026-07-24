@@ -7,7 +7,8 @@
     },
     "api/generate-word.py": {
       "runtime": "@vercel/python@4.5.0",
-      "maxDuration": 60
+      "maxDuration": 60,
+      "includeFiles": "templates/**"
     },
     "api/generate-pdf.py": {
       "runtime": "@vercel/python@4.5.0",
