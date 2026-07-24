@@ -40,7 +40,22 @@ KPI_WEIGHTS = {
     10: 0.50, 11: 0.50,
     12: 0.40, 13: 0.40, 14: 0.10, 15: 0.10,
     16: 0.30, 17: 0.30, 18: 0.20, 19: 0.20,
-}rmit_to_work', 'sheetId': '5899016251330436', 'campusCol': 'Campus Code', 'monthCol': 'Reporting Month', 'plannedCol': 'No. of PTWs Issued', 'actualCol': 'Total Work Registered', 'kpi_row': 14},
+}
+
+SYNC_SOURCES = [
+    {'key': 'v2_kpi_report', 'sheetId': '5053158949605252', 'campusCol': 'Campus Code', 'monthCol': 'Reporting Month', 'plannedCol': 'Planned Submission', 'actualCol': 'Actual Submission', 'kpi_row': 2},
+    {'key': 'v2_training_hours', 'sheetId': '8549734774951812', 'campusCol': 'Campus Code', 'monthCol': 'Reporting Month', 'plannedCol': 'Planned Training Hours', 'actualCol': 'Total Training Hours Delivered', 'kpi_row': 3},
+    {'key': 'v2_ext_authority', 'sheetId': '5053158949605252', 'campusCol': 'Campus Code', 'monthCol': 'Reporting Month', 'plannedCol': 'Total Regulatory Requirements', 'actualCol': 'Complied Requirements', 'kpi_row': 4},
+    {'key': 'v2_committee_meeting', 'sheetId': '5053158949605252', 'campusCol': 'Campus Code', 'monthCol': 'Reporting Month', 'plannedCol': 'Committee Meeting Planned', 'actualCol': 'Committee Meeting Conducted', 'kpi_row': 5},
+    {'key': 'v2_hazard_id', 'sheetId': '5053158949605252', 'campusCol': 'Campus Code', 'monthCol': 'Reporting Month', 'plannedCol': 'Total Committee Actions', 'actualCol': 'Committee Actions Closed', 'kpi_row': 6},
+    {'key': 'v2_risk_closed', 'sheetId': '5053158949605252', 'campusCol': 'Campus Code', 'monthCol': 'Reporting Month', 'plannedCol': 'Total Risk Assessments', 'actualCol': 'Risk Assessments Closed', 'kpi_row': 7},
+    {'key': 'v2_risk_validated', 'sheetId': '5053158949605252', 'campusCol': 'Campus Code', 'monthCol': 'Reporting Month', 'plannedCol': 'Total Risk Assessments', 'actualCol': 'Risk Assessments Validated', 'kpi_row': 8},
+    {'key': 'v2_swp', 'sheetId': '5053158949605252', 'campusCol': 'Campus Code', 'monthCol': 'Reporting Month', 'plannedCol': 'Total SWPs Due', 'actualCol': 'SWPs Completed', 'kpi_row': 9},
+    {'key': 'v2_training_plan', 'sheetId': '8549734774951812', 'campusCol': 'Campus Code', 'monthCol': 'Reporting Month', 'plannedCol': 'Planned Training Hours', 'actualCol': 'Total Training Hours Delivered', 'kpi_row': 10},
+    {'key': 'v2_awareness', 'sheetId': '5053158949605252', 'campusCol': 'Campus Code', 'monthCol': 'Reporting Month', 'plannedCol': 'Awareness Campaigns Planned', 'actualCol': 'Awareness Campaigns Conducted', 'kpi_row': 11},
+    {'key': 'v2_compliance_activity', 'sheetId': '5899016251330436', 'campusCol': 'Campus Code', 'monthCol': 'Reporting Month', 'plannedCol': 'Compliance Activities Sampled', 'actualCol': 'Compliance Activities Implemented', 'kpi_row': 12},
+    {'key': 'v2_emergency_drill', 'sheetId': '5053158949605252', 'campusCol': 'Campus Code', 'monthCol': 'Reporting Month', 'plannedCol': 'Planned Drill? (Yes/No)', 'actualCol': 'Are there any submission?', 'kpi_row': 13, 'yesNoCount': True},
+    {'key': 'v2_permit_to_work', 'sheetId': '5899016251330436', 'campusCol': 'Campus Code', 'monthCol': 'Reporting Month', 'plannedCol': 'No. of PTWs Issued', 'actualCol': 'Total Work Registered', 'kpi_row': 14},
     {'key': 'v2_onsite_induction', 'sheetId': '5899016251330436', 'campusCol': 'Campus Code', 'monthCol': 'Reporting Month', 'plannedCol': "No. of New Contractors (Individuals)", 'actualCol': 'Contractors Inducted in the Reporting Month', 'kpi_row': 15},
     {'key': 'v2_ehs_inspection', 'sheetId': '4947401822392196', 'campusCol': 'Campus Code', 'monthCol': 'Primary', 'plannedCol': 'No. of EHS Inspections Planned', 'actualCol': 'No. of EHS Inspections Completed', 'kpi_row': 16},
     {'key': 'v2_findings_on_time', 'sheetId': '4947401822392196', 'campusCol': 'Campus Code', 'monthCol': 'Primary', 'plannedCol': 'No. of Findings in Reporting Month', 'actualCol': 'No. of Findings Due', 'kpi_row': 17},
