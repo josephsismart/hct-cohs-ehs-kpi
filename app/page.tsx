@@ -399,7 +399,7 @@ export default function Dashboard() {
                   const {endpoint,ext,setLoading,label} = apiMap[selectedFormat];
                   // Word is always overall — single file, no region loop
                   if (selectedFormat === 'word') {
-                    window.open('/api/' + endpoint + '?month=' + encodeURIComponent(m) + '&year=' + y + '&name=' + encodeURIComponent(reportName));
+                    window.open('/api/' + endpoint + '?month=' + encodeURIComponent(m) + '&year=' + y + '&reportName=' + encodeURIComponent(reportName));
                     setShowReport(false);
                     return;
                   }
@@ -423,7 +423,7 @@ export default function Dashboard() {
                     } catch(e: any) { alert(label + ' generation failed: ' + e.message); }
                     finally { setLoading(false); }
                   } else {
-                    window.open('/api/' + endpoint + '?region=' + encodeURIComponent(pptRegion) + '&month=' + encodeURIComponent(m) + '&year=' + y + '&name=' + encodeURIComponent(reportName));
+                    window.open('/api/' + endpoint + '?region=' + encodeURIComponent(pptRegion) + '&month=' + encodeURIComponent(m) + '&year=' + y + '&reportName=' + encodeURIComponent(reportName));
                     setShowReport(false);
                   }
                 }} style={{width:'100%',padding:'10px',marginTop:'12px',background:'#1A1F71',color:'white',border:'none',borderRadius:'6px',cursor:'pointer',fontSize:'14px',fontWeight:600}}>
