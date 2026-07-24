@@ -1,39 +1,41 @@
-"""Vercel Python serverless — HCT Word Report Generator (template-based).
-Unzips the client's template docx, replaces chart data with live Smartsheet
-values, updates text placeholders, and rezips.
+"""Vercel Python serverless function — HCT-COHS KPI Word Report Generator.
+Uses template-based approach: unzip template, replace chart data via regex, rezip.
 """
 
-import os
-import io
-import json
-import zipfile
-import re
-import traceback
+import os, io, json, re, zipfile
 from http.server import BaseHTTPRequestHandler
 from urllib.parse import urlparse, parse_qs
 from urllib.request import Request, urlopen
-from xml.etree import ElementTree as ET
 
-_INIT_ERROR = None
-
-# ── Namespaces ──
-C_NS = 'http://schemas.openxmlformats.org/drawingml/2006/chart'
-W_NS = 'http://schemas.openxmlformats.org/wordprocessingml/2006/main'
-
-ALL_CAMPUSES = ['ADA','ADB','AAF','AAZ','DMC','DBN','SJA','SJB','FJF','FJH','RKA','RKB','ADH','MZY']
-ALL_CAMPUSES_WITH_HQ = ALL_CAMPUSES + ['HQ']
-
-REGION_GROUPS = {
-    'Abu Dhabi Main': ['ADA','ADB'],
-    'Al Ain':         ['AAF','AAZ'],
-    'Dubai':          ['DMC','DBN'],
-    'Sharjah':        ['SJA','SJB'],
-    'Fujairah':       ['FJF','FJH'],
-    'RAK':            ['RKA','RKB'],
-    'Remote':         ['ADH','MZY'],
+# ── Regions ──
+REGIONS = {
+    'AD Al Ain':       {'sheets': ['AAF','AAZ'], 'short': ['Falaj Hazza','Zakhir'],        'subtitle': 'Al Ain Falaj Hazza & Al Ain Zakhir'},
+    'Abu Dhabi':       {'sheets': ['ADA','ADB'], 'short': ['Baniyas A','Baniyas B'],       'subtitle': 'Abu Dhabi Baniyas A & Abu Dhabi Baniyas B'},
+    'AD Remote':       {'sheets': ['ADH','MZY'], 'short': ['Al Dhanna','Madinat Zayed'],   'subtitle': 'Al Dhanna Ruwais & Al Dhafra Madinat Zayed City'},
+    'Dubai':           {'sheets': ['DMC','DBN'], 'short': ['Academic City','Al Nahda'],     'subtitle': 'Dubai Academic City & Dubai Al Nahda'},
+    'Fujairah':        {'sheets': ['FJF','FJH'], 'short': ['Faseel','Hulaifat'],            'subtitle': 'Fujairah Faseel & Fujairah Hulaifat'},
+    'Sharjah':         {'sheets': ['SJA','SJB'], 'short': ['Campus A','Campus B'],          'subtitle': 'Sharjah Campus A & Sharjah Campus B'},
+    'Ras Al Khaimah':  {'sheets': ['RKA','RKB'], 'short': ['Campus A','Campus B'],          'subtitle': 'RAK Campus A & RAK Campus B'},
 }
-REGION_ORDER = ['Abu Dhabi Main','Al Ain','Dubai','Sharjah','Fujairah','RAK','Remote']
 
+# Campus order used in most charts (14 campuses)
+CAMPUS_ORDER_14 = ['ADA','ADB','AAF','AAZ','DMC','DBN','SJA','SJB','FJF','FJH','RKA','RKB','ADH','MZY']
+# Campus order for chart12/13 (15 campuses, includes HQ at index 1)
+CAMPUS_ORDER_15 = ['ADA','HQ','ADB','AAF','AAZ','DMC','DBN','SJA','SJB','FJF','FJH','RKA','RKB','ADH','MZY']
+# Region order for chart2/3
+REGION_ORDER = ['Abu Dhabi', 'AD Al Ain', 'Dubai', 'Sharjah', 'Fujairah', 'Ras Al Khaimah', 'AD Remote']
+# Region name mapping (chart labels → REGIONS keys)
+REGION_LABEL_MAP = {
+    'Abu Dhabi Main': 'Abu Dhabi', 'Abu Dhabi': 'Abu Dhabi',
+    'Al Ain': 'AD Al Ain',
+    'Dubai': 'Dubai',
+    'Sharjah': 'Sharjah',
+    'Fujairah': 'Fujairah',
+    'Ras Al Khaimah': 'Ras Al Khaimah', 'RAK': 'Ras Al Khaimah',
+    'Al Dhafra': 'AD Remote', 'Al Dhanna': 'AD Remote',
+}
+
+# ── KPI weights ──
 KPI_WEIGHTS = {
     2: 0.30, 3: 0.10, 4: 0.10, 5: 0.25, 6: 0.25,
     7: 0.30, 8: 0.50, 9: 0.20,
@@ -42,31 +44,29 @@ KPI_WEIGHTS = {
     16: 0.30, 17: 0.30, 18: 0.20, 19: 0.20,
 }
 
+MONTH_NAMES = ['January','February','March','April','May','June',
+               'July','August','September','October','November','December']
+
+# ── Smartsheet sources ──
 SYNC_SOURCES = [
-    {'key': 'v2_kpi_report', 'reportId': '810227329879940', 'campusCol': 'Campus', 'monthCol': 'Reporting Month', 'plannedCol': 'Submitted', 'actualCol': 'Submitted', 'kpi_row': 2},
-    {'key': 'v2_training_hours', 'sheetId': '8549734774951812', 'campusCol': 'Campus Code', 'monthCol': 'Reporting Month', 'plannedCol': 'Planned Training Hours', 'actualCol': 'Total Training Hours Delivered', 'kpi_row': 3},
-    {'key': 'v2_ext_authority', 'sheetId': '4198632256393092', 'campusCol': 'Campus Code', 'monthCol': 'Primary', 'plannedCol': 'Applicable Compliance', 'actualCol': 'Actual Compliance', 'kpi_row': 4},
-    {'key': 'v2_committee_meeting', 'sheetId': '435993944477572', 'campusCol': 'Committee', 'monthCol': 'Reporting Month', 'plannedCol': 'Meeting Planned', 'actualCol': 'Meeting Conducted', 'kpi_row': 5},
+    {'key': 'v2_hs_kpi_report', 'reportId': '4811266391494532', 'campusCol': 'Campuses', 'monthCol': 'Primary', 'valueCol': 'Submitted', 'kpi_row': 2},
+    {'key': 'v2_external_compliance', 'sheetId': '4198632256393092', 'campusCol': 'Campus Code', 'monthCol': 'Primary', 'plannedCol': 'Applicable Compliance', 'actualCol': 'Actual Compliance', 'kpi_row': 4},
+    {'key': 'v2_hs_committee', 'sheetId': '435993944477572', 'campusCol': 'Committee', 'monthCol': 'Reporting Month', 'plannedCol': 'Meeting Planned', 'actualCol': 'Meeting Conducted', 'kpi_row': 5},
     {'key': 'v2_hazard_id', 'sheetId': '7323092115214212', 'campusCol': 'Campus Code', 'monthCol': 'Reporting Month', 'plannedCol': 'Total Controls Identified', 'actualCol': 'Implemented Controls', 'kpi_row': 6},
     {'key': 'v2_risk_closed', 'sheetId': '7323092115214212', 'campusCol': 'Campus Code', 'monthCol': 'Primary', 'plannedCol': 'Total Risk Assessments Registered', 'actualCol': 'Risk Assessment Closed', 'kpi_row': 7},
     {'key': 'v2_risk_validated', 'sheetId': '7323092115214212', 'campusCol': 'Campus Code', 'monthCol': 'Primary', 'plannedCol': 'Total Assessments Register', 'actualCol': 'RA Validated and Signed Off', 'kpi_row': 8},
-    {'key': 'v2_swp', 'sheetId': '1693592581001092', 'campusCol': 'Campus Code', 'monthCol': 'Primary', 'plannedCol': 'No. of SOPs Verified', 'actualCol': 'No. of SOPs Implemented', 'kpi_row': 9},
-    {'key': 'v2_training_plan', 'sheetId': '8549734774951812', 'campusCol': 'Campus Code', 'monthCol': 'Reporting Month', 'plannedCol': 'Planned (Yes/No)', 'actualCol': 'Are there any submission?', 'kpi_row': 10, 'yesNoCount': True},
-    {'key': 'v2_awareness', 'sheetId': '5053158949605252', 'campusCol': 'Campus Code', 'monthCol': 'Reporting Month', 'plannedCol': 'Awareness Campaigns Planned', 'actualCol': 'Awareness Campaigns Conducted', 'kpi_row': 11},
-    {'key': 'v2_compliance_activity', 'sheetId': '4198632256393092', 'campusCol': 'Campus Code', 'monthCol': 'Primary', 'plannedCol': 'Applicable Compliance', 'actualCol': 'Actual Compliance', 'kpi_row': 12},
-    {'key': 'v2_emergency_drill', 'sheetId': '5053158949605252', 'campusCol': 'Campus Code', 'monthCol': 'Reporting Month', 'plannedCol': 'Planned Drill? (Yes/No)', 'actualCol': 'Are there any submission?', 'kpi_row': 13, 'yesNoCount': True},
+    {'key': 'v2_safe_working', 'sheetId': '1693592581001092', 'campusCol': 'Campus Code', 'monthCol': 'Primary', 'plannedCol': 'No. of SOPs Verified', 'actualCol': 'No. of SOPs Implemented', 'kpi_row': 9},
+    {'key': 'v2_planned_training', 'sheetId': '8549734774951812', 'campusCol': 'Campus Code', 'monthCol': 'Reporting Month', 'plannedCol': 'Planned (Yes/No)', 'actualCol': 'Are there any submission?', 'kpi_row': 10, 'yesNoCount': True},
+    {'key': 'v2_drills', 'sheetId': '5053158949605252', 'campusCol': 'Campus Code', 'monthCol': 'Reporting Month', 'plannedCol': 'Planned Drill? (Yes/No)', 'actualCol': 'Are there any submission?', 'kpi_row': 13, 'yesNoCount': True},
     {'key': 'v2_permit_to_work', 'sheetId': '5899016251330436', 'campusCol': 'Campus Code', 'monthCol': 'Reporting Month', 'plannedCol': 'No. of PTWs Issued', 'actualCol': 'Total Work Registered', 'kpi_row': 14},
     {'key': 'v2_onsite_induction', 'sheetId': '5899016251330436', 'campusCol': 'Campus Code', 'monthCol': 'Reporting Month', 'plannedCol': "No. of New Contractors (Individuals)", 'actualCol': 'Contractors Inducted in the Reporting Month', 'kpi_row': 15},
     {'key': 'v2_ehs_inspection', 'sheetId': '4947401822392196', 'campusCol': 'Campus Code', 'monthCol': 'Primary', 'plannedCol': 'No. of EHS Inspections Planned', 'actualCol': 'No. of EHS Inspections Completed', 'kpi_row': 16},
     {'key': 'v2_findings_on_time', 'sheetId': '4947401822392196', 'campusCol': 'Campus Code', 'monthCol': 'Primary', 'plannedCol': 'No. of Findings in Reporting Month', 'actualCol': 'No. of Findings Due', 'kpi_row': 17},
     {'key': 'v2_investigation_on_time', 'reportId': '6831846506581892', 'campusCol': 'Campus Code', 'monthCol': 'Reporting Month', 'plannedCol': 'Total Incident Investigated', 'actualCol': 'Investigation Completed on Time', 'kpi_row': 18},
-    {'key': 'notification', 'reportId': '1199821531598724', 'campusCol': 'Campus Code', 'monthCol': 'Reporting Month', 'plannedCol': 'Total Incident', 'actualCol': 'Notification Submitted on Time', 'kpi_row': 19},
+    {'key': 'v2_notification', 'reportId': '1199821531598724', 'campusCol': 'Campus Code', 'monthCol': 'Reporting Month', 'plannedCol': 'Total Incident', 'actualCol': 'Notification Submitted on Time', 'kpi_row': 19},
 ]
 
 TRAINING_SOURCE = {'sheetId': '8549734774951812', 'campusCol': 'Campus Code', 'monthCol': 'Reporting Month', 'hoursCol': 'Total Hours'}
-
-MONTH_NAMES = ['January','February','March','April','May','June',
-               'July','August','September','October','November','December']
 
 
 # ── Smartsheet API ──
@@ -136,7 +136,7 @@ def safe_float(v, default=0.0):
     except: return default
 
 
-# ── Data fetching ──
+# ── Fetch KPI data ──
 
 def fetch_kpi_data(token, month_filter):
     data = {}
@@ -155,6 +155,7 @@ def fetch_kpi_data(token, month_filter):
         month_col = src.get('monthCol')
         planned_col = src.get('plannedCol')
         actual_col = src.get('actualCol')
+        value_col = src.get('valueCol')
         is_yes_no = src.get('yesNoCount', False)
 
         campus_agg = {}
@@ -162,14 +163,14 @@ def fetch_kpi_data(token, month_filter):
             campus = str(row.get(campus_col, '')).strip()
             if not campus: continue
             if month_col and month_filter:
-                rm = normalize_month(row.get(month_col))
-                if rm != month_filter:
-                    rm = normalize_month(row.get('Reporting Month'))
-                    if rm != month_filter:
-                        rm = normalize_month(row.get('Date Reported'))
-                        if rm != month_filter:
-                            rm = normalize_month(row.get('Primary'))
-                            if rm != month_filter:
+                row_month = normalize_month(row.get(month_col))
+                if row_month != month_filter:
+                    row_month = normalize_month(row.get('Reporting Month'))
+                    if row_month != month_filter:
+                        row_month = normalize_month(row.get('Date Reported'))
+                        if row_month != month_filter:
+                            row_month = normalize_month(row.get('Primary'))
+                            if row_month != month_filter:
                                 continue
 
             if campus not in campus_agg:
@@ -183,6 +184,10 @@ def fetch_kpi_data(token, month_filter):
             elif planned_col and actual_col:
                 campus_agg[campus]['planned'] += safe_float(row.get(planned_col))
                 campus_agg[campus]['actual'] += safe_float(row.get(actual_col))
+            elif value_col:
+                v = safe_float(row.get(value_col))
+                campus_agg[campus]['planned'] += v
+                campus_agg[campus]['actual'] += v
 
         for campus, agg in campus_agg.items():
             if campus not in data:
@@ -199,243 +204,202 @@ def fetch_training_hours(token, month_filter):
         rows = fetch_sheet_rows(TRAINING_SOURCE['sheetId'], token)
     except:
         return {}
-    hours = {}
+    result = {}
     for row in rows:
         campus = str(row.get(TRAINING_SOURCE['campusCol'], '')).strip()
         month = normalize_month(row.get(TRAINING_SOURCE['monthCol']))
-        if not campus: continue
-        if month_filter and month != month_filter: continue
-        hours[campus] = hours.get(campus, 0) + safe_float(row.get(TRAINING_SOURCE['hoursCol']))
-    return hours
+        if not campus or month != month_filter: continue
+        hours = safe_float(row.get(TRAINING_SOURCE['hoursCol']))
+        result[campus] = result.get(campus, 0) + hours
+    return result
 
 
-# ── Chart data replacement ──
+# ── Chart data replacement (regex-based, preserves namespace prefixes) ──
 
-def replace_chart_values(chart_xml_bytes, new_series_data):
-    """Replace numCache values in a chart XML using regex to preserve namespace prefixes.
-    new_series_data: list of dicts with 'values' (list of numbers).
+def replace_numcache_values(chart_xml, new_series_values):
+    """Replace <c:v> values in chart XML numCache sections.
+    new_series_values: list of lists, one per numCache (series).
+    Uses pure regex — never parses XML — so namespace prefixes stay intact.
     """
-    xml = chart_xml_bytes.decode('utf-8')
+    def replace_one(nc_match, new_vals):
+        nc = nc_match
+        nc = re.sub(r'(<c:ptCount val=")\d+(")', lambda m: m.group(1) + str(len(new_vals)) + m.group(2), nc)
+        nc = re.sub(r'<c:pt\s+idx="\d+">\s*<c:v>[^<]*</c:v>\s*</c:pt>', '', nc)
+        pts = ''.join(f'<c:pt idx="{i}"><c:v>{v}</c:v></c:pt>' for i, v in enumerate(new_vals))
+        nc = nc.replace('</c:numCache>', pts + '</c:numCache>')
+        return nc
 
-    # Detect the namespace prefix used for chart elements (c: or ns0: etc)
-    prefix_match = re.search(r'<([\w]+):chartSpace', xml)
-    if not prefix_match:
-        return chart_xml_bytes
-    p = prefix_match.group(1)
+    pattern = re.compile(r'<c:numCache>.*?</c:numCache>', re.DOTALL)
+    matches = list(pattern.finditer(chart_xml))
 
-    # Find all <p:ser>...</p:ser> blocks
-    ser_pattern = re.compile(r'(<' + p + r':ser\b.*?</' + p + r':ser>)', re.DOTALL)
-    sers = ser_pattern.findall(xml)
+    result = chart_xml
+    for i in range(min(len(matches), len(new_series_values)) - 1, -1, -1):
+        m = matches[i]
+        result = result[:m.start()] + replace_one(m.group(), new_series_values[i]) + result[m.end():]
 
-    for si, ser_xml in enumerate(sers):
-        if si >= len(new_series_data):
-            break
-        new_vals = new_series_data[si].get('values', [])
+    return result
 
-        # Find numCache inside <p:val><p:numRef><p:numCache>...</p:numCache>
-        nc_pattern = re.compile(
-            r'(<' + p + r':val>.*?<' + p + r':numCache>)(.*?)(</' + p + r':numCache>)',
-            re.DOTALL
-        )
-        nc_match = nc_pattern.search(ser_xml)
-        if not nc_match:
-            continue
 
-        nc_before = nc_match.group(1)
-        nc_inner = nc_match.group(2)
-        nc_after = nc_match.group(3)
+# ── Build chart data from KPI data ──
 
-        # Keep formatCode if present
-        fc_match = re.search(r'<' + p + r':formatCode>.*?</' + p + r':formatCode>', nc_inner, re.DOTALL)
-        fc = fc_match.group(0) if fc_match else ''
+def get_campus_val(kpi_data, campus, kpi_row, field='calc'):
+    return kpi_data.get(campus, {}).get(kpi_row, {}).get(field, 0)
 
-        # Build new numCache content
-        new_inner = fc
-        new_inner += '<' + p + ':ptCount val="' + str(len(new_vals)) + '"/>'
-        for idx, val in enumerate(new_vals):
-            new_inner += '<' + p + ':pt idx="' + str(idx) + '"><' + p + ':v>' + str(val) + '</' + p + ':v></' + p + ':pt>'
-
-        new_nc = nc_before + new_inner + nc_after
-        new_ser = ser_xml[:nc_match.start()] + new_nc + ser_xml[nc_match.end():]
-        xml = xml.replace(ser_xml, new_ser)
-
-    return xml.encode('utf-8')
-
+def region_agg(kpi_data, kpi_row, region_name, field):
+    cfg = REGIONS.get(region_name)
+    if not cfg: return 0
+    vals = [get_campus_val(kpi_data, s, kpi_row, field) for s in cfg['sheets']]
+    return sum(vals)
 
 def build_chart_data(kpi_data, training_hours):
-    """Build replacement data for all 13 charts.
-    IMPORTANT: Each template chart has a label category at index 0
-    (e.g. 'Percentage', 'Meeting Planned'). We prepend 0 for that slot.
-    """
-
-    # Campus order for charts 12/13 (HQ at position 2, after ADA)
-    CAMPUSES_WITH_HQ_ORDERED = ['ADA','HQ','ADB','AAF','AAZ','DMC','DBN','SJA','SJB','FJF','FJH','RKA','RKB','ADH','MZY']
-    # Chart 7 only has 7 campuses
-    CHART7_CAMPUSES = ['ADA','ADB','FJF','FJH','RKA','RKB','ADH']
-
-    def campus_pct(kpi_row, campuses=ALL_CAMPUSES):
-        return [round(kpi_data.get(c, {}).get(kpi_row, {}).get('calc', 0) * 100) for c in campuses]
-
-    def campus_val(kpi_row, field, campuses=ALL_CAMPUSES):
-        return [round(safe_float(kpi_data.get(c, {}).get(kpi_row, {}).get(field, 0))) for c in campuses]
-
-    def region_agg(kpi_row, field):
-        vals = []
-        for rname in REGION_ORDER:
-            total = sum(safe_float(kpi_data.get(c, {}).get(kpi_row, {}).get(field, 0)) for c in REGION_GROUPS[rname])
-            vals.append(round(total))
-        return vals
-
+    """Build replacement data for all 13 charts."""
     charts = {}
 
-    # Chart 1: External Authority Compliance (%) - [label] + 14 campuses, 1 series
-    charts[1] = [{'values': [0] + campus_pct(4)}]
+    # Helper: percentage per campus (14 campuses)
+    def pct_14(kpi_row):
+        return [[get_campus_val(kpi_data, c, kpi_row, 'calc') for c in CAMPUS_ORDER_14]]
 
-    # Chart 2: Committee Meetings - [label] + 7 regions, 2 series
-    # Committee data uses region names as campus (campusCol='Committee')
-    charts[2] = [
-        {'values': [0] + [round(safe_float(kpi_data.get(rname, {}).get(5, {}).get('planned', 0))) for rname in REGION_ORDER]},
-        {'values': [0] + [round(safe_float(kpi_data.get(rname, {}).get(5, {}).get('achieved', 0))) for rname in REGION_ORDER]},
-    ]
+    # Helper: percentage per campus (15 campuses, HQ=0 at idx 1)
+    def pct_15(kpi_row):
+        vals = []
+        for c in CAMPUS_ORDER_15:
+            if c == 'HQ':
+                vals.append(0)
+            else:
+                vals.append(get_campus_val(kpi_data, c, kpi_row, 'calc'))
+        return [vals]
 
-    # Chart 3: Committee Actions Closed - [label] + 7 regions, 3 series
-    total_actions = region_agg(6, 'planned')
-    closed_actions = region_agg(6, 'achieved')
-    pct_closed = [round(c/t*100) if t > 0 else 0 for t, c in zip(total_actions, closed_actions)]
-    charts[3] = [
-        {'values': [0] + total_actions},
-        {'values': [0] + closed_actions},
-        {'values': [0] + pct_closed},
-    ]
+    # Helper: planned + actual per campus (14), 2 series
+    def planned_actual_14(kpi_row):
+        planned = [get_campus_val(kpi_data, c, kpi_row, 'planned') for c in CAMPUS_ORDER_14]
+        actual = [get_campus_val(kpi_data, c, kpi_row, 'achieved') for c in CAMPUS_ORDER_14]
+        return [planned, actual]
 
-    # Chart 4: Risk Control Measures (%) - [label] + 14 campuses, 1 series
-    charts[4] = [{'values': [0] + campus_pct(7)}]
+    # chart1: KPI Report % (14 campuses, 1 series)
+    charts[1] = pct_14(2)
 
-    # Chart 5: Training Hours - [label] + 14 campuses, 1 series
-    charts[5] = [{'values': [0] + [round(training_hours.get(c, 0)) for c in ALL_CAMPUSES]}]
+    # chart2: Committee meeting (7 regions, 2 series: planned, conducted)
+    planned = []
+    conducted = []
+    for rname in REGION_ORDER:
+        p = 0
+        a = 0
+        # Committee data uses region names as campus key
+        for alias, rkey in REGION_LABEL_MAP.items():
+            if rkey == rname:
+                p += get_campus_val(kpi_data, alias, 5, 'planned')
+                a += get_campus_val(kpi_data, alias, 5, 'achieved')
+        # Also check direct region name
+        p += get_campus_val(kpi_data, rname, 5, 'planned')
+        a += get_campus_val(kpi_data, rname, 5, 'achieved')
+        planned.append(round(p))
+        conducted.append(round(a))
+    charts[2] = [planned, conducted]
 
-    # Chart 6: Compliance Activities (%) - [label] + 14 campuses, 1 series
-    charts[6] = [{'values': [0] + campus_pct(12)}]
+    # chart3: Incident investigation by region (7 regions, 3 series: total, closed, % close-out)
+    totals = []
+    closed = []
+    pct_close = []
+    for rname in REGION_ORDER:
+        t = region_agg(kpi_data, 18, rname, 'planned')
+        c = region_agg(kpi_data, 18, rname, 'achieved')
+        totals.append(round(t))
+        closed.append(round(c))
+        pct_close.append(round(c / t, 4) if t > 0 else 0)
+    charts[3] = [totals, closed, pct_close]
 
-    # Chart 7: Emergency Drills (%) - [label] + 7 specific campuses, 1 series
-    charts[7] = [{'values': [0] + campus_pct(13, CHART7_CAMPUSES)}]
+    # chart4: External compliance % (14 campuses)
+    charts[4] = pct_14(4)
 
-    # Chart 8: PTW - [label] + 14 campuses, 2 series
-    charts[8] = [
-        {'values': [0] + campus_val(14, 'achieved')},
-        {'values': [0] + campus_val(14, 'planned')},
-    ]
+    # chart5: Training hours (14 campuses, 1 series — actual hours)
+    charts[5] = [[training_hours.get(c, 0) for c in CAMPUS_ORDER_14]]
 
-    # Chart 9: Contractors - [label] + 14 campuses, 2 series
-    charts[9] = [
-        {'values': [0] + campus_val(15, 'planned')},
-        {'values': [0] + campus_val(15, 'achieved')},
-    ]
+    # chart6: Hazard ID % (14 campuses)
+    charts[6] = pct_14(6)
 
-    # Chart 10: Inspections - [label] + 14 campuses, 2 series
-    charts[10] = [
-        {'values': [0] + campus_val(16, 'planned')},
-        {'values': [0] + campus_val(16, 'achieved')},
-    ]
+    # chart7: SWP % (7 campuses: ADA, ADB, FJF, FJH, RKA, RKB, ADH)
+    chart7_campuses = ['ADA','ADB','FJF','FJH','RKA','RKB','ADH']
+    charts[7] = [[get_campus_val(kpi_data, c, 9, 'calc') for c in chart7_campuses]]
 
-    # Chart 11: Findings Closed (%) - [label] + 14 campuses, 1 series
-    charts[11] = [{'values': [0] + campus_pct(17)}]
+    # chart8: PTW (14 campuses, 2 series)
+    charts[8] = planned_actual_14(14)
 
-    # Chart 12: Incident Notifications (%) - [label] + 15 campuses (HQ ordered), 1 series
-    charts[12] = [{'values': [0] + campus_pct(19, CAMPUSES_WITH_HQ_ORDERED)}]
+    # chart9: Onsite induction (14 campuses, 2 series)
+    charts[9] = planned_actual_14(15)
 
-    # Chart 13: Investigations (%) - [label] + 15 campuses (HQ ordered), 1 series
-    charts[13] = [{'values': [0] + campus_pct(18, CAMPUSES_WITH_HQ_ORDERED)}]
+    # chart10: EHS inspection (14 campuses, 2 series)
+    charts[10] = planned_actual_14(16)
+
+    # chart11: Findings % (14 campuses)
+    charts[11] = pct_14(17)
+
+    # chart12: Investigation % (15 campuses incl HQ)
+    charts[12] = pct_15(18)
+
+    # chart13: Notification % (15 campuses incl HQ)
+    charts[13] = pct_15(19)
 
     return charts
 
 
-def update_document_text(doc_xml_bytes, month_name, year):
-    """Replace month/date placeholders in document.xml."""
-    text = doc_xml_bytes.decode('utf-8')
-
-    # Replace "March" with actual month in common patterns
-    text = text.replace('March 2026', f'{month_name} {year}')
-    text = text.replace('March', month_name)
-
-    # Replace "April 2026" in planned actions section
-    month_idx = MONTH_NAMES.index(month_name) if month_name in MONTH_NAMES else 0
-    next_month = MONTH_NAMES[(month_idx + 1) % 12]
-    next_year = year if month_idx < 11 else str(int(year) + 1)
-    text = text.replace('April 2026', f'{next_month} {next_year}')
-
-    return text.encode('utf-8')
-
-
-# ── Main generator ──
+# ── Generate report using template ──
 
 def generate_report(month_name, year, token):
-    """Generate Word report by modifying template with live data."""
-    display_month = month_name if month_name else 'Overall'
-    print(f'Generating Word report — {display_month} {year}')
+    print(f'Generating Word report (overall) for {month_name} {year}')
 
-    # Load template
-    template_path = os.path.join(os.path.dirname(__file__), '..', 'templates', 'word_template.docx')
-    if not os.path.exists(template_path):
-        template_path = os.path.join(os.path.dirname(__file__), 'word_template.docx')
-    if not os.path.exists(template_path):
-        # Try relative to current file
-        template_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'templates', 'word_template.docx')
-
-    with open(template_path, 'rb') as f:
-        template_bytes = f.read()
-
-    # Fetch live data (pass None for all-months aggregation)
+    # Fetch data
     kpi_data = fetch_kpi_data(token, month_name)
     training_hours = fetch_training_hours(token, month_name)
+    print(f'  KPI data: {len(kpi_data)} campuses')
+    print(f'  Training hours: {len(training_hours)} campuses')
+
+    # Build chart replacement data
     chart_data = build_chart_data(kpi_data, training_hours)
 
-    # Modify template
-    in_buf = io.BytesIO(template_bytes)
-    out_buf = io.BytesIO()
+    # Load template
+    tmpl_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'templates', 'word_template.docx')
+    with open(tmpl_path, 'rb') as f:
+        tmpl_bytes = f.read()
 
-    with zipfile.ZipFile(in_buf, 'r') as zin, zipfile.ZipFile(out_buf, 'w', zipfile.ZIP_DEFLATED) as zout:
-        for item in zin.infolist():
-            data = zin.read(item.filename)
+    # Unzip, modify charts, rezip
+    buf = io.BytesIO()
+    with zipfile.ZipFile(io.BytesIO(tmpl_bytes), 'r') as zin:
+        with zipfile.ZipFile(buf, 'w', zipfile.ZIP_DEFLATED) as zout:
+            for item in zin.infolist():
+                data = zin.read(item.filename)
 
-            # Replace chart data
-            m = re.match(r'word/charts/chart(\d+)\.xml$', item.filename)
-            if m:
-                chart_num = int(m.group(1))
-                if chart_num in chart_data:
-                    try:
-                        data = replace_chart_values(data, chart_data[chart_num])
-                    except Exception as e:
-                        print(f'  WARNING: Failed to update chart {chart_num}: {e}')
+                # Replace chart data
+                chart_match = re.match(r'word/charts/chart(\d+)\.xml', item.filename)
+                if chart_match:
+                    chart_num = int(chart_match.group(1))
+                    if chart_num in chart_data:
+                        xml_str = data.decode('utf-8')
+                        xml_str = replace_numcache_values(xml_str, chart_data[chart_num])
+                        data = xml_str.encode('utf-8')
+                        print(f'  Updated chart{chart_num} with {len(chart_data[chart_num])} series')
 
-            # Replace document text (month names)
-            if item.filename == 'word/document.xml':
-                data = update_document_text(data, display_month, year)
+                zout.writestr(item, data)
 
-            zout.writestr(item, data)
-
-    out_buf.seek(0)
-    return out_buf.getvalue()
+    buf.seek(0)
+    return buf.getvalue()
 
 
 # ── HTTP Handler ──
 
 class handler(BaseHTTPRequestHandler):
     def do_GET(self):
-        if _INIT_ERROR:
-            self.send_response(500)
-            self.send_header('Content-Type', 'application/json')
-            self.end_headers()
-            self.wfile.write(json.dumps({'error': 'Init error', 'detail': _INIT_ERROR}).encode())
-            return
-
         parsed = urlparse(self.path)
         qs = parse_qs(parsed.query)
-        month = qs.get('month', [''])[0]
+        month = qs.get('month', [None])[0]
         year = qs.get('year', ['2026'])[0]
-        report_name = qs.get('name', [''])[0]
+        report_name = qs.get('reportName', ['KPI_Report'])[0]
 
-        month = month if month else None  # None = aggregate all months
+        if not month:
+            self.send_response(400)
+            self.send_header('Content-Type', 'application/json')
+            self.end_headers()
+            self.wfile.write(json.dumps({'error': 'month is required'}).encode())
+            return
 
         token = os.environ.get('SMARTSHEET_TOKEN', '')
         if not token:
@@ -447,8 +411,7 @@ class handler(BaseHTTPRequestHandler):
 
         try:
             docx_bytes = generate_report(month, year, token)
-            filename = f'{report_name}.docx' if report_name else f'HCT_COHS_KPI_Report_{month}_{year}.docx'
-
+            filename = f'{report_name.replace(" ", "_")}_{month}_{year}.docx'
             self.send_response(200)
             self.send_header('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document')
             self.send_header('Content-Disposition', f'attachment; filename="{filename}"')
@@ -456,8 +419,9 @@ class handler(BaseHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(docx_bytes)
         except Exception as e:
+            import traceback
             traceback.print_exc()
             self.send_response(500)
             self.send_header('Content-Type', 'application/json')
             self.end_headers()
-            self.wfile.write(json.dumps({'error': str(e), 'trace': traceback.format_exc()}).encode())
+            self.wfile.write(json.dumps({'error': str(e)}).encode())
