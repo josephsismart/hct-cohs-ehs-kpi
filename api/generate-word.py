@@ -212,44 +212,54 @@ def fetch_training_hours(token, month_filter):
 # ── Chart data replacement ──
 
 def replace_chart_values(chart_xml_bytes, new_series_data):
-    """Replace numCache values in a chart XML.
+    """Replace numCache values in a chart XML using regex to preserve namespace prefixes.
     new_series_data: list of dicts with 'values' (list of numbers).
     """
-    tree = ET.ElementTree(ET.fromstring(chart_xml_bytes))
-    root = tree.getroot()
-    C = C_NS
+    xml = chart_xml_bytes.decode('utf-8')
 
-    # Find all series
-    sers = root.findall(f'.//{{{C}}}ser')
+    # Detect the namespace prefix used for chart elements (c: or ns0: etc)
+    prefix_match = re.search(r'<([\w]+):chartSpace', xml)
+    if not prefix_match:
+        return chart_xml_bytes
+    p = prefix_match.group(1)
 
-    for si, ser in enumerate(sers):
+    # Find all <p:ser>...</p:ser> blocks
+    ser_pattern = re.compile(r'(<' + p + r':ser\b.*?</' + p + r':ser>)', re.DOTALL)
+    sers = ser_pattern.findall(xml)
+
+    for si, ser_xml in enumerate(sers):
         if si >= len(new_series_data):
             break
-
         new_vals = new_series_data[si].get('values', [])
 
-        # Replace numCache values
-        num_cache = ser.find(f'.//{{{C}}}val/{{{C}}}numRef/{{{C}}}numCache')
-        if num_cache is not None:
-            # Update ptCount
-            pt_count = num_cache.find(f'{{{C}}}ptCount')
-            if pt_count is not None:
-                pt_count.set('val', str(len(new_vals)))
+        # Find numCache inside <p:val><p:numRef><p:numCache>...</p:numCache>
+        nc_pattern = re.compile(
+            r'(<' + p + r':val>.*?<' + p + r':numCache>)(.*?)(</' + p + r':numCache>)',
+            re.DOTALL
+        )
+        nc_match = nc_pattern.search(ser_xml)
+        if not nc_match:
+            continue
 
-            # Remove existing pts
-            for pt in num_cache.findall(f'{{{C}}}pt'):
-                num_cache.remove(pt)
+        nc_before = nc_match.group(1)
+        nc_inner = nc_match.group(2)
+        nc_after = nc_match.group(3)
 
-            # Add new pts
-            for idx, val in enumerate(new_vals):
-                pt = ET.SubElement(num_cache, f'{{{C}}}pt')
-                pt.set('idx', str(idx))
-                v = ET.SubElement(pt, f'{{{C}}}v')
-                v.text = str(val)
+        # Keep formatCode if present
+        fc_match = re.search(r'<' + p + r':formatCode>.*?</' + p + r':formatCode>', nc_inner, re.DOTALL)
+        fc = fc_match.group(0) if fc_match else ''
 
-    buf = io.BytesIO()
-    tree.write(buf, xml_declaration=True, encoding='UTF-8')
-    return buf.getvalue()
+        # Build new numCache content
+        new_inner = fc
+        new_inner += '<' + p + ':ptCount val="' + str(len(new_vals)) + '"/>'
+        for idx, val in enumerate(new_vals):
+            new_inner += '<' + p + ':pt idx="' + str(idx) + '"><' + p + ':v>' + str(val) + '</' + p + ':v></' + p + ':pt>'
+
+        new_nc = nc_before + new_inner + nc_after
+        new_ser = ser_xml[:nc_match.start()] + new_nc + ser_xml[nc_match.end():]
+        xml = xml.replace(ser_xml, new_ser)
+
+    return xml.encode('utf-8')
 
 
 def build_chart_data(kpi_data, training_hours):
