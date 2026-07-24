@@ -43,17 +43,17 @@ KPI_WEIGHTS = {
 }
 
 SYNC_SOURCES = [
-    {'key': 'v2_kpi_report', 'sheetId': '5053158949605252', 'campusCol': 'Campus Code', 'monthCol': 'Reporting Month', 'plannedCol': 'Planned Submission', 'actualCol': 'Actual Submission', 'kpi_row': 2},
+    {'key': 'v2_kpi_report', 'reportId': '810227329879940', 'campusCol': 'Campus', 'monthCol': 'Reporting Month', 'plannedCol': 'Submitted', 'actualCol': 'Submitted', 'kpi_row': 2},
     {'key': 'v2_training_hours', 'sheetId': '8549734774951812', 'campusCol': 'Campus Code', 'monthCol': 'Reporting Month', 'plannedCol': 'Planned Training Hours', 'actualCol': 'Total Training Hours Delivered', 'kpi_row': 3},
-    {'key': 'v2_ext_authority', 'sheetId': '5053158949605252', 'campusCol': 'Campus Code', 'monthCol': 'Reporting Month', 'plannedCol': 'Total Regulatory Requirements', 'actualCol': 'Complied Requirements', 'kpi_row': 4},
-    {'key': 'v2_committee_meeting', 'sheetId': '5053158949605252', 'campusCol': 'Campus Code', 'monthCol': 'Reporting Month', 'plannedCol': 'Committee Meeting Planned', 'actualCol': 'Committee Meeting Conducted', 'kpi_row': 5},
-    {'key': 'v2_hazard_id', 'sheetId': '5053158949605252', 'campusCol': 'Campus Code', 'monthCol': 'Reporting Month', 'plannedCol': 'Total Committee Actions', 'actualCol': 'Committee Actions Closed', 'kpi_row': 6},
-    {'key': 'v2_risk_closed', 'sheetId': '5053158949605252', 'campusCol': 'Campus Code', 'monthCol': 'Reporting Month', 'plannedCol': 'Total Risk Assessments', 'actualCol': 'Risk Assessments Closed', 'kpi_row': 7},
-    {'key': 'v2_risk_validated', 'sheetId': '5053158949605252', 'campusCol': 'Campus Code', 'monthCol': 'Reporting Month', 'plannedCol': 'Total Risk Assessments', 'actualCol': 'Risk Assessments Validated', 'kpi_row': 8},
-    {'key': 'v2_swp', 'sheetId': '5053158949605252', 'campusCol': 'Campus Code', 'monthCol': 'Reporting Month', 'plannedCol': 'Total SWPs Due', 'actualCol': 'SWPs Completed', 'kpi_row': 9},
-    {'key': 'v2_training_plan', 'sheetId': '8549734774951812', 'campusCol': 'Campus Code', 'monthCol': 'Reporting Month', 'plannedCol': 'Planned Training Hours', 'actualCol': 'Total Training Hours Delivered', 'kpi_row': 10},
+    {'key': 'v2_ext_authority', 'sheetId': '4198632256393092', 'campusCol': 'Campus Code', 'monthCol': 'Primary', 'plannedCol': 'Applicable Compliance', 'actualCol': 'Actual Compliance', 'kpi_row': 4},
+    {'key': 'v2_committee_meeting', 'sheetId': '435993944477572', 'campusCol': 'Committee', 'monthCol': 'Reporting Month', 'plannedCol': 'Meeting Planned', 'actualCol': 'Meeting Conducted', 'kpi_row': 5},
+    {'key': 'v2_hazard_id', 'sheetId': '7323092115214212', 'campusCol': 'Campus Code', 'monthCol': 'Reporting Month', 'plannedCol': 'Total Controls Identified', 'actualCol': 'Implemented Controls', 'kpi_row': 6},
+    {'key': 'v2_risk_closed', 'sheetId': '7323092115214212', 'campusCol': 'Campus Code', 'monthCol': 'Primary', 'plannedCol': 'Total Risk Assessments Registered', 'actualCol': 'Risk Assessment Closed', 'kpi_row': 7},
+    {'key': 'v2_risk_validated', 'sheetId': '7323092115214212', 'campusCol': 'Campus Code', 'monthCol': 'Primary', 'plannedCol': 'Total Assessments Register', 'actualCol': 'RA Validated and Signed Off', 'kpi_row': 8},
+    {'key': 'v2_swp', 'sheetId': '1693592581001092', 'campusCol': 'Campus Code', 'monthCol': 'Primary', 'plannedCol': 'No. of SOPs Verified', 'actualCol': 'No. of SOPs Implemented', 'kpi_row': 9},
+    {'key': 'v2_training_plan', 'sheetId': '8549734774951812', 'campusCol': 'Campus Code', 'monthCol': 'Reporting Month', 'plannedCol': 'Planned (Yes/No)', 'actualCol': 'Are there any submission?', 'kpi_row': 10, 'yesNoCount': True},
     {'key': 'v2_awareness', 'sheetId': '5053158949605252', 'campusCol': 'Campus Code', 'monthCol': 'Reporting Month', 'plannedCol': 'Awareness Campaigns Planned', 'actualCol': 'Awareness Campaigns Conducted', 'kpi_row': 11},
-    {'key': 'v2_compliance_activity', 'sheetId': '5899016251330436', 'campusCol': 'Campus Code', 'monthCol': 'Reporting Month', 'plannedCol': 'Compliance Activities Sampled', 'actualCol': 'Compliance Activities Implemented', 'kpi_row': 12},
+    {'key': 'v2_compliance_activity', 'sheetId': '4198632256393092', 'campusCol': 'Campus Code', 'monthCol': 'Primary', 'plannedCol': 'Applicable Compliance', 'actualCol': 'Actual Compliance', 'kpi_row': 12},
     {'key': 'v2_emergency_drill', 'sheetId': '5053158949605252', 'campusCol': 'Campus Code', 'monthCol': 'Reporting Month', 'plannedCol': 'Planned Drill? (Yes/No)', 'actualCol': 'Are there any submission?', 'kpi_row': 13, 'yesNoCount': True},
     {'key': 'v2_permit_to_work', 'sheetId': '5899016251330436', 'campusCol': 'Campus Code', 'monthCol': 'Reporting Month', 'plannedCol': 'No. of PTWs Issued', 'actualCol': 'Total Work Registered', 'kpi_row': 14},
     {'key': 'v2_onsite_induction', 'sheetId': '5899016251330436', 'campusCol': 'Campus Code', 'monthCol': 'Reporting Month', 'plannedCol': "No. of New Contractors (Individuals)", 'actualCol': 'Contractors Inducted in the Reporting Month', 'kpi_row': 15},
@@ -63,7 +63,7 @@ SYNC_SOURCES = [
     {'key': 'notification', 'reportId': '1199821531598724', 'campusCol': 'Campus Code', 'monthCol': 'Reporting Month', 'plannedCol': 'Total Incident', 'actualCol': 'Notification Submitted on Time', 'kpi_row': 19},
 ]
 
-TRAINING_SOURCE = {'sheetId': '8549734774951812', 'campusCol': 'Campus Code', 'monthCol': 'Reporting Month', 'hoursCol': 'Total Training Hours Delivered'}
+TRAINING_SOURCE = {'sheetId': '8549734774951812', 'campusCol': 'Campus Code', 'monthCol': 'Reporting Month', 'hoursCol': 'Total Hours'}
 
 MONTH_NAMES = ['January','February','March','April','May','June',
                'July','August','September','October','November','December']
@@ -282,9 +282,10 @@ def build_chart_data(kpi_data, training_hours):
     charts[1] = [{'values': [0] + campus_pct(4)}]
 
     # Chart 2: Committee Meetings - [label] + 7 regions, 2 series
+    # Committee data uses region names as campus (campusCol='Committee')
     charts[2] = [
-        {'values': [0] + region_agg(5, 'planned')},
-        {'values': [0] + region_agg(5, 'achieved')},
+        {'values': [0] + [round(safe_float(kpi_data.get(rname, {}).get(5, {}).get('planned', 0))) for rname in REGION_ORDER]},
+        {'values': [0] + [round(safe_float(kpi_data.get(rname, {}).get(5, {}).get('achieved', 0))) for rname in REGION_ORDER]},
     ]
 
     # Chart 3: Committee Actions Closed - [label] + 7 regions, 3 series
