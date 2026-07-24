@@ -40,22 +40,7 @@ KPI_WEIGHTS = {
     10: 0.50, 11: 0.50,
     12: 0.40, 13: 0.40, 14: 0.10, 15: 0.10,
     16: 0.30, 17: 0.30, 18: 0.20, 19: 0.20,
-}
-
-SYNC_SOURCES = [
-    {'key': 'v2_kpi_report', 'sheetId': '5053158949605252', 'campusCol': 'Campus Code', 'monthCol': 'Reporting Month', 'plannedCol': 'Planned Submission', 'actualCol': 'Actual Submission', 'kpi_row': 2},
-    {'key': 'v2_training_hours', 'sheetId': '8549734774951812', 'campusCol': 'Campus Code', 'monthCol': 'Reporting Month', 'plannedCol': 'Planned Training Hours', 'actualCol': 'Total Training Hours Delivered', 'kpi_row': 3},
-    {'key': 'v2_ext_authority', 'sheetId': '5053158949605252', 'campusCol': 'Campus Code', 'monthCol': 'Reporting Month', 'plannedCol': 'Total Regulatory Requirements', 'actualCol': 'Complied Requirements', 'kpi_row': 4},
-    {'key': 'v2_committee_meeting', 'sheetId': '5053158949605252', 'campusCol': 'Campus Code', 'monthCol': 'Reporting Month', 'plannedCol': 'Committee Meeting Planned', 'actualCol': 'Committee Meeting Conducted', 'kpi_row': 5},
-    {'key': 'v2_hazard_id', 'sheetId': '5053158949605252', 'campusCol': 'Campus Code', 'monthCol': 'Reporting Month', 'plannedCol': 'Total Committee Actions', 'actualCol': 'Committee Actions Closed', 'kpi_row': 6},
-    {'key': 'v2_risk_closed', 'sheetId': '5053158949605252', 'campusCol': 'Campus Code', 'monthCol': 'Reporting Month', 'plannedCol': 'Total Risk Assessments', 'actualCol': 'Risk Assessments Closed', 'kpi_row': 7},
-    {'key': 'v2_risk_validated', 'sheetId': '5053158949605252', 'campusCol': 'Campus Code', 'monthCol': 'Reporting Month', 'plannedCol': 'Total Risk Assessments', 'actualCol': 'Risk Assessments Validated', 'kpi_row': 8},
-    {'key': 'v2_swp', 'sheetId': '5053158949605252', 'campusCol': 'Campus Code', 'monthCol': 'Reporting Month', 'plannedCol': 'Total SWPs Due', 'actualCol': 'SWPs Completed', 'kpi_row': 9},
-    {'key': 'v2_training_plan', 'sheetId': '8549734774951812', 'campusCol': 'Campus Code', 'monthCol': 'Reporting Month', 'plannedCol': 'Planned Training Hours', 'actualCol': 'Total Training Hours Delivered', 'kpi_row': 10},
-    {'key': 'v2_awareness', 'sheetId': '5053158949605252', 'campusCol': 'Campus Code', 'monthCol': 'Reporting Month', 'plannedCol': 'Awareness Campaigns Planned', 'actualCol': 'Awareness Campaigns Conducted', 'kpi_row': 11},
-    {'key': 'v2_compliance_activity', 'sheetId': '5899016251330436', 'campusCol': 'Campus Code', 'monthCol': 'Reporting Month', 'plannedCol': 'Compliance Activities Sampled', 'actualCol': 'Compliance Activities Implemented', 'kpi_row': 12},
-    {'key': 'v2_emergency_drill', 'sheetId': '5053158949605252', 'campusCol': 'Campus Code', 'monthCol': 'Reporting Month', 'plannedCol': 'Planned Drill? (Yes/No)', 'actualCol': 'Are there any submission?', 'kpi_row': 13, 'yesNoCount': True},
-    {'key': 'v2_permit_to_work', 'sheetId': '5899016251330436', 'campusCol': 'Campus Code', 'monthCol': 'Reporting Month', 'plannedCol': 'No. of PTWs Issued', 'actualCol': 'Total Work Registered', 'kpi_row': 14},
+}rmit_to_work', 'sheetId': '5899016251330436', 'campusCol': 'Campus Code', 'monthCol': 'Reporting Month', 'plannedCol': 'No. of PTWs Issued', 'actualCol': 'Total Work Registered', 'kpi_row': 14},
     {'key': 'v2_onsite_induction', 'sheetId': '5899016251330436', 'campusCol': 'Campus Code', 'monthCol': 'Reporting Month', 'plannedCol': "No. of New Contractors (Individuals)", 'actualCol': 'Contractors Inducted in the Reporting Month', 'kpi_row': 15},
     {'key': 'v2_ehs_inspection', 'sheetId': '4947401822392196', 'campusCol': 'Campus Code', 'monthCol': 'Primary', 'plannedCol': 'No. of EHS Inspections Planned', 'actualCol': 'No. of EHS Inspections Completed', 'kpi_row': 16},
     {'key': 'v2_findings_on_time', 'sheetId': '4947401822392196', 'campusCol': 'Campus Code', 'monthCol': 'Primary', 'plannedCol': 'No. of Findings in Reporting Month', 'actualCol': 'No. of Findings Due', 'kpi_row': 17},
@@ -253,7 +238,15 @@ def replace_chart_values(chart_xml_bytes, new_series_data):
 
 
 def build_chart_data(kpi_data, training_hours):
-    """Build replacement data for all 13 charts."""
+    """Build replacement data for all 13 charts.
+    IMPORTANT: Each template chart has a label category at index 0
+    (e.g. 'Percentage', 'Meeting Planned'). We prepend 0 for that slot.
+    """
+
+    # Campus order for charts 12/13 (HQ at position 2, after ADA)
+    CAMPUSES_WITH_HQ_ORDERED = ['ADA','HQ','ADB','AAF','AAZ','DMC','DBN','SJA','SJB','FJF','FJH','RKA','RKB','ADH','MZY']
+    # Chart 7 only has 7 campuses
+    CHART7_CAMPUSES = ['ADA','ADB','FJF','FJH','RKA','RKB','ADH']
 
     def campus_pct(kpi_row, campuses=ALL_CAMPUSES):
         return [round(kpi_data.get(c, {}).get(kpi_row, {}).get('calc', 0) * 100) for c in campuses]
@@ -270,63 +263,63 @@ def build_chart_data(kpi_data, training_hours):
 
     charts = {}
 
-    # Chart 1: External Authority Compliance (%) - 14 campuses, 1 series
-    charts[1] = [{'values': campus_pct(4)}]
+    # Chart 1: External Authority Compliance (%) - [label] + 14 campuses, 1 series
+    charts[1] = [{'values': [0] + campus_pct(4)}]
 
-    # Chart 2: Committee Meetings - 7 regions, 2 series (planned, conducted)
+    # Chart 2: Committee Meetings - [label] + 7 regions, 2 series
     charts[2] = [
-        {'values': region_agg(5, 'planned')},
-        {'values': region_agg(5, 'achieved')},
+        {'values': [0] + region_agg(5, 'planned')},
+        {'values': [0] + region_agg(5, 'achieved')},
     ]
 
-    # Chart 3: Committee Actions Closed - 7 regions, 3 series (total, closed, %)
+    # Chart 3: Committee Actions Closed - [label] + 7 regions, 3 series
     total_actions = region_agg(6, 'planned')
     closed_actions = region_agg(6, 'achieved')
     pct_closed = [round(c/t*100) if t > 0 else 0 for t, c in zip(total_actions, closed_actions)]
     charts[3] = [
-        {'values': total_actions},
-        {'values': closed_actions},
-        {'values': pct_closed},
+        {'values': [0] + total_actions},
+        {'values': [0] + closed_actions},
+        {'values': [0] + pct_closed},
     ]
 
-    # Chart 4: Risk Control Measures (%) - 14 campuses, 1 series
-    charts[4] = [{'values': campus_pct(7)}]
+    # Chart 4: Risk Control Measures (%) - [label] + 14 campuses, 1 series
+    charts[4] = [{'values': [0] + campus_pct(7)}]
 
-    # Chart 5: Training Hours - 14 campuses, 1 series (actual hours)
-    charts[5] = [{'values': [round(training_hours.get(c, 0)) for c in ALL_CAMPUSES]}]
+    # Chart 5: Training Hours - [label] + 14 campuses, 1 series
+    charts[5] = [{'values': [0] + [round(training_hours.get(c, 0)) for c in ALL_CAMPUSES]}]
 
-    # Chart 6: Compliance Activities (%) - 14 campuses, 1 series
-    charts[6] = [{'values': campus_pct(12)}]
+    # Chart 6: Compliance Activities (%) - [label] + 14 campuses, 1 series
+    charts[6] = [{'values': [0] + campus_pct(12)}]
 
-    # Chart 7: Emergency Drills (%) - varies (client has 7 cats)
-    charts[7] = [{'values': campus_pct(13)}]
+    # Chart 7: Emergency Drills (%) - [label] + 7 specific campuses, 1 series
+    charts[7] = [{'values': [0] + campus_pct(13, CHART7_CAMPUSES)}]
 
-    # Chart 8: PTW - 14 campuses, 2 series (total work, PTWs issued)
+    # Chart 8: PTW - [label] + 14 campuses, 2 series
     charts[8] = [
-        {'values': campus_val(14, 'achieved')},
-        {'values': campus_val(14, 'planned')},
+        {'values': [0] + campus_val(14, 'achieved')},
+        {'values': [0] + campus_val(14, 'planned')},
     ]
 
-    # Chart 9: Contractors - 14 campuses, 2 series
+    # Chart 9: Contractors - [label] + 14 campuses, 2 series
     charts[9] = [
-        {'values': campus_val(15, 'planned')},
-        {'values': campus_val(15, 'achieved')},
+        {'values': [0] + campus_val(15, 'planned')},
+        {'values': [0] + campus_val(15, 'achieved')},
     ]
 
-    # Chart 10: Inspections - 14 campuses, 2 series
+    # Chart 10: Inspections - [label] + 14 campuses, 2 series
     charts[10] = [
-        {'values': campus_val(16, 'planned')},
-        {'values': campus_val(16, 'achieved')},
+        {'values': [0] + campus_val(16, 'planned')},
+        {'values': [0] + campus_val(16, 'achieved')},
     ]
 
-    # Chart 11: Findings Closed (%) - 14 campuses, 1 series
-    charts[11] = [{'values': campus_pct(17)}]
+    # Chart 11: Findings Closed (%) - [label] + 14 campuses, 1 series
+    charts[11] = [{'values': [0] + campus_pct(17)}]
 
-    # Chart 12: Incident Notifications (%) - 15 campuses with HQ, 1 series
-    charts[12] = [{'values': campus_pct(19, ALL_CAMPUSES_WITH_HQ)}]
+    # Chart 12: Incident Notifications (%) - [label] + 15 campuses (HQ ordered), 1 series
+    charts[12] = [{'values': [0] + campus_pct(19, CAMPUSES_WITH_HQ_ORDERED)}]
 
-    # Chart 13: Investigations (%) - 15 campuses with HQ, 1 series
-    charts[13] = [{'values': campus_pct(18, ALL_CAMPUSES_WITH_HQ)}]
+    # Chart 13: Investigations (%) - [label] + 15 campuses (HQ ordered), 1 series
+    charts[13] = [{'values': [0] + campus_pct(18, CAMPUSES_WITH_HQ_ORDERED)}]
 
     return charts
 
