@@ -217,19 +217,22 @@ def fetch_training_hours(token, month_filter):
 # ── Chart data replacement (regex-based, preserves namespace prefixes) ──
 
 def replace_numcache_values(chart_xml, new_series_values):
-    """Replace <c:v> values in chart XML numCache sections.
-    new_series_values: list of lists, one per numCache (series).
-    Uses pure regex — never parses XML — so namespace prefixes stay intact.
-    """
-    def replace_one(nc_match, new_vals):
-        nc = nc_match
-        nc = re.sub(r'(<c:ptCount val=")\d+(")', lambda m: m.group(1) + str(len(new_vals)) + m.group(2), nc)
-        nc = re.sub(r'<c:pt\s+idx="\d+">\s*<c:v>[^<]*</c:v>\s*</c:pt>', '', nc)
-        pts = ''.join(f'<c:pt idx="{i}"><c:v>{v}</c:v></c:pt>' for i, v in enumerate(new_vals))
-        nc = nc.replace('</c:numCache>', pts + '</c:numCache>')
+    """Replace numCache values in chart XML. Namespace-agnostic (works with c:, ns0:, etc)."""
+    # Detect the namespace prefix used (e.g. 'c:' or 'ns0:')
+    ns_match = re.search(r'<(\w+):numCache>', chart_xml)
+    if not ns_match:
+        return chart_xml  # No numCache found
+    ns = ns_match.group(1)  # e.g. 'c' or 'ns0'
+
+    def replace_one(nc_text, new_vals):
+        nc = nc_text
+        nc = re.sub(rf'(<{ns}:ptCount val=")\d+(")', lambda m: m.group(1) + str(len(new_vals)) + m.group(2), nc)
+        nc = re.sub(rf'<{ns}:pt\s+idx="\d+">\s*<{ns}:v>[^<]*</{ns}:v>\s*</{ns}:pt>', '', nc)
+        pts = ''.join(f'<{ns}:pt idx="{i}"><{ns}:v>{v}</{ns}:v></{ns}:pt>' for i, v in enumerate(new_vals))
+        nc = nc.replace(f'</{ns}:numCache>', pts + f'</{ns}:numCache>')
         return nc
 
-    pattern = re.compile(r'<c:numCache>.*?</c:numCache>', re.DOTALL)
+    pattern = re.compile(rf'<{ns}:numCache>.*?</{ns}:numCache>', re.DOTALL)
     matches = list(pattern.finditer(chart_xml))
 
     result = chart_xml
