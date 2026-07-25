@@ -1,4 +1,4 @@
-"""Vercel Python serverless function — HCT-COHS KPI Word Report Generator.
+"""Vercel Python serverless function â HCT-COHS KPI Word Report Generator.
 Uses template-based approach: unzip template, replace chart data via regex, rezip.
 """
 
@@ -7,7 +7,7 @@ from http.server import BaseHTTPRequestHandler
 from urllib.parse import urlparse, parse_qs
 from urllib.request import Request, urlopen
 
-# ── Regions ──
+# ââ Regions ââ
 REGIONS = {
     'AD Al Ain':       {'sheets': ['AAF','AAZ'], 'short': ['Falaj Hazza','Zakhir'],        'subtitle': 'Al Ain Falaj Hazza & Al Ain Zakhir'},
     'Abu Dhabi':       {'sheets': ['ADA','ADB'], 'short': ['Baniyas A','Baniyas B'],       'subtitle': 'Abu Dhabi Baniyas A & Abu Dhabi Baniyas B'},
@@ -24,7 +24,7 @@ CAMPUS_ORDER_14 = ['ADA','ADB','AAF','AAZ','DMC','DBN','SJA','SJB','FJF','FJH','
 CAMPUS_ORDER_15 = ['ADA','HQ','ADB','AAF','AAZ','DMC','DBN','SJA','SJB','FJF','FJH','RKA','RKB','ADH','MZY']
 # Region order for chart2/3
 REGION_ORDER = ['Abu Dhabi', 'AD Al Ain', 'Dubai', 'Sharjah', 'Fujairah', 'Ras Al Khaimah', 'AD Remote']
-# Region name mapping (chart labels → REGIONS keys)
+# Region name mapping (chart labels â REGIONS keys)
 REGION_LABEL_MAP = {
     'Abu Dhabi Main': 'Abu Dhabi', 'Abu Dhabi': 'Abu Dhabi',
     'Al Ain': 'AD Al Ain',
@@ -35,7 +35,7 @@ REGION_LABEL_MAP = {
     'Al Dhafra': 'AD Remote', 'Al Dhanna': 'AD Remote',
 }
 
-# ── KPI weights ──
+# ââ KPI weights ââ
 KPI_WEIGHTS = {
     2: 0.30, 3: 0.10, 4: 0.10, 5: 0.25, 6: 0.25,
     7: 0.30, 8: 0.50, 9: 0.20,
@@ -47,7 +47,7 @@ KPI_WEIGHTS = {
 MONTH_NAMES = ['January','February','March','April','May','June',
                'July','August','September','October','November','December']
 
-# ── Smartsheet sources ──
+# ââ Smartsheet sources ââ
 SYNC_SOURCES = [
     {'key': 'v2_hs_kpi_report', 'reportId': '4811266391494532', 'campusCol': 'Campuses', 'monthCol': 'Primary', 'valueCol': 'Submitted', 'kpi_row': 2},
     {'key': 'v2_external_compliance', 'sheetId': '4198632256393092', 'campusCol': 'Campus Code', 'monthCol': 'Primary', 'plannedCol': 'Applicable Compliance', 'actualCol': 'Actual Compliance', 'kpi_row': 4},
@@ -69,7 +69,7 @@ SYNC_SOURCES = [
 TRAINING_SOURCE = {'sheetId': '8549734774951812', 'campusCol': 'Campus Code', 'monthCol': 'Reporting Month', 'hoursCol': 'Total Hours'}
 
 
-# ── Smartsheet API ──
+# ââ Smartsheet API ââ
 
 def _ss_fetch(endpoint, token):
     url = f'https://api.smartsheet.com/2.0/{endpoint}'
@@ -136,7 +136,7 @@ def safe_float(v, default=0.0):
     except: return default
 
 
-# ── Fetch KPI data ──
+# ââ Fetch KPI data ââ
 
 def fetch_kpi_data(token, month_filter):
     data = {}
@@ -208,13 +208,14 @@ def fetch_training_hours(token, month_filter):
     for row in rows:
         campus = str(row.get(TRAINING_SOURCE['campusCol'], '')).strip()
         month = normalize_month(row.get(TRAINING_SOURCE['monthCol']))
-        if not campus or month != month_filter: continue
+        if not campus: continue
+        if month_filter and month != month_filter: continue
         hours = safe_float(row.get(TRAINING_SOURCE['hoursCol']))
         result[campus] = result.get(campus, 0) + hours
     return result
 
 
-# ── Chart data replacement (regex-based, preserves namespace prefixes) ──
+# ââ Chart data replacement (regex-based, preserves namespace prefixes) ââ
 
 def replace_numcache_values(chart_xml, new_series_values):
     """Replace numCache values in chart XML. Namespace-agnostic (works with c:, ns0:, etc)."""
@@ -243,7 +244,7 @@ def replace_numcache_values(chart_xml, new_series_values):
     return result
 
 
-# ── Build chart data from KPI data ──
+# ââ Build chart data from KPI data ââ
 
 def get_campus_val(kpi_data, campus, kpi_row, field='calc'):
     return kpi_data.get(campus, {}).get(kpi_row, {}).get(field, 0)
@@ -314,7 +315,7 @@ def build_chart_data(kpi_data, training_hours):
     # chart4: External compliance % (14 campuses)
     charts[4] = pct_14(4)
 
-    # chart5: Training hours (14 campuses, 1 series — actual hours)
+    # chart5: Training hours (14 campuses, 1 series â actual hours)
     charts[5] = [[training_hours.get(c, 0) for c in CAMPUS_ORDER_14]]
 
     # chart6: Hazard ID % (14 campuses)
@@ -345,10 +346,13 @@ def build_chart_data(kpi_data, training_hours):
     return charts
 
 
-# ── Generate report using template ──
+# ââ Generate report using template ââ
 
 def generate_report(month_name, year, token):
-    print(f'Generating Word report (overall) for {month_name} {year}')
+    if not month_name:
+        month_name = None
+    period_label = f'{month_name} {year}' if month_name else f'Overall {year}'
+    print(f'Generating Word report (overall) for {period_label}')
 
     # Fetch data
     kpi_data = fetch_kpi_data(token, month_name)
@@ -387,22 +391,17 @@ def generate_report(month_name, year, token):
     return buf.getvalue()
 
 
-# ── HTTP Handler ──
+# ââ HTTP Handler ââ
 
 class handler(BaseHTTPRequestHandler):
     def do_GET(self):
         parsed = urlparse(self.path)
         qs = parse_qs(parsed.query)
         month = qs.get('month', [None])[0]
+        month = month if month else None
         year = qs.get('year', ['2026'])[0]
         report_name = qs.get('reportName', ['KPI_Report'])[0]
 
-        if not month:
-            self.send_response(400)
-            self.send_header('Content-Type', 'application/json')
-            self.end_headers()
-            self.wfile.write(json.dumps({'error': 'month is required'}).encode())
-            return
 
         token = os.environ.get('SMARTSHEET_TOKEN', '')
         if not token:
@@ -414,7 +413,7 @@ class handler(BaseHTTPRequestHandler):
 
         try:
             docx_bytes = generate_report(month, year, token)
-            filename = f'{report_name.replace(" ", "_")}_{month}_{year}.docx'
+            filename = f'{report_name.replace(" ", "_")}_{month}_{year}.docx' if month else f'{report_name.replace(" ", "_")}_Overall_{year}.docx'
             self.send_response(200)
             self.send_header('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document')
             self.send_header('Content-Disposition', f'attachment; filename="{filename}"')
