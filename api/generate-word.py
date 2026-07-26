@@ -7,7 +7,7 @@ from http.server import BaseHTTPRequestHandler
 from urllib.parse import urlparse, parse_qs
 from urllib.request import Request, urlopen
 
-# ââ Regions ââ
+# ââ Regions ââ
 REGIONS = {
     'AD Al Ain':       {'sheets': ['AAF','AAZ'], 'short': ['Falaj Hazza','Zakhir'],        'subtitle': 'Al Ain Falaj Hazza & Al Ain Zakhir'},
     'Abu Dhabi':       {'sheets': ['ADA','ADB'], 'short': ['Baniyas A','Baniyas B'],       'subtitle': 'Abu Dhabi Baniyas A & Abu Dhabi Baniyas B'},
@@ -35,7 +35,7 @@ REGION_LABEL_MAP = {
     'Al Dhafra': 'AD Remote', 'Al Dhanna': 'AD Remote',
 }
 
-# ââ KPI weights ââ
+# ââ KPI weights ââ
 KPI_WEIGHTS = {
     2: 0.30, 3: 0.10, 4: 0.10, 5: 0.25, 6: 0.25,
     7: 0.30, 8: 0.50, 9: 0.20,
@@ -47,7 +47,7 @@ KPI_WEIGHTS = {
 MONTH_NAMES = ['January','February','March','April','May','June',
                'July','August','September','October','November','December']
 
-# ââ Smartsheet sources ââ
+# ââ Smartsheet sources ââ
 SYNC_SOURCES = [
     {'key': 'v2_hs_kpi_report', 'reportId': '810227329879940', 'campusCol': 'Campus', 'monthCol': 'Reporting Month', 'valueCol': 'Submitted', 'kpi_row': 2},
     {'key': 'v2_external_compliance', 'sheetId': '4198632256393092', 'campusCol': 'Campus Code', 'monthCol': 'Primary', 'plannedCol': 'Applicable Compliance', 'actualCol': 'Actual Compliance', 'kpi_row': 4},
@@ -68,8 +68,7 @@ SYNC_SOURCES = [
 
 TRAINING_SOURCE = {'sheetId': '8549734774951812', 'campusCol': 'Campus Code', 'monthCol': 'Reporting Month', 'hoursCol': 'Total Hours'}
 
-
-# ââ Smartsheet API ââ
+# ââ Smartsheet API Êâ
 
 def _ss_fetch(endpoint, token):
     url = f'https://api.smartsheet.com/2.0/{endpoint}'
@@ -135,8 +134,7 @@ def safe_float(v, default=0.0):
     try: return float(v)
     except: return default
 
-
-# ââ Fetch KPI data ââ
+# ââ Fetch KPI data ââ
 
 def fetch_kpi_data(token, month_filter):
     data = {}
@@ -213,17 +211,13 @@ def fetch_training_hours(token, month_filter):
         hours = safe_float(row.get(TRAINING_SOURCE['hoursCol']))
         result[campus] = result.get(campus, 0) + hours
     return result
-
-
-# ââ Chart data replacement (regex-based, preserves namespace prefixes) ââ
+# ââ Chart data replacement (regex-based, preserves namespace prefixes) ââ
 
 def replace_numcache_values(chart_xml, new_series_values):
-    """Replace numCache values in chart XML. Namespace-agnostic (works with c:, ns0:, etc)."""
-    # Detect the namespace prefix used (e.g. 'c:' or 'ns0:')
     ns_match = re.search(r'<(\w+):numCache>', chart_xml)
     if not ns_match:
-        return chart_xml  # No numCache found
-    ns = ns_match.group(1)  # e.g. 'c' or 'ns0'
+        return chart_xml
+    ns = ns_match.group(1)
 
     def replace_one(nc_text, new_vals):
         nc = nc_text
@@ -243,8 +237,7 @@ def replace_numcache_values(chart_xml, new_series_values):
 
     return result
 
-
-# ââ Build chart data from KPI data ââ
+# ââ Build chart data from KPI data ââ
 
 def get_campus_val(kpi_data, campus, kpi_row, field='calc'):
     return kpi_data.get(campus, {}).get(kpi_row, {}).get(field, 0)
@@ -256,14 +249,11 @@ def region_agg(kpi_data, kpi_row, region_name, field):
     return sum(vals)
 
 def build_chart_data(kpi_data, training_hours):
-    """Build replacement data for all 13 charts."""
     charts = {}
 
-    # Helper: percentage per campus (14 campuses)
     def pct_14(kpi_row):
         return [[get_campus_val(kpi_data, c, kpi_row, 'calc') for c in CAMPUS_ORDER_14]]
 
-    # Helper: percentage per campus (15 campuses, HQ=0 at idx 1)
     def pct_15(kpi_row):
         vals = []
         for c in CAMPUS_ORDER_15:
@@ -273,34 +263,28 @@ def build_chart_data(kpi_data, training_hours):
                 vals.append(get_campus_val(kpi_data, c, kpi_row, 'calc'))
         return [vals]
 
-    # Helper: planned + actual per campus (14), 2 series
     def planned_actual_14(kpi_row):
         planned = [get_campus_val(kpi_data, c, kpi_row, 'planned') for c in CAMPUS_ORDER_14]
         actual = [get_campus_val(kpi_data, c, kpi_row, 'achieved') for c in CAMPUS_ORDER_14]
         return [planned, actual]
 
-    # chart1: KPI Report % (14 campuses, 1 series)
     charts[1] = pct_14(2)
 
-    # chart2: Committee meeting (7 regions, 2 series: planned, conducted)
     planned = []
     conducted = []
     for rname in REGION_ORDER:
         p = 0
         a = 0
-        # Committee data uses region names as campus key
         for alias, rkey in REGION_LABEL_MAP.items():
             if rkey == rname:
                 p += get_campus_val(kpi_data, alias, 5, 'planned')
                 a += get_campus_val(kpi_data, alias, 5, 'achieved')
-        # Also check direct region name
         p += get_campus_val(kpi_data, rname, 5, 'planned')
         a += get_campus_val(kpi_data, rname, 5, 'achieved')
         planned.append(round(p))
         conducted.append(round(a))
     charts[2] = [planned, conducted]
 
-    # chart3: Incident investigation by region (7 regions, 3 series: total, closed, % close-out)
     totals = []
     closed = []
     pct_close = []
@@ -312,41 +296,132 @@ def build_chart_data(kpi_data, training_hours):
         pct_close.append(round(c / t, 4) if t > 0 else 0)
     charts[3] = [totals, closed, pct_close]
 
-    # chart4: External compliance % (14 campuses)
     charts[4] = pct_14(4)
-
-    # chart5: Training hours (14 campuses, 1 series â actual hours)
     charts[5] = [[training_hours.get(c, 0) for c in CAMPUS_ORDER_14]]
-
-    # chart6: Hazard ID % (14 campuses)
     charts[6] = pct_14(6)
 
-    # chart7: SWP % (7 campuses: ADA, ADB, FJF, FJH, RKA, RKB, ADH)
     chart7_campuses = ['ADA','ADB','FJF','FJH','RKA','RKB','ADH']
     charts[7] = [[get_campus_val(kpi_data, c, 9, 'calc') for c in chart7_campuses]]
 
-    # chart8: PTW (14 campuses, 2 series)
     charts[8] = planned_actual_14(14)
-
-    # chart9: Onsite induction (14 campuses, 2 series)
     charts[9] = planned_actual_14(15)
-
-    # chart10: EHS inspection (14 campuses, 2 series)
     charts[10] = planned_actual_14(16)
-
-    # chart11: Findings % (14 campuses)
     charts[11] = pct_14(17)
-
-    # chart12: Investigation % (15 campuses incl HQ)
     charts[12] = pct_15(18)
-
-    # chart13: Notification % (15 campuses incl HQ)
     charts[13] = pct_15(19)
 
     return charts
 
 
-# ââ Generate report using template ââ
+# ââ Executive Summary & Incidents content injection ââ
+
+PILLAR_KPIS = [
+    {'pillar': 'Leadership, Accountability &amp; Engagement', 'weight': 0.20, 'rows': [2,4,5,6]},
+    {'pillar': 'Risk Management &amp; Planning', 'weight': 0.20, 'rows': [7,8,9]},
+    {'pillar': 'Training &amp; Awareness', 'weight': 0.10, 'rows': [10]},
+    {'pillar': 'OCP &amp; Emergency Preparedness', 'weight': 0.25, 'rows': [13,14,15]},
+    {'pillar': 'Performance Evaluation &amp; Improvement', 'weight': 0.25, 'rows': [16,17,18,19]},
+]
+
+def compute_pillar_scores(kpi_data):
+    pillar_scores = []
+    for pillar in PILLAR_KPIS:
+        campus_scores = []
+        for c in CAMPUS_ORDER_14:
+            kpi_vals = [get_campus_val(kpi_data, c, r, 'calc') for r in pillar['rows']]
+            kpi_wts = [KPI_WEIGHTS.get(r, 0.05) for r in pillar['rows']]
+            tw = sum(kpi_wts)
+            score = sum(v * w for v, w in zip(kpi_vals, kpi_wts)) / tw if tw > 0 else 0
+            campus_scores.append(score)
+        avg = sum(campus_scores) / len(campus_scores) if campus_scores else 0
+        pillar_scores.append({'pillar': pillar['pillar'], 'weight': pillar['weight'], 'score': avg})
+    overall = sum(p['score'] * p['weight'] for p in pillar_scores)
+    return pillar_scores, overall
+
+def _oc(text, w, bold=False, color=None, fill=None, center=False):
+    tp = f'<w:tcPr><w:tcW w:w="{w}" w:type="dxa"/>'
+    if fill: tp += f'<w:shd w:val="clear" w:color="auto" w:fill="{fill}"/>'
+    tp += '</w:tcPr>'
+    pp = '<w:pPr><w:jc w:val="center"/></w:pPr>' if center else ''
+    rp = '<w:rPr>'
+    if bold: rp += '<w:b/>'
+    if color: rp += f'<w:color w:val="{color}"/>'
+    rp += '<w:sz w:val="20"/></w:rPr>'
+    return f'<w:tc>{tp}<w:p>{pp}<w:r>{rp}<w:t>{text}</w:t></w:r></w:p></w:tc>'
+
+def _sc(pct):
+    return '00B050' if pct >= 90 else ('FFC000' if pct >= 70 else 'FF0000')
+
+def _ss(pct):
+    return 'On Track' if pct >= 90 else ('At Risk' if pct >= 70 else 'Below Target')
+
+_NF = '1C2340'
+_LF = 'D9E2F3'
+
+_TBL = ('<w:tbl><w:tblPr><w:tblStyle w:val="TableGrid"/><w:tblW w:w="9072" w:type="dxa"/>'
+        '<w:tblBorders><w:top w:val="single" w:sz="4" w:space="0" w:color="auto"/>'
+        '<w:left w:val="single" w:sz="4" w:space="0" w:color="auto"/>'
+        '<w:bottom w:val="single" w:sz="4" w:space="0" w:color="auto"/>'
+        '<w:right w:val="single" w:sz="4" w:space="0" w:color="auto"/>'
+        '<w:insideH w:val="single" w:sz="4" w:space="0" w:color="auto"/>'
+        '<w:insideV w:val="single" w:sz="4" w:space="0" w:color="auto"/>'
+        '</w:tblBorders></w:tblPr>')
+
+def _intro(text):
+    return f'<w:p><w:pPr><w:spacing w:after="120"/></w:pPr><w:r><w:rPr><w:sz w:val="22"/></w:rPr><w:t xml:space="preserve">{text}</w:t></w:r></w:p>'
+
+def build_exec_summary_xml(kpi_data):
+    ps, overall = compute_pillar_scores(kpi_data)
+    x = [_intro('The following table summarizes the overall KPI performance across all campuses.'), _TBL]
+    x.append('<w:tr>' + _oc('Pillar',4000,True,'FFFFFF',_NF) + _oc('Weight',1500,True,'FFFFFF',_NF,True) +
+             _oc('Score',1500,True,'FFFFFF',_NF,True) + _oc('Status',2072,True,'FFFFFF',_NF,True) + '</w:tr>')
+    for p in ps:
+        pct = round(p['score'] * 100)
+        x.append('<w:tr>' + _oc(p['pillar'],4000) + _oc(f'{int(p["weight"]*100)}%',1500,center=True) +
+                 _oc(f'{pct}%',1500,True,_sc(pct),None,True) + _oc(_ss(pct),2072,True,_sc(pct),None,True) + '</w:tr>')
+    op = round(overall * 100)
+    x.append('<w:tr>' + _oc('Overall Weighted Score',4000,True,None,_LF) + _oc('100%',1500,True,None,_LF,True) +
+             _oc(f'{op}%',1500,True,_sc(op),_LF,True) + _oc(_ss(op),2072,True,_sc(op),_LF,True) + '</w:tr>')
+    x.append('</w:tbl>')
+    return ''.join(x)
+
+def build_incidents_xml(kpi_data):
+    x = [_intro('The following table summarizes incident notifications and investigations by campus.'), _TBL]
+    x.append('<w:tr>' + _oc('Campus',2268,True,'FFFFFF',_NF) + _oc('Total Incidents',2268,True,'FFFFFF',_NF,True) +
+             _oc('Notification on Time',2268,True,'FFFFFF',_NF,True) + _oc('Investigation on Time',2268,True,'FFFFFF',_NF,True) + '</w:tr>')
+    ti = tn = tv = 0
+    for campus in CAMPUS_ORDER_14:
+        nt = get_campus_val(kpi_data, campus, 19, 'planned')
+        no = get_campus_val(kpi_data, campus, 19, 'achieved')
+        it_ = get_campus_val(kpi_data, campus, 18, 'planned')
+        io_ = get_campus_val(kpi_data, campus, 18, 'achieved')
+        inc = round(nt); ti += inc; tn += round(no); tv += round(io_)
+        np_ = round(no/nt*100) if nt > 0 else 0
+        ip = round(io_/it_*100) if it_ > 0 else 0
+        x.append('<w:tr>' + _oc(campus,2268) + _oc(str(inc),2268,center=True) +
+                 _oc(f'{np_}%',2268,True,_sc(np_),None,True) + _oc(f'{ip}%',2268,True,_sc(ip),None,True) + '</w:tr>')
+    x.append('<w:tr>' + _oc('TOTAL',2268,True,None,_LF) + _oc(str(ti),2268,True,None,_LF,True) +
+             _oc(str(tn),2268,True,None,_LF,True) + _oc(str(tv),2268,True,None,_LF,True) + '</w:tr>')
+    x.append('</w:tbl>')
+    return ''.join(x)
+
+def inject_section_content(doc_xml, section_title, content_xml):
+    ns_match = re.search(r'<(\w+):body>', doc_xml)
+    ns = ns_match.group(1) if ns_match else 'w'
+    if ns != 'w':
+        content_xml = content_xml.replace('<w:', f'<{ns}:').replace('</w:', f'</{ns}:')
+    pattern = re.compile(
+        rf'(<{ns}:p\b[^>]*>(?:(?!</{ns}:p>).)*?{re.escape(section_title)}(?:(?!</{ns}:p>).)*?</{ns}:p>)',
+        re.DOTALL
+    )
+    m = pattern.search(doc_xml)
+    if not m:
+        print(f'  WARNING: Section "{section_title}" not found')
+        return doc_xml
+    pos = m.end()
+    return doc_xml[:pos] + content_xml + doc_xml[pos:]
+
+# ââ Generate report using template ââ
 
 def generate_report(month_name, year, token):
     if not month_name:
@@ -363,12 +438,16 @@ def generate_report(month_name, year, token):
     # Build chart replacement data
     chart_data = build_chart_data(kpi_data, training_hours)
 
+    # Build section content
+    exec_summary_xml = build_exec_summary_xml(kpi_data)
+    incidents_xml = build_incidents_xml(kpi_data)
+
     # Load template
     tmpl_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'templates', 'word_template.docx')
     with open(tmpl_path, 'rb') as f:
         tmpl_bytes = f.read()
 
-    # Unzip, modify charts, rezip
+    # Unzip, modify charts and sections, rezip
     buf = io.BytesIO()
     with zipfile.ZipFile(io.BytesIO(tmpl_bytes), 'r') as zin:
         with zipfile.ZipFile(buf, 'w', zipfile.ZIP_DEFLATED) as zout:
@@ -385,13 +464,19 @@ def generate_report(month_name, year, token):
                         data = xml_str.encode('utf-8')
                         print(f'  Updated chart{chart_num} with {len(chart_data[chart_num])} series')
 
+                # Inject Executive Summary and Incidents content
+                if item.filename == 'word/document.xml':
+                    xml_str = data.decode('utf-8')
+                    xml_str = inject_section_content(xml_str, 'Executive Summary', exec_summary_xml)
+                    xml_str = inject_section_content(xml_str, 'Incidents', incidents_xml)
+                    data = xml_str.encode('utf-8')
+
                 zout.writestr(item, data)
 
     buf.seek(0)
     return buf.getvalue()
 
-
-# ââ HTTP Handler ââ
+# ââ HTTP Handler ââ
 
 class handler(BaseHTTPRequestHandler):
     def do_GET(self):
@@ -401,7 +486,6 @@ class handler(BaseHTTPRequestHandler):
         month = month if month else None
         year = qs.get('year', ['2026'])[0]
         report_name = qs.get('reportName', ['KPI_Report'])[0]
-
 
         token = os.environ.get('SMARTSHEET_TOKEN', '')
         if not token:
