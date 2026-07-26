@@ -9,66 +9,60 @@ from urllib.request import Request, urlopen
 
 # ââ Regions ââ
 REGIONS = {
-    'AD Al Ain':       {'sheets': ['AAF','AAZ'], 'short': ['Falaj Hazza','Zakhir'],        'subtitle': 'Al Ain Falaj Hazza & Al Ain Zakhir'},
-    'Abu Dhabi':       {'sheets': ['ADA','ADB'], 'short': ['Baniyas A','Baniyas B'],       'subtitle': 'Abu Dhabi Baniyas A & Abu Dhabi Baniyas B'},
-    'AD Remote':       {'sheets': ['ADH','MZY'], 'short': ['Al Dhanna','Madinat Zayed'],   'subtitle': 'Al Dhanna Ruwais & Al Dhafra Madinat Zayed City'},
-    'Dubai':           {'sheets': ['DMC','DBN'], 'short': ['Academic City','Al Nahda'],     'subtitle': 'Dubai Academic City & Dubai Al Nahda'},
-    'Fujairah':        {'sheets': ['FJF','FJH'], 'short': ['Faseel','Hulaifat'],            'subtitle': 'Fujairah Faseel & Fujairah Hulaifat'},
-    'Sharjah':         {'sheets': ['SJA','SJB'], 'short': ['Campus A','Campus B'],          'subtitle': 'Sharjah Campus A & Sharjah Campus B'},
-    'Ras Al Khaimah':  {'sheets': ['RKA','RKB'], 'short': ['Campus A','Campus B'],          'subtitle': 'RAK Campus A & RAK Campus B'},
+'AD Al Ain': {'sheets': ['AAF','AAZ'], 'short': ['Falaj Hazza','Zakhir'], 'subtitle': 'Al Ain Falaj Hazza & Al Ain Zakhir'},
+'Abu Dhabi': {'sheets': ['ADA','ADB'], 'short': ['Baniyas A','Baniyas B'], 'subtitle': 'Abu Dhabi Baniyas A & Abu Dhabi Baniyas B'},
+'AD Remote': {'sheets': ['ADH','MZY'], 'short': ['Al Dhanna','Madinat Zayed'], 'subtitle': 'Al Dhanna Ruwais & Al Dhafra Madinat Zayed City'},
+'Dubai': {'sheets': ['DMC','DBN'], 'short': ['Academic City','Al Nahda'], 'subtitle': 'Dubai Academic City & Dubai Al Nahda'},
+'Fujairah': {'sheets': ['FJF','FJH'], 'short': ['Faseel','Hulaifat'], 'subtitle': 'Fujairah Faseel & Fujairah Hulaifat'},
+'Sharjah': {'sheets': ['SJA','SJB'], 'short': ['Campus A','Campus B'], 'subtitle': 'Sharjah Campus A & Sharjah Campus B'},
+'Ras Al Khaimah': {'sheets': ['RKA','RKB'], 'short': ['Campus A','Campus B'], 'subtitle': 'RAK Campus A & RAK Campus B'},
 }
 
-# Campus order used in most charts (14 campuses)
 CAMPUS_ORDER_14 = ['ADA','ADB','AAF','AAZ','DMC','DBN','SJA','SJB','FJF','FJH','RKA','RKB','ADH','MZY']
-# Campus order for chart12/13 (15 campuses, includes HQ at index 1)
 CAMPUS_ORDER_15 = ['ADA','HQ','ADB','AAF','AAZ','DMC','DBN','SJA','SJB','FJF','FJH','RKA','RKB','ADH','MZY']
-# Region order for chart2/3
 REGION_ORDER = ['Abu Dhabi', 'AD Al Ain', 'Dubai', 'Sharjah', 'Fujairah', 'Ras Al Khaimah', 'AD Remote']
-# Region name mapping (chart labels â REGIONS keys)
 REGION_LABEL_MAP = {
-    'Abu Dhabi Main': 'Abu Dhabi', 'Abu Dhabi': 'Abu Dhabi',
-    'Al Ain': 'AD Al Ain',
-    'Dubai': 'Dubai',
-    'Sharjah': 'Sharjah',
-    'Fujairah': 'Fujairah',
-    'Ras Al Khaimah': 'Ras Al Khaimah', 'RAK': 'Ras Al Khaimah',
-    'Al Dhafra': 'AD Remote', 'Al Dhanna': 'AD Remote',
+'Abu Dhabi Main': 'Abu Dhabi', 'Abu Dhabi': 'Abu Dhabi',
+'Al Ain': 'AD Al Ain',
+'Dubai': 'Dubai',
+'Sharjah': 'Sharjah',
+'Fujairah': 'Fujairah',
+'Ras Al Khaimah': 'Ras Al Khaimah', 'RAK': 'Ras Al Khaimah',
+'Al Dhafra': 'AD Remote', 'Al Dhanna': 'AD Remote',
 }
 
-# ââ KPI weights ââ
 KPI_WEIGHTS = {
-    2: 0.30, 3: 0.10, 4: 0.10, 5: 0.25, 6: 0.25,
-    7: 0.30, 8: 0.50, 9: 0.20,
-    10: 0.50, 11: 0.50,
-    12: 0.40, 13: 0.40, 14: 0.10, 15: 0.10,
-    16: 0.30, 17: 0.30, 18: 0.20, 19: 0.20,
+2: 0.30, 3: 0.10, 4: 0.10, 5: 0.25, 6: 0.25,
+7: 0.30, 8: 0.50, 9: 0.20,
+10: 0.50, 11: 0.50,
+12: 0.40, 13: 0.40, 14: 0.10, 15: 0.10,
+16: 0.30, 17: 0.30, 18: 0.20, 19: 0.20,
 }
 
 MONTH_NAMES = ['January','February','March','April','May','June',
-               'July','August','September','October','November','December']
+'July','August','September','October','November','December']
 
-# ââ Smartsheet sources ââ
 SYNC_SOURCES = [
-    {'key': 'v2_hs_kpi_report', 'reportId': '810227329879940', 'campusCol': 'Campus', 'monthCol': 'Reporting Month', 'valueCol': 'Submitted', 'kpi_row': 2},
-    {'key': 'v2_external_compliance', 'sheetId': '4198632256393092', 'campusCol': 'Campus Code', 'monthCol': 'Primary', 'plannedCol': 'Applicable Compliance', 'actualCol': 'Actual Compliance', 'kpi_row': 4},
-    {'key': 'v2_hs_committee', 'sheetId': '435993944477572', 'campusCol': 'Committee', 'monthCol': 'Reporting Month', 'plannedCol': 'Meeting Planned', 'actualCol': 'Meeting Conducted', 'kpi_row': 5},
-    {'key': 'v2_hazard_id', 'sheetId': '7323092115214212', 'campusCol': 'Campus Code', 'monthCol': 'Reporting Month', 'plannedCol': 'Total Controls Identified', 'actualCol': 'Implemented Controls', 'kpi_row': 6},
-    {'key': 'v2_risk_closed', 'sheetId': '7323092115214212', 'campusCol': 'Campus Code', 'monthCol': 'Primary', 'plannedCol': 'Total Risk Assessments Registered', 'actualCol': 'Risk Assessment Closed', 'kpi_row': 7},
-    {'key': 'v2_risk_validated', 'sheetId': '7323092115214212', 'campusCol': 'Campus Code', 'monthCol': 'Primary', 'plannedCol': 'Total Assessments Register', 'actualCol': 'RA Validated and Signed Off', 'kpi_row': 8},
-    {'key': 'v2_safe_working', 'sheetId': '1693592581001092', 'campusCol': 'Campus Code', 'monthCol': 'Primary', 'plannedCol': 'No. of SOPs Verified', 'actualCol': 'No. of SOPs Implemented', 'kpi_row': 9},
-    {'key': 'v2_planned_training', 'sheetId': '8549734774951812', 'campusCol': 'Campus Code', 'monthCol': 'Reporting Month', 'plannedCol': 'Planned (Yes/No)', 'actualCol': 'Are there any submission?', 'kpi_row': 10, 'yesNoCount': True},
-    {'key': 'v2_drills', 'sheetId': '5053158949605252', 'campusCol': 'Campus Code', 'monthCol': 'Reporting Month', 'plannedCol': 'Planned Drill? (Yes/No)', 'actualCol': 'Are there any submission?', 'kpi_row': 13, 'yesNoCount': True},
-    {'key': 'v2_permit_to_work', 'sheetId': '5899016251330436', 'campusCol': 'Campus Code', 'monthCol': 'Reporting Month', 'plannedCol': 'No. of PTWs Issued', 'actualCol': 'Total Work Registered', 'kpi_row': 14},
-    {'key': 'v2_onsite_induction', 'sheetId': '5899016251330436', 'campusCol': 'Campus Code', 'monthCol': 'Reporting Month', 'plannedCol': "No. of New Contractors (Individuals)", 'actualCol': 'Contractors Inducted in the Reporting Month', 'kpi_row': 15},
-    {'key': 'v2_ehs_inspection', 'sheetId': '4947401822392196', 'campusCol': 'Campus Code', 'monthCol': 'Primary', 'plannedCol': 'No. of EHS Inspections Planned', 'actualCol': 'No. of EHS Inspections Completed', 'kpi_row': 16},
-    {'key': 'v2_findings_on_time', 'sheetId': '4947401822392196', 'campusCol': 'Campus Code', 'monthCol': 'Primary', 'plannedCol': 'No. of Findings in Reporting Month', 'actualCol': 'No. of Findings Due', 'kpi_row': 17},
-    {'key': 'v2_investigation_on_time', 'reportId': '6831846506581892', 'campusCol': 'Campus Code', 'monthCol': 'Reporting Month', 'plannedCol': 'Total Incident Investigated', 'actualCol': 'Investigation Completed on Time', 'kpi_row': 18},
-    {'key': 'v2_notification', 'reportId': '1199821531598724', 'campusCol': 'Campus Code', 'monthCol': 'Reporting Month', 'plannedCol': 'Total Incident', 'actualCol': 'Notification Submitted on Time', 'kpi_row': 19},
+{'key': 'v2_hs_kpi_report', 'reportId': '810227329879940', 'campusCol': 'Campus', 'monthCol': 'Reporting Month', 'valueCol': 'Submitted', 'kpi_row': 2},
+{'key': 'v2_external_compliance', 'sheetId': '4198632256393092', 'campusCol': 'Campus Code', 'monthCol': 'Primary', 'plannedCol': 'Applicable Compliance', 'actualCol': 'Actual Compliance', 'kpi_row': 4},
+{'key': 'v2_hs_committee', 'sheetId': '435993944477572', 'campusCol': 'Committee', 'monthCol': 'Reporting Month', 'plannedCol': 'Meeting Planned', 'actualCol': 'Meeting Conducted', 'kpi_row': 5},
+{'key': 'v2_hazard_id', 'sheetId': '7323092115214212', 'campusCol': 'Campus Code', 'monthCol': 'Reporting Month', 'plannedCol': 'Total Controls Identified', 'actualCol': 'Implemented Controls', 'kpi_row': 6},
+{'key': 'v2_risk_closed', 'sheetId': '7323092115214212', 'campusCol': 'Campus Code', 'monthCol': 'Primary', 'plannedCol': 'Total Risk Assessments Registered', 'actualCol': 'Risk Assessment Closed', 'kpi_row': 7},
+{'key': 'v2_risk_validated', 'sheetId': '7323092115214212', 'campusCol': 'Campus Code', 'monthCol': 'Primary', 'plannedCol': 'Total Assessments Register', 'actualCol': 'RA Validated and Signed Off', 'kpi_row': 8},
+{'key': 'v2_safe_working', 'sheetId': '1693592581001092', 'campusCol': 'Campus Code', 'monthCol': 'Primary', 'plannedCol': 'No. of SOPs Verified', 'actualCol': 'No. of SOPs Implemented', 'kpi_row': 9},
+{'key': 'v2_planned_training', 'sheetId': '8549734774951812', 'campusCol': 'Campus Code', 'monthCol': 'Reporting Month', 'plannedCol': 'Planned (Yes/No)', 'actualCol': 'Are there any submission?', 'kpi_row': 10, 'yesNoCount': True},
+{'key': 'v2_drills', 'sheetId': '5053158949605252', 'campusCol': 'Campus Code', 'monthCol': 'Reporting Month', 'plannedCol': 'Planned Drill? (Yes/No)', 'actualCol': 'Are there any submission?', 'kpi_row': 13, 'yesNoCount': True},
+{'key': 'v2_permit_to_work', 'sheetId': '5899016251330436', 'campusCol': 'Campus Code', 'monthCol': 'Reporting Month', 'plannedCol': 'No. of PTWs Issued', 'actualCol': 'Total Work Registered', 'kpi_row': 14},
+{'key': 'v2_onsite_induction', 'sheetId': '5899016251330436', 'campusCol': 'Campus Code', 'monthCol': 'Reporting Month', 'plannedCol': "No. of New Contractors (Individuals)", 'actualCol': 'Contractors Inducted in the Reporting Month', 'kpi_row': 15},
+{'key': 'v2_ehs_inspection', 'sheetId': '4947401822392196', 'campusCol': 'Campus Code', 'monthCol': 'Primary', 'plannedCol': 'No. of EHS Inspections Planned', 'actualCol': 'No. of EHS Inspections Completed', 'kpi_row': 16},
+{'key': 'v2_findings_on_time', 'sheetId': '4947401822392196', 'campusCol': 'Campus Code', 'monthCol': 'Primary', 'plannedCol': 'No. of Findings in Reporting Month', 'actualCol': 'No. of Findings Due', 'kpi_row': 17},
+{'key': 'v2_investigation_on_time', 'reportId': '6831846506581892', 'campusCol': 'Campus Code', 'monthCol': 'Reporting Month', 'plannedCol': 'Total Incident Investigated', 'actualCol': 'Investigation Completed on Time', 'kpi_row': 18},
+{'key': 'v2_notification', 'reportId': '1199821531598724', 'campusCol': 'Campus Code', 'monthCol': 'Reporting Month', 'plannedCol': 'Total Incident', 'actualCol': 'Notification Submitted on Time', 'kpi_row': 19},
 ]
 
 TRAINING_SOURCE = {'sheetId': '8549734774951812', 'campusCol': 'Campus Code', 'monthCol': 'Reporting Month', 'hoursCol': 'Total Hours'}
 
-# ââ Smartsheet API Êâ
+# ââ Smartsheet API ââ
 
 def _ss_fetch(endpoint, token):
     url = f'https://api.smartsheet.com/2.0/{endpoint}'
@@ -211,6 +205,23 @@ def fetch_training_hours(token, month_filter):
         hours = safe_float(row.get(TRAINING_SOURCE['hoursCol']))
         result[campus] = result.get(campus, 0) + hours
     return result
+
+def fetch_incident_types(token, month_filter):
+    """Fetch incident type breakdown from notification report."""
+    try:
+        rows = fetch_report_rows('1199821531598724', token)
+    except:
+        return {}
+    type_counts = {}
+    for row in rows:
+        if month_filter:
+            rm = normalize_month(row.get('Reporting Month')) or normalize_month(row.get('Date Reported'))
+            if rm != month_filter: continue
+        itype = str(row.get('Classification', '') or row.get('Incident Type', '') or row.get('Type', '')).strip()
+        if not itype: itype = 'Unclassified'
+        type_counts[itype] = type_counts.get(itype, 0) + 1
+    return type_counts
+
 # ââ Chart data replacement (regex-based, preserves namespace prefixes) ââ
 
 def replace_numcache_values(chart_xml, new_series_values):
@@ -248,7 +259,7 @@ def region_agg(kpi_data, kpi_row, region_name, field):
     vals = [get_campus_val(kpi_data, s, kpi_row, field) for s in cfg['sheets']]
     return sum(vals)
 
-def build_chart_data(kpi_data, training_hours):
+def build_chart_data(kpi_data, training_hours, incident_types=None):
     charts = {}
 
     def pct_14(kpi_row):
@@ -310,17 +321,241 @@ def build_chart_data(kpi_data, training_hours):
     charts[12] = pct_15(18)
     charts[13] = pct_15(19)
 
+    # Chart 14: Incidents by Type (pie chart) â single series
+    if incident_types:
+        charts[14] = [list(incident_types.values())]
+    else:
+        charts[14] = [[0]]
+
+    # Chart 15: Risk Assessment Closed (dual bar â planned/actual)
+    charts[15] = planned_actual_14(7)
+
+    # Chart 16: Risk Assessment Validated & Signed Off (dual bar)
+    charts[16] = planned_actual_14(8)
+
+    # Chart 17: Planned Training Report (dual bar)
+    charts[17] = planned_actual_14(10)
+
+    # Chart 18: Total Incidents (single bar per campus)
+    charts[18] = [[get_campus_val(kpi_data, c, 19, 'planned') for c in CAMPUS_ORDER_14]]
+
+    # Chart 19: EHS Inspection Rate (single bar %)
+    charts[19] = pct_14(16)
+
+    # Chart 20: Findings Closed Rate (single bar %)
+    charts[20] = pct_14(17)
+
     return charts
 
+# ââ Dynamic chart XML generators ââ
+
+INCIDENT_TYPE_LABELS = ['Unclassified','Equipment/Property Damage','First Aid Case','Near Miss','Medical Treatment Case','Lost Workdays Injury']
+PIE_COLORS = ['003366','FFC000','00B050','4472C4','7030A0','ED7D31']
+
+def make_bar_chart_xml(title, categories, series_list):
+    cat_xml = '<c:cat><c:strRef><c:f>Sheet1!$A$1</c:f><c:strCache>'
+    cat_xml += f'<c:ptCount val="{len(categories)}"/>'
+    for i, c in enumerate(categories):
+        cat_xml += f'<c:pt idx="{i}"><c:v>{c}</c:v></c:pt>'
+    cat_xml += '</c:strCache></c:strRef></c:cat>'
+
+    series_xml = ''
+    for si, s in enumerate(series_list):
+        color = s.get('color', '4472C4')
+        vals = s['values']
+        series_xml += f'<c:ser><c:idx val="{si}"/><c:order val="{si}"/>'
+        series_xml += f'<c:tx><c:strRef><c:f>Sheet1!$B$1</c:f><c:strCache><c:ptCount val="1"/><c:pt idx="0"><c:v>{s["name"]}</c:v></c:pt></c:strCache></c:strRef></c:tx>'
+        series_xml += f'<c:spPr><a:solidFill><a:srgbClr val="{color}"/></a:solidFill><a:ln><a:noFill/></a:ln></c:spPr>'
+        series_xml += f'<c:invertIfNegative val="0"/>{cat_xml}'
+        series_xml += f'<c:val><c:numRef><c:f>Sheet1!$B$2</c:f><c:numCache><c:formatCode>General</c:formatCode><c:ptCount val="{len(vals)}"/>'
+        for i, v in enumerate(vals):
+            series_xml += f'<c:pt idx="{i}"><c:v>{v}</c:v></c:pt>'
+        series_xml += '</c:numCache></c:numRef></c:val></c:ser>'
+
+    return f'''<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<c:chartSpace xmlns:c="http://schemas.openxmlformats.org/drawingml/2006/chart" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+<c:chart><c:autoTitleDeleted val="1"/>
+<c:plotArea><c:layout/>
+<c:barChart><c:barDir val="col"/><c:grouping val="clustered"/><c:varyColors val="0"/>
+{series_xml}
+<c:axId val="111111111"/><c:axId val="222222222"/>
+</c:barChart>
+<c:catAx><c:axId val="111111111"/><c:scaling><c:orientation val="minMax"/></c:scaling><c:delete val="0"/><c:axPos val="b"/><c:crossAx val="222222222"/></c:catAx>
+<c:valAx><c:axId val="222222222"/><c:scaling><c:orientation val="minMax"/></c:scaling><c:delete val="0"/><c:axPos val="l"/><c:crossAx val="111111111"/></c:valAx>
+</c:plotArea>
+<c:legend><c:legendPos val="b"/></c:legend>
+<c:plotVisOnly val="1"/>
+</c:chart></c:chartSpace>'''
+
+def make_pie_chart_xml(categories, values):
+    dpt_xml = ''
+    for i in range(len(categories)):
+        color = PIE_COLORS[i % len(PIE_COLORS)]
+        dpt_xml += f'<c:dPt><c:idx val="{i}"/><c:bubble3D val="0"/><c:spPr><a:solidFill><a:srgbClr val="{color}"/></a:solidFill></c:spPr></c:dPt>'
+
+    cat_xml = '<c:cat><c:strRef><c:f>Sheet1!$A$1</c:f><c:strCache>'
+    cat_xml += f'<c:ptCount val="{len(categories)}"/>'
+    for i, c in enumerate(categories):
+        cat_xml += f'<c:pt idx="{i}"><c:v>{c}</c:v></c:pt>'
+    cat_xml += '</c:strCache></c:strRef></c:cat>'
+
+    val_xml = '<c:val><c:numRef><c:f>Sheet1!$B$1</c:f><c:numCache>'
+    val_xml += f'<c:formatCode>General</c:formatCode><c:ptCount val="{len(values)}"/>'
+    for i, v in enumerate(values):
+        val_xml += f'<c:pt idx="{i}"><c:v>{v}</c:v></c:pt>'
+    val_xml += '</c:numCache></c:numRef></c:val>'
+
+    return f'''<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<c:chartSpace xmlns:c="http://schemas.openxmlformats.org/drawingml/2006/chart" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+<c:chart><c:autoTitleDeleted val="1"/>
+<c:plotArea><c:layout/>
+<c:pieChart><c:varyColors val="1"/>
+<c:ser><c:idx val="0"/><c:order val="0"/>
+<c:tx><c:strRef><c:f>Sheet1!$B$1</c:f><c:strCache><c:ptCount val="1"/><c:pt idx="0"><c:v>Count</c:v></c:pt></c:strCache></c:strRef></c:tx>
+{dpt_xml}{cat_xml}{val_xml}
+</c:ser></c:pieChart>
+</c:plotArea>
+<c:legend><c:legendPos val="b"/></c:legend>
+<c:plotVisOnly val="1"/>
+</c:chart></c:chartSpace>'''
+
+STYLE_XML = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><cs:chartStyle xmlns:cs="http://schemas.microsoft.com/office/drawing/2012/chartStyle" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" id="102"/>'
+COLORS_XML = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><cs:colorStyle xmlns:cs="http://schemas.microsoft.com/office/drawing/2012/chartStyle" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" meth="cycle" id="10"/>'
+
+def make_chart_rels(n):
+    return f'<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.microsoft.com/office/2011/relationships/chartStyle" Target="style{n}.xml"/><Relationship Id="rId2" Type="http://schemas.microsoft.com/office/2011/relationships/chartColorStyle" Target="colors{n}.xml"/></Relationships>'
+
+# New chart definitions: chart_num -> {type, title, kpi_row or special, series_config}
+NEW_CHART_DEFS = {
+    14: {'type': 'pie', 'title': 'Incidents by Type'},
+    15: {'type': 'dual_bar', 'title': 'Risk Assessment Closed', 'kpi_row': 7,
+         'series': [{'name': 'Total Risk Assessments Registered', 'field': 'planned', 'color': '4472C4'},
+                    {'name': 'Risk Assessment Closed', 'field': 'achieved', 'color': '00B050'}]},
+    16: {'type': 'dual_bar', 'title': 'Risk Assessment Validated & Signed Off', 'kpi_row': 8,
+         'series': [{'name': 'Total Assessments Register', 'field': 'planned', 'color': '4472C4'},
+                    {'name': 'RA Validated and Signed Off', 'field': 'achieved', 'color': '00B050'}]},
+    17: {'type': 'dual_bar', 'title': 'Planned Training Report', 'kpi_row': 10,
+         'series': [{'name': 'Planned Training', 'field': 'planned', 'color': '4472C4'},
+                    {'name': 'Training Conducted', 'field': 'achieved', 'color': '00B050'}]},
+    18: {'type': 'single_bar', 'title': 'Total Incidents', 'kpi_row': 19, 'field': 'planned',
+         'series_name': 'Total Incidents', 'color': '00249C'},
+    19: {'type': 'pct_bar', 'title': 'EHS Inspection Rate', 'kpi_row': 16},
+    20: {'type': 'pct_bar', 'title': 'Findings Closed Rate', 'kpi_row': 17},
+}
+
+def build_new_chart_xml(chart_num, kpi_data, incident_types):
+    defn = NEW_CHART_DEFS[chart_num]
+
+    if defn['type'] == 'pie':
+        # Incidents by Type pie chart
+        cats = list(incident_types.keys()) if incident_types else INCIDENT_TYPE_LABELS
+        vals = list(incident_types.values()) if incident_types else [0] * len(cats)
+        return make_pie_chart_xml(cats, vals)
+
+    cats = CAMPUS_ORDER_14
+    if defn['type'] == 'dual_bar':
+        kpi = defn['kpi_row']
+        series = []
+        for s in defn['series']:
+            vals = [get_campus_val(kpi_data, c, kpi, s['field']) for c in cats]
+            series.append({'name': s['name'], 'values': [round(v) for v in vals], 'color': s['color']})
+        return make_bar_chart_xml(defn['title'], cats, series)
+
+    if defn['type'] == 'single_bar':
+        kpi = defn['kpi_row']
+        vals = [round(get_campus_val(kpi_data, c, kpi, defn['field'])) for c in cats]
+        return make_bar_chart_xml(defn['title'], cats, [{'name': defn['series_name'], 'values': vals, 'color': defn['color']}])
+
+    if defn['type'] == 'pct_bar':
+        kpi = defn['kpi_row']
+        met = []
+        below = []
+        for c in cats:
+            pct = get_campus_val(kpi_data, c, kpi, 'calc')
+            if pct >= 0.9:
+                met.append(round(pct * 100))
+                below.append(0)
+            else:
+                met.append(0)
+                below.append(round(pct * 100))
+        return make_bar_chart_xml(defn['title'], cats, [
+            {'name': 'Met Target', 'values': met, 'color': '00B050'},
+            {'name': 'Below Target', 'values': below, 'color': 'FF0000'},
+        ])
+
+    return ''
+
+def make_drawing_xml(rid, chart_num):
+    return f'<w:drawing><wp:inline distT="0" distB="0" distL="0" distR="0"><wp:extent cx="5760000" cy="2520000"/><wp:effectExtent l="0" t="0" r="0" b="0"/><wp:docPr id="{100+chart_num}" name="Chart {chart_num}"/><wp:cNvGraphicFramePr/><a:graphic xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/chart"><c:chart xmlns:c="http://schemas.openxmlformats.org/drawingml/2006/chart" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" r:id="{rid}"/></a:graphicData></a:graphic></wp:inline></w:drawing>'
+
+def make_figure_para(rid, chart_num, label):
+    drawing = make_drawing_xml(rid, chart_num)
+    return f'<w:p><w:pPr><w:jc w:val="center"/></w:pPr><w:r>{drawing}</w:r></w:p><w:p><w:pPr><w:jc w:val="center"/><w:spacing w:after="200"/></w:pPr><w:r><w:rPr><w:b/><w:sz w:val="20"/></w:rPr><w:t xml:space="preserve">Figure: {label}</w:t></w:r></w:p>'
+
+# Heading text patterns to inject each new chart after
+CHART_INJECT_MAP = [
+    (15, 'Risk Assessments Closed', 'Heading2', 'Risk Assessment Closed'),
+    (16, 'Risk Assessment Validated', 'Heading2', 'Risk Assessment Validated &amp; Signed Off'),
+    (17, 'Planned H', 'Heading2', 'Planned Training Report'),
+    (19, 'Inspections Completed', 'Heading2', 'EHS Inspection Rate'),
+    (20, 'Findings Closed', 'Heading2', 'Findings Closed Rate'),
+    (18, 'Incident Notifications', 'Heading2', 'Total Incidents by Campus'),
+]
+
+def inject_new_charts_into_doc(doc_xml):
+    """Insert drawing elements for charts 14-20 into document.xml."""
+    # Charts 15-20: inject after specific Heading2 paragraphs
+    for chart_num, heading_text, heading_style, figure_label in CHART_INJECT_MAP:
+        rid_num = 53 + (chart_num - 14)
+        rid = f'rId{rid_num}'
+        figure_xml = make_figure_para(rid, chart_num, figure_label)
+
+        pattern = re.compile(
+            rf'<w:p\b[^>]*>(?:(?!</w:p>).)*?<w:pStyle\s+w:val="{heading_style}"\s*/>(?:(?!</w:p>).)*?</w:p>',
+            re.DOTALL
+        )
+        words = heading_text.lower().split()
+        found = False
+        for m in pattern.finditer(doc_xml):
+            texts = re.findall(r'<w:t[^>]*>([^<]+)</w:t>', m.group(0))
+            para_text = ' '.join(texts).lower()
+            para_text = ' '.join(para_text.split())
+            if all(w in para_text for w in words):
+                pos = m.end()
+                doc_xml = doc_xml[:pos] + figure_xml + doc_xml[pos:]
+                print(f'  Injected chart{chart_num} ({figure_label}) after "{heading_text}"')
+                found = True
+                break
+        if not found:
+            print(f'  WARNING: Could not find heading "{heading_text}" for chart{chart_num}')
+
+    # Chart 14 (Incidents by Type pie) â after Incidents Heading1
+    rid14 = 'rId53'
+    fig14 = make_figure_para(rid14, 14, 'Incidents by Type')
+    pattern = re.compile(
+        r'<w:p\b[^>]*>(?:(?!</w:p>).)*?<w:pStyle\s+w:val="Heading1"\s*/>(?:(?!</w:p>).)*?</w:p>',
+        re.DOTALL
+    )
+    for m in pattern.finditer(doc_xml):
+        texts = re.findall(r'<w:t[^>]*>([^<]+)</w:t>', m.group(0))
+        para_text = ' '.join(texts).lower().strip()
+        para_text = ' '.join(para_text.split())
+        if 'incidents' in para_text and 'notification' not in para_text and 'planned' not in para_text:
+            pos = m.end()
+            doc_xml = doc_xml[:pos] + fig14 + doc_xml[pos:]
+            print(f'  Injected chart14 (Incidents by Type pie) after Incidents heading')
+            break
+
+    return doc_xml
 
 # ââ Executive Summary & Incidents content injection ââ
 
 PILLAR_KPIS = [
-    {'pillar': 'Leadership, Accountability &amp; Engagement', 'weight': 0.20, 'rows': [2,4,5,6]},
-    {'pillar': 'Risk Management &amp; Planning', 'weight': 0.20, 'rows': [7,8,9]},
-    {'pillar': 'Training &amp; Awareness', 'weight': 0.10, 'rows': [10]},
-    {'pillar': 'OCP &amp; Emergency Preparedness', 'weight': 0.25, 'rows': [13,14,15]},
-    {'pillar': 'Performance Evaluation &amp; Improvement', 'weight': 0.25, 'rows': [16,17,18,19]},
+{'pillar': 'Leadership, Accountability &amp; Engagement', 'weight': 0.20, 'rows': [2,4,5,6]},
+{'pillar': 'Risk Management &amp; Planning', 'weight': 0.20, 'rows': [7,8,9]},
+{'pillar': 'Training &amp; Awareness', 'weight': 0.10, 'rows': [10]},
+{'pillar': 'OCP &amp; Emergency Preparedness', 'weight': 0.25, 'rows': [13,14,15]},
+{'pillar': 'Performance Evaluation &amp; Improvement', 'weight': 0.25, 'rows': [16,17,18,19]},
 ]
 
 def compute_pillar_scores(kpi_data):
@@ -359,13 +594,13 @@ _NF = '1C2340'
 _LF = 'D9E2F3'
 
 _TBL = ('<w:tbl><w:tblPr><w:tblStyle w:val="TableGrid"/><w:tblW w:w="9072" w:type="dxa"/>'
-        '<w:tblBorders><w:top w:val="single" w:sz="4" w:space="0" w:color="auto"/>'
-        '<w:left w:val="single" w:sz="4" w:space="0" w:color="auto"/>'
-        '<w:bottom w:val="single" w:sz="4" w:space="0" w:color="auto"/>'
-        '<w:right w:val="single" w:sz="4" w:space="0" w:color="auto"/>'
-        '<w:insideH w:val="single" w:sz="4" w:space="0" w:color="auto"/>'
-        '<w:insideV w:val="single" w:sz="4" w:space="0" w:color="auto"/>'
-        '</w:tblBorders></w:tblPr>')
+'<w:tblBorders><w:top w:val="single" w:sz="4" w:space="0" w:color="auto"/>'
+'<w:left w:val="single" w:sz="4" w:space="0" w:color="auto"/>'
+'<w:bottom w:val="single" w:sz="4" w:space="0" w:color="auto"/>'
+'<w:right w:val="single" w:sz="4" w:space="0" w:color="auto"/>'
+'<w:insideH w:val="single" w:sz="4" w:space="0" w:color="auto"/>'
+'<w:insideV w:val="single" w:sz="4" w:space="0" w:color="auto"/>'
+'</w:tblBorders></w:tblPr>')
 
 def _intro(text):
     return f'<w:p><w:pPr><w:spacing w:after="120"/></w:pPr><w:r><w:rPr><w:sz w:val="22"/></w:rPr><w:t xml:space="preserve">{text}</w:t></w:r></w:p>'
@@ -374,21 +609,21 @@ def build_exec_summary_xml(kpi_data):
     ps, overall = compute_pillar_scores(kpi_data)
     x = [_intro('The following table summarizes the overall KPI performance across all campuses.'), _TBL]
     x.append('<w:tr>' + _oc('Pillar',4000,True,'FFFFFF',_NF) + _oc('Weight',1500,True,'FFFFFF',_NF,True) +
-             _oc('Score',1500,True,'FFFFFF',_NF,True) + _oc('Status',2072,True,'FFFFFF',_NF,True) + '</w:tr>')
+    _oc('Score',1500,True,'FFFFFF',_NF,True) + _oc('Status',2072,True,'FFFFFF',_NF,True) + '</w:tr>')
     for p in ps:
         pct = round(p['score'] * 100)
         x.append('<w:tr>' + _oc(p['pillar'],4000) + _oc(f'{int(p["weight"]*100)}%',1500,center=True) +
-                 _oc(f'{pct}%',1500,True,_sc(pct),None,True) + _oc(_ss(pct),2072,True,_sc(pct),None,True) + '</w:tr>')
+        _oc(f'{pct}%',1500,True,_sc(pct),None,True) + _oc(_ss(pct),2072,True,_sc(pct),None,True) + '</w:tr>')
     op = round(overall * 100)
     x.append('<w:tr>' + _oc('Overall Weighted Score',4000,True,None,_LF) + _oc('100%',1500,True,None,_LF,True) +
-             _oc(f'{op}%',1500,True,_sc(op),_LF,True) + _oc(_ss(op),2072,True,_sc(op),_LF,True) + '</w:tr>')
+    _oc(f'{op}%',1500,True,_sc(op),_LF,True) + _oc(_ss(op),2072,True,_sc(op),_LF,True) + '</w:tr>')
     x.append('</w:tbl>')
     return ''.join(x)
 
 def build_incidents_xml(kpi_data):
     x = [_intro('The following table summarizes incident notifications and investigations by campus.'), _TBL]
     x.append('<w:tr>' + _oc('Campus',2268,True,'FFFFFF',_NF) + _oc('Total Incidents',2268,True,'FFFFFF',_NF,True) +
-             _oc('Notification on Time',2268,True,'FFFFFF',_NF,True) + _oc('Investigation on Time',2268,True,'FFFFFF',_NF,True) + '</w:tr>')
+    _oc('Notification on Time',2268,True,'FFFFFF',_NF,True) + _oc('Investigation on Time',2268,True,'FFFFFF',_NF,True) + '</w:tr>')
     ti = tn = tv = 0
     for campus in CAMPUS_ORDER_14:
         nt = get_campus_val(kpi_data, campus, 19, 'planned')
@@ -399,9 +634,9 @@ def build_incidents_xml(kpi_data):
         np_ = round(no/nt*100) if nt > 0 else 0
         ip = round(io_/it_*100) if it_ > 0 else 0
         x.append('<w:tr>' + _oc(campus,2268) + _oc(str(inc),2268,center=True) +
-                 _oc(f'{np_}%',2268,True,_sc(np_),None,True) + _oc(f'{ip}%',2268,True,_sc(ip),None,True) + '</w:tr>')
+        _oc(f'{np_}%',2268,True,_sc(np_),None,True) + _oc(f'{ip}%',2268,True,_sc(ip),None,True) + '</w:tr>')
     x.append('<w:tr>' + _oc('TOTAL',2268,True,None,_LF) + _oc(str(ti),2268,True,None,_LF,True) +
-             _oc(str(tn),2268,True,None,_LF,True) + _oc(str(tv),2268,True,None,_LF,True) + '</w:tr>')
+    _oc(str(tn),2268,True,None,_LF,True) + _oc(str(tv),2268,True,None,_LF,True) + '</w:tr>')
     x.append('</w:tbl>')
     return ''.join(x)
 
@@ -411,7 +646,6 @@ def inject_section_content(doc_xml, section_title, content_xml):
     ns = ns_match.group(1) if ns_match else 'w'
     if ns != 'w':
         content_xml = content_xml.replace('<w:', f'<{ns}:').replace('</w:', f'</{ns}:')
-    # Find all Heading1 paragraphs
     heading_pattern = re.compile(
         rf'<{ns}:p\b[^>]*>(?:(?!</{ns}:p>).)*?<{ns}:pStyle\s+{ns}:val="Heading1"\s*/>(?:(?!</{ns}:p>).)*?</{ns}:p>',
         re.DOTALL
@@ -419,17 +653,13 @@ def inject_section_content(doc_xml, section_title, content_xml):
     title_words = section_title.lower().split()
     for m in heading_pattern.finditer(doc_xml):
         para_xml = m.group(0)
-        # Extract all text from <w:t> elements
         texts = re.findall(rf'<{ns}:t[^>]*>([^<]+)</{ns}:t>', para_xml)
         para_text = ' '.join(texts).lower()
-        # Normalize whitespace for comparison
         para_text_norm = ' '.join(para_text.split())
         if all(w in para_text_norm for w in title_words):
             pos = m.end()
             print(f'  Injected "{section_title}" content after heading at pos {pos}')
             return doc_xml[:pos] + content_xml + doc_xml[pos:]
-    print(f'  WARNING: Heading1 section "{section_title}" not found')
-    return doc_xml
     print(f'  WARNING: Heading1 section "{section_title}" not found')
     return doc_xml
 
@@ -444,11 +674,13 @@ def generate_report(month_name, year, token):
     # Fetch data
     kpi_data = fetch_kpi_data(token, month_name)
     training_hours = fetch_training_hours(token, month_name)
+    incident_types = fetch_incident_types(token, month_name)
     print(f'  KPI data: {len(kpi_data)} campuses')
     print(f'  Training hours: {len(training_hours)} campuses')
+    print(f'  Incident types: {len(incident_types)} types')
 
-    # Build chart replacement data
-    chart_data = build_chart_data(kpi_data, training_hours)
+    # Build chart replacement data (charts 1-13 use template charts, 14-20 are dynamic)
+    chart_data = build_chart_data(kpi_data, training_hours, incident_types)
 
     # Build section content
     exec_summary_xml = build_exec_summary_xml(kpi_data)
@@ -466,7 +698,7 @@ def generate_report(month_name, year, token):
             for item in zin.infolist():
                 data = zin.read(item.filename)
 
-                # Replace chart data
+                # Replace chart data (charts 1-13)
                 chart_match = re.match(r'word/charts/chart(\d+)\.xml', item.filename)
                 if chart_match:
                     chart_num = int(chart_match.group(1))
@@ -476,14 +708,43 @@ def generate_report(month_name, year, token):
                         data = xml_str.encode('utf-8')
                         print(f'  Updated chart{chart_num} with {len(chart_data[chart_num])} series')
 
-                # Inject Executive Summary and Incidents content
+                # Update Content_Types.xml to include new charts
+                if item.filename == '[Content_Types].xml':
+                    ct = data.decode('utf-8')
+                    new_ct = ''
+                    for n in range(14, 21):
+                        new_ct += f'<Override PartName="/word/charts/chart{n}.xml" ContentType="application/vnd.openxmlformats-officedocument.drawingml.chart+xml"/>'
+                    ct = ct.replace('</Types>', new_ct + '</Types>')
+                    data = ct.encode('utf-8')
+
+                # Update document.xml.rels with new chart relationships
+                if item.filename == 'word/_rels/document.xml.rels':
+                    rels = data.decode('utf-8')
+                    new_rels = ''
+                    for i, n in enumerate(range(14, 21)):
+                        rid_num = 53 + i
+                        new_rels += f'<Relationship Id="rId{rid_num}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/chart" Target="charts/chart{n}.xml"/>'
+                    rels = rels.replace('</Relationships>', new_rels + '</Relationships>')
+                    data = rels.encode('utf-8')
+
+                # Inject sections and new chart drawings into document.xml
                 if item.filename == 'word/document.xml':
                     xml_str = data.decode('utf-8')
                     xml_str = inject_section_content(xml_str, 'Executive Summary', exec_summary_xml)
                     xml_str = inject_section_content(xml_str, 'Incidents', incidents_xml)
+                    xml_str = inject_new_charts_into_doc(xml_str)
                     data = xml_str.encode('utf-8')
 
                 zout.writestr(item, data)
+
+            # Add new chart XML files (14-20)
+            for n in range(14, 21):
+                chart_xml = build_new_chart_xml(n, kpi_data, incident_types)
+                zout.writestr(f'word/charts/chart{n}.xml', chart_xml)
+                zout.writestr(f'word/charts/style{n}.xml', STYLE_XML)
+                zout.writestr(f'word/charts/colors{n}.xml', COLORS_XML)
+                zout.writestr(f'word/charts/_rels/chart{n}.xml.rels', make_chart_rels(n))
+                print(f'  Created chart{n} ({NEW_CHART_DEFS[n]["title"]})')
 
     buf.seek(0)
     return buf.getvalue()
