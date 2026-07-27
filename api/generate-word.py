@@ -423,7 +423,7 @@ def make_pie_chart_xml(categories, values):
 {cat_xml}{val_xml}
 </c:ser></c:pieChart>
 </c:plotArea>
-<c:legend><c:legendPos val="b"/></c:legend>
+<c:legend><c:legendPos val="b"/><c:txPr><a:bodyPr/><a:lstStyle/><a:p><a:pPr><a:defRPr sz="700"/></a:pPr><a:endParaRPr lang="en-US"/></a:p></c:txPr></c:legend>
 <c:plotVisOnly val="1"/>
 </c:chart></c:chartSpace>'''
 
@@ -669,18 +669,28 @@ def inject_section_content(doc_xml, section_title, content_xml):
 # ÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂ Generate report using template ÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂ
 
 def detect_latest_month(token):
-    """Detect the latest month with data in the current year."""
-    try:
-        rows = fetch_report_rows('1199821531598724', token)
-        months_found = set()
-        for row in rows:
-            m = normalize_month(row.get('Reporting Month'))
-            if m: months_found.add(m)
+    """Detect the latest month with data by scanning all sync sources."""
+    months_found = set()
+    for src in SYNC_SOURCES:
+        month_col = src.get('monthCol')
+        if not month_col:
+            continue
+        try:
+            if src.get('reportId'):
+                rows = fetch_report_rows(src['reportId'], token)
+            else:
+                rows = fetch_sheet_rows(src['sheetId'], token)
+            for row in rows:
+                m = normalize_month(row.get(month_col))
+                if m:
+                    months_found.add(m)
+        except:
+            continue
+    if months_found:
         for mn in reversed(MONTH_NAMES):
             if mn in months_found:
+                print(f'  Latest month detected: {mn} (from {len(months_found)} months found)')
                 return mn
-    except:
-        pass
     from datetime import datetime
     return MONTH_NAMES[datetime.now().month - 1]
 
