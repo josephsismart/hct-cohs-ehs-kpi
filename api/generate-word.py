@@ -207,19 +207,24 @@ def fetch_training_hours(token, month_filter):
     return result
 
 def fetch_incident_types(token, month_filter):
-    """Fetch incident type breakdown from notification report."""
+    """Fetch incident type breakdown from incidents sheet."""
     try:
-        rows = fetch_report_rows('1199821531598724', token)
+        rows = fetch_sheet_rows('7165378768621444', token)
     except:
         return {}
     type_counts = {}
     for row in rows:
         if month_filter:
-            rm = normalize_month(row.get('Reporting Month')) or normalize_month(row.get('Date Reported'))
+            rm = normalize_month(row.get('Reporting Month'))
             if rm != month_filter: continue
-        itype = str(row.get('Classification', '') or row.get('Incident Type', '') or row.get('Type', '')).strip()
+        itype = str(row.get('Incident Type', '')).strip()
         if not itype: itype = 'Unclassified'
-        type_counts[itype] = type_counts.get(itype, 0) + 1
+        count = 1
+        ti = row.get('Total Incident')
+        if ti is not None:
+            try: count = int(float(ti))
+            except: pass
+        type_counts[itype] = type_counts.get(itype, 0) + count
     return type_counts
 
 # ÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂ Chart data replacement (regex-based, preserves namespace prefixes) ÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂ
@@ -663,10 +668,30 @@ def inject_section_content(doc_xml, section_title, content_xml):
 
 # ÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂ Generate report using template ÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂ
 
+def detect_latest_month(token):
+    """Detect the latest month with data in the current year."""
+    try:
+        rows = fetch_report_rows('1199821531598724', token)
+        months_found = set()
+        for row in rows:
+            m = normalize_month(row.get('Reporting Month'))
+            if m: months_found.add(m)
+        for mn in reversed(MONTH_NAMES):
+            if mn in months_found:
+                return mn
+    except:
+        pass
+    from datetime import datetime
+    return MONTH_NAMES[datetime.now().month - 1]
+
 def generate_report(month_name, year, token):
     if not month_name:
         month_name = None
-    period_label = f'{month_name} {year}' if month_name else f'Overall {year}'
+    if month_name:
+        period_label = f'{month_name} {year}'
+    else:
+        latest = detect_latest_month(token)
+        period_label = f'{latest} {year}'
     print(f'Generating Word report (overall) for {period_label}')
 
     # Fetch data
@@ -733,6 +758,13 @@ def generate_report(month_name, year, token):
                     xml_str = inject_section_content(xml_str, 'Executive Summary', exec_summary_xml)
                     xml_str = inject_section_content(xml_str, 'Incidents', incidents_xml)
                     xml_str = inject_new_charts_into_doc(xml_str)
+                    # Replace reporting period in template
+                    for old_month in MONTH_NAMES:
+                        old_period = f'{old_month} 2026'
+                        if old_period in xml_str:
+                            xml_str = xml_str.replace(old_period, period_label)
+                            print(f'  Replaced "{old_period}" with "{period_label}" in template')
+                            break
                     data = xml_str.encode('utf-8')
 
                 zout.writestr(item, data)
