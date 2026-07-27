@@ -380,10 +380,10 @@ def make_bar_chart_xml(title, categories, series_list):
 {series_xml}
 <c:axId val="111111111"/><c:axId val="222222222"/>
 </c:barChart>
-<c:catAx><c:axId val="111111111"/><c:scaling><c:orientation val="minMax"/></c:scaling><c:delete val="0"/><c:axPos val="b"/><c:crossAx val="222222222"/></c:catAx>
-<c:valAx><c:axId val="222222222"/><c:scaling><c:orientation val="minMax"/></c:scaling><c:delete val="0"/><c:axPos val="l"/><c:crossAx val="111111111"/></c:valAx>
+<c:catAx><c:axId val="111111111"/><c:scaling><c:orientation val="minMax"/></c:scaling><c:delete val="0"/><c:axPos val="b"/><c:majorTickMark val="out"/><c:minorTickMark val="none"/><c:tickLblPos val="nextTo"/><c:crossAx val="222222222"/><c:txPr><a:bodyPr rot="-2700000" vert="horz"/><a:lstStyle/><a:p><a:pPr><a:defRPr sz="800" b="0"/></a:pPr><a:endParaRPr lang="en-US"/></a:p></c:txPr></c:catAx>
+<c:valAx><c:axId val="222222222"/><c:scaling><c:orientation val="minMax"/></c:scaling><c:delete val="0"/><c:axPos val="l"/><c:majorTickMark val="out"/><c:minorTickMark val="none"/><c:tickLblPos val="nextTo"/><c:crossAx val="111111111"/><c:txPr><a:bodyPr/><a:lstStyle/><a:p><a:pPr><a:defRPr sz="800"/></a:pPr><a:endParaRPr lang="en-US"/></a:p></c:txPr></c:valAx>
 </c:plotArea>
-<c:legend><c:legendPos val="b"/></c:legend>
+<c:legend><c:legendPos val="b"/><c:overlay val="0"/><c:txPr><a:bodyPr/><a:lstStyle/><a:p><a:pPr><a:defRPr sz="800"/></a:pPr><a:endParaRPr lang="en-US"/></a:p></c:txPr></c:legend>
 <c:plotVisOnly val="1"/>
 </c:chart></c:chartSpace>'''
 
@@ -412,7 +412,10 @@ def make_pie_chart_xml(categories, values):
 <c:pieChart><c:varyColors val="1"/>
 <c:ser><c:idx val="0"/><c:order val="0"/>
 <c:tx><c:strRef><c:f>Sheet1!$B$1</c:f><c:strCache><c:ptCount val="1"/><c:pt idx="0"><c:v>Count</c:v></c:pt></c:strCache></c:strRef></c:tx>
-{dpt_xml}{cat_xml}{val_xml}
+{dpt_xml}
+<c:dLbls><c:showLegendKey val="0"/><c:showVal val="1"/><c:showCatName val="0"/><c:showSerName val="0"/><c:showPercent val="1"/><c:showBubbleSize val="0"/><c:separator>
+</c:separator><c:txPr><a:bodyPr/><a:lstStyle/><a:p><a:pPr><a:defRPr sz="800"/></a:pPr><a:endParaRPr lang="en-US"/></a:p></c:txPr></c:dLbls>
+{cat_xml}{val_xml}
 </c:ser></c:pieChart>
 </c:plotArea>
 <c:legend><c:legendPos val="b"/></c:legend>
@@ -428,17 +431,12 @@ def make_chart_rels(n):
 # New chart definitions: chart_num -> {type, title, kpi_row or special, series_config}
 NEW_CHART_DEFS = {
     14: {'type': 'pie', 'title': 'Incidents by Type'},
-    15: {'type': 'dual_bar', 'title': 'Risk Assessment Closed', 'kpi_row': 7,
-         'series': [{'name': 'Total Risk Assessments Registered', 'field': 'planned', 'color': '4472C4'},
-                    {'name': 'Risk Assessment Closed', 'field': 'achieved', 'color': '00B050'}]},
-    16: {'type': 'dual_bar', 'title': 'Risk Assessment Validated & Signed Off', 'kpi_row': 8,
-         'series': [{'name': 'Total Assessments Register', 'field': 'planned', 'color': '4472C4'},
-                    {'name': 'RA Validated and Signed Off', 'field': 'achieved', 'color': '00B050'}]},
+    15: {'type': 'pct_bar', 'title': 'Risk Assessment Closed', 'kpi_row': 7},
+    16: {'type': 'pct_bar', 'title': 'Risk Assessment Validated & Signed Off', 'kpi_row': 8},
     17: {'type': 'dual_bar', 'title': 'Planned Training Report', 'kpi_row': 10,
          'series': [{'name': 'Planned Training', 'field': 'planned', 'color': '4472C4'},
                     {'name': 'Training Conducted', 'field': 'achieved', 'color': '00B050'}]},
-    18: {'type': 'single_bar', 'title': 'Total Incidents', 'kpi_row': 19, 'field': 'planned',
-         'series_name': 'Total Incidents', 'color': '00249C'},
+    18: {'type': 'pct_bar', 'title': 'Incident Notifications Reported on Time', 'kpi_row': 19},
     19: {'type': 'pct_bar', 'title': 'EHS Inspection Rate', 'kpi_row': 16},
     20: {'type': 'pct_bar', 'title': 'Findings Closed Rate', 'kpi_row': 17},
 }
@@ -471,13 +469,13 @@ def build_new_chart_xml(chart_num, kpi_data, incident_types):
         met = []
         below = []
         for c in cats:
-            pct = get_campus_val(kpi_data, c, kpi, 'calc')
+            pct = min(get_campus_val(kpi_data, c, kpi, 'calc'), 1.0)
             if pct >= 0.9:
-                met.append(round(pct * 100))
+                met.append(min(round(pct * 100), 100))
                 below.append(0)
             else:
                 met.append(0)
-                below.append(round(pct * 100))
+                below.append(min(round(pct * 100), 100))
         return make_bar_chart_xml(defn['title'], cats, [
             {'name': 'Met Target', 'values': met, 'color': '00B050'},
             {'name': 'Below Target', 'values': below, 'color': 'FF0000'},
@@ -486,7 +484,7 @@ def build_new_chart_xml(chart_num, kpi_data, incident_types):
     return ''
 
 def make_drawing_xml(rid, chart_num):
-    return f'<w:drawing><wp:inline distT="0" distB="0" distL="0" distR="0"><wp:extent cx="5760000" cy="2520000"/><wp:effectExtent l="0" t="0" r="0" b="0"/><wp:docPr id="{100+chart_num}" name="Chart {chart_num}"/><wp:cNvGraphicFramePr/><a:graphic xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/chart"><c:chart xmlns:c="http://schemas.openxmlformats.org/drawingml/2006/chart" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" r:id="{rid}"/></a:graphicData></a:graphic></wp:inline></w:drawing>'
+    return f'<w:drawing><wp:inline distT="0" distB="0" distL="0" distR="0"><wp:extent cx="5760000" cy="3200000"/><wp:effectExtent l="0" t="0" r="0" b="0"/><wp:docPr id="{100+chart_num}" name="Chart {chart_num}"/><wp:cNvGraphicFramePr/><a:graphic xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/chart"><c:chart xmlns:c="http://schemas.openxmlformats.org/drawingml/2006/chart" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" r:id="{rid}"/></a:graphicData></a:graphic></wp:inline></w:drawing>'
 
 def make_figure_para(rid, chart_num, label):
     drawing = make_drawing_xml(rid, chart_num)
@@ -499,7 +497,7 @@ CHART_INJECT_MAP = [
     (17, 'Planned H', 'Heading2', 'Planned Training Report'),
     (19, 'Inspections Completed', 'Heading2', 'EHS Inspection Rate'),
     (20, 'Findings Closed', 'Heading2', 'Findings Closed Rate'),
-    (18, 'Incident Notifications', 'Heading2', 'Total Incidents by Campus'),
+    (18, 'Incident Notifications', 'Heading2', 'Incident Notifications Reported on Time'),
 ]
 
 def inject_new_charts_into_doc(doc_xml):
