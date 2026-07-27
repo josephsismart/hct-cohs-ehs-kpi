@@ -773,11 +773,10 @@ def generate_report(month_name, year, token):
                             break
                     if not replaced:
                         # Month may be alone in a <w:t> tag (split XML runs)
-                        import re
                         for old_month in MONTH_NAMES:
                             pattern = f'(<w:t[^>]*>){old_month}(</w:t>)'
                             if re.search(pattern, xml_str):
-                                xml_str = re.sub(pattern, f'\\1{new_month}\\2', xml_str, count=1)
+                                xml_str = re.sub(pattern, r'\1' + new_month + r'\2', xml_str, count=1)
                                 print(f'  Replaced split-run month "{old_month}" with "{new_month}"')
                                 replaced = True
                                 break
