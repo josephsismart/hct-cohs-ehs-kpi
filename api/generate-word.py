@@ -355,7 +355,7 @@ def build_chart_data(kpi_data, training_hours, incident_types=None):
 # ÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂ Dynamic chart XML generators ÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂ
 
 INCIDENT_TYPE_LABELS = ['Unclassified','Equipment/Property Damage','First Aid Case','Near Miss','Medical Treatment Case','Lost Workdays Injury']
-PIE_COLORS = ['003366','FFC000','00B050','4472C4','7030A0','ED7D31']
+PIE_COLORS = ['1A1F71','F59E0B','1D9E75','4A90D9','7C3AED','FFA500','EA352E']
 
 def make_bar_chart_xml(title, categories, series_list):
     cat_xml = '<c:cat><c:strRef><c:f>Sheet1!$A$1</c:f><c:strCache>'
@@ -669,30 +669,10 @@ def inject_section_content(doc_xml, section_title, content_xml):
 # ÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂ Generate report using template ÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂ
 
 def detect_latest_month(token):
-    """Detect the latest month with data by scanning all sync sources."""
-    months_found = set()
-    for src in SYNC_SOURCES:
-        month_col = src.get('monthCol')
-        if not month_col:
-            continue
-        try:
-            if src.get('reportId'):
-                rows = fetch_report_rows(src['reportId'], token)
-            else:
-                rows = fetch_sheet_rows(src['sheetId'], token)
-            for row in rows:
-                m = normalize_month(row.get(month_col))
-                if m:
-                    months_found.add(m)
-        except:
-            continue
-    if months_found:
-        for mn in reversed(MONTH_NAMES):
-            if mn in months_found:
-                print(f'  Latest month detected: {mn} (from {len(months_found)} months found)')
-                return mn
+    """Return current month name (July if now is July)."""
     from datetime import datetime
     return MONTH_NAMES[datetime.now().month - 1]
+
 
 def generate_report(month_name, year, token):
     if not month_name:
@@ -768,13 +748,24 @@ def generate_report(month_name, year, token):
                     xml_str = inject_section_content(xml_str, 'Executive Summary', exec_summary_xml)
                     xml_str = inject_section_content(xml_str, 'Incidents', incidents_xml)
                     xml_str = inject_new_charts_into_doc(xml_str)
-                    # Replace reporting period in template
+                    # Replace reporting period in template - handle split XML runs too
+                    replaced = False
                     for old_month in MONTH_NAMES:
-                        old_period = f'{old_month} 2026'
+                        old_period = f'{old_month} {year}'
                         if old_period in xml_str:
                             xml_str = xml_str.replace(old_period, period_label)
                             print(f'  Replaced "{old_period}" with "{period_label}" in template')
+                            replaced = True
                             break
+                    if not replaced:
+                        # Month may be in its own <w:t> tag (split runs in Word XML)
+                        for old_month in MONTH_NAMES:
+                            tag = f'>{old_month}<'
+                            if tag in xml_str:
+                                new_month = period_label.split()[0]
+                                xml_str = xml_str.replace(tag, f'>{new_month}<', 1)
+                                print(f'  Replaced split-run month "{old_month}" with "{new_month}"')
+                                break
                     data = xml_str.encode('utf-8')
 
                 zout.writestr(item, data)
