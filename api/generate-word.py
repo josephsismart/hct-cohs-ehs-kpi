@@ -1,4 +1,4 @@
-"""Vercel Python serverless function ÃÂÃÂ¢ÃÂÃÂÃÂÃÂ HCT-COHS KPI Word Report Generator.
+"""Vercel Python serverless function ÃÂÃÂ¢ÃÂÃÂÃÂÃÂ HCT-COHS KPI Word Report Generator. 
 Uses template-based approach: unzip template, replace chart data via regex, rezip.
 """
 
