@@ -807,6 +807,39 @@ def generate_report(month_name, year, token):
                             print(f'  Replaced split-run abbr "{old_abbr2}" with "{new_abbr}"')
                     data = xml_str.encode('utf-8')
 
+
+                # Replace months in footer/header files
+                if item.filename.startswith('word/footer') or item.filename.startswith('word/header'):
+                    xml_str = data.decode('utf-8')
+                    new_month = period_label.split()[0]
+                    new_abbr = new_month[:3]
+                    # Full month replacement
+                    for old_month in MONTH_NAMES:
+                        if old_month == new_month:
+                            continue
+                        for yr in [str(year), '2025', '2026', '2027']:
+                            old_period = f'{old_month} {yr}'
+                            if old_period in xml_str:
+                                xml_str = xml_str.replace(old_period, period_label)
+                        # Split-run full month
+                        pattern = f'(<w:t[^>]*>){old_month}(</w:t>)'
+                        if re.search(pattern, xml_str):
+                            xml_str = re.sub(pattern, r'\1' + new_month + r'\2', xml_str)
+                    # Abbreviated month replacement
+                    for old_abbr2 in [m[:3] for m in MONTH_NAMES]:
+                        if old_abbr2 == new_abbr:
+                            continue
+                        for yr in [str(year), '2025', '2026', '2027']:
+                            old_ap = f'{old_abbr2} {yr}'
+                            if old_ap in xml_str:
+                                xml_str = xml_str.replace(old_ap, f'{new_abbr} {yr}')
+                        # Split-run abbreviated month
+                        pat = f'(<w:t[^>]*>){old_abbr2}(</w:t>)'
+                        if re.search(pat, xml_str):
+                            xml_str = re.sub(pat, r'\1' + new_abbr + r'\2', xml_str)
+                            print(f'  Footer/header: replaced "{old_abbr2}" with "{new_abbr}" in {item.filename}')
+                    data = xml_str.encode('utf-8')
+
                 zout.writestr(item, data)
 
             # Add new chart XML files (14-20)
