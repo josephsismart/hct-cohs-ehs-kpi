@@ -727,27 +727,7 @@ def generate_report(month_name, year, token):
                     if chart_num in chart_data:
                         xml_str = data.decode('utf-8')
                         xml_str = replace_numcache_values(xml_str, chart_data[chart_num])
-                        # Step 4: Replace abbreviated months (e.g. "Mar 2026" in headers/footers)
-                    MONTH_ABBR = {m[:3]: m for m in MONTH_NAMES}
-                    new_abbr = new_month[:3]
-                    for old_abbr, old_full in MONTH_ABBR.items():
-                        if old_abbr == new_abbr:
-                            continue
-                        for yr in [str(year), '2025', '2026', '2027']:
-                            old_ap = f'{old_abbr} {yr}'
-                            new_ap = f'{new_abbr} {yr}'
-                            if old_ap in xml_str:
-                                xml_str = xml_str.replace(old_ap, new_ap)
-                                print(f'  Replaced abbr "{old_ap}" with "{new_ap}"')
-                    # Step 5: Replace standalone abbreviated months in <w:t> tags (split XML runs in footers)
-                    for old_abbr2, old_full2 in MONTH_ABBR.items():
-                        if old_abbr2 == new_abbr:
-                            continue
-                        pat = f'(<w:t[^>]*>){old_abbr2}(</w:t>)'
-                        if re.search(pat, xml_str):
-                            xml_str = re.sub(pat, r'\1' + new_abbr + r'\2', xml_str)
-                            print(f'  Replaced split-run abbr "{old_abbr2}" with "{new_abbr}"')
-                    data = xml_str.encode('utf-8')
+                        data = xml_str.encode('utf-8')
                         print(f'  Updated chart{chart_num} with {len(chart_data[chart_num])} series')
 
                 # Update Content_Types.xml to include new charts
@@ -805,6 +785,26 @@ def generate_report(month_name, year, token):
                         if old_text in xml_str:
                             xml_str = xml_str.replace(old_text, new_text)
                             print(f'  Replaced "{old_text}" with "{new_text}"')
+                    # Step 4: Replace abbreviated months (e.g. "Mar 2026" in headers/footers)
+                    MONTH_ABBR = {m[:3]: m for m in MONTH_NAMES}
+                    new_abbr = new_month[:3]
+                    for old_abbr, old_full in MONTH_ABBR.items():
+                        if old_abbr == new_abbr:
+                            continue
+                        for yr in [str(year), '2025', '2026', '2027']:
+                            old_ap = f'{old_abbr} {yr}'
+                            new_ap = f'{new_abbr} {yr}'
+                            if old_ap in xml_str:
+                                xml_str = xml_str.replace(old_ap, new_ap)
+                                print(f'  Replaced abbr "{old_ap}" with "{new_ap}"')
+                    # Step 5: Replace standalone abbreviated months in <w:t> tags (split XML runs in footers)
+                    for old_abbr2, old_full2 in MONTH_ABBR.items():
+                        if old_abbr2 == new_abbr:
+                            continue
+                        pat = f'(<w:t[^>]*>){old_abbr2}(</w:t>)'
+                        if re.search(pat, xml_str):
+                            xml_str = re.sub(pat, r'\1' + new_abbr + r'\2', xml_str)
+                            print(f'  Replaced split-run abbr "{old_abbr2}" with "{new_abbr}"')
                     data = xml_str.encode('utf-8')
 
                 zout.writestr(item, data)
