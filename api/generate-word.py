@@ -759,29 +759,32 @@ def generate_report(month_name, year, token):
                     xml_str = inject_new_charts_into_doc(xml_str)
                     # Replace reporting period in template
                     new_month = period_label.split()[0]
-                    # Try full "Month Year" replacement first
-                    replaced = False
+                    # Step 1: Replace all "OldMonth Year" combos in text
                     for old_month in MONTH_NAMES:
+                        if old_month == new_month:
+                            continue
                         for yr in [str(year), '2025', '2026', '2027']:
                             old_period = f'{old_month} {yr}'
                             if old_period in xml_str:
                                 xml_str = xml_str.replace(old_period, period_label)
                                 print(f'  Replaced "{old_period}" with "{period_label}"')
-                                replaced = True
-                                break
-                        if replaced:
-                            break
-                    if not replaced:
-                        # Month may be alone in a <w:t> tag (split XML runs)
-                        for old_month in MONTH_NAMES:
-                            pattern = f'(<w:t[^>]*>){old_month}(</w:t>)'
-                            if re.search(pattern, xml_str):
-                                xml_str = re.sub(pattern, r'\1' + new_month + r'\2', xml_str, count=1)
-                                print(f'  Replaced split-run month "{old_month}" with "{new_month}"')
-                                replaced = True
-                                break
-                    if not replaced:
-                        print(f'  WARNING: Could not find month to replace in template')
+                    # Step 2: Replace standalone month in <w:t> tags (split XML runs like title)
+                    for old_month in MONTH_NAMES:
+                        if old_month == new_month:
+                            continue
+                        pattern = f'(<w:t[^>]*>){old_month}(</w:t>)'
+                        if re.search(pattern, xml_str):
+                            xml_str = re.sub(pattern, r'\1' + new_month + r'\2', xml_str)
+                            print(f'  Replaced split-run month "{old_month}" with "{new_month}"')
+                    # Step 3: Replace "for OldMonth" text (e.g. "Not planned for March")
+                    for old_month in MONTH_NAMES:
+                        if old_month == new_month:
+                            continue
+                        old_text = f'for {old_month}'
+                        new_text = f'for {new_month}'
+                        if old_text in xml_str:
+                            xml_str = xml_str.replace(old_text, new_text)
+                            print(f'  Replaced "{old_text}" with "{new_text}"')
                     data = xml_str.encode('utf-8')
 
                 zout.writestr(item, data)
