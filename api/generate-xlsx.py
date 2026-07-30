@@ -1,4 +1,4 @@
-"""Vercel Python serverless function — HCT-COHS KPI Excel Report Generator.
+"""Vercel Python serverless function - HCT-COHS KPI Excel Report Generator.
 Fetches live data from Smartsheet API and generates downloadable .xlsx files
 matching the client template format.
 """
@@ -12,7 +12,6 @@ from datetime import datetime
 MONTH_NAMES = ['January','February','March','April','May','June',
                'July','August','September','October','November','December']
 
-# ── Region mapping (for HS Committee which uses region names) ──
 REGIONS = {
     'AD Al Ain':      {'sheets': ['AAF','AAZ']},
     'Abu Dhabi':      {'sheets': ['ADA','ADB']},
@@ -28,7 +27,6 @@ for rname, rcfg in REGIONS.items():
     for code in rcfg['sheets']:
         CAMPUS_TO_REGION[code] = rname
 
-# ── Smartsheet source definitions ──
 SYNC_SOURCES = [
     {'key': 'v2_hs_committee', 'sheetId': '435993944477572', 'campusCol': 'Committee', 'monthCol': 'Reporting Month',
      'plannedCol': 'Meeting Planned', 'actualCol': 'Meeting Conducted',
@@ -83,16 +81,16 @@ SYNC_SOURCES = [
 TREND_SOURCES = [
     {'key': 'incidents', 'reportId': '6831846506581892', 'campusCol': 'Campus Code', 'monthCol': 'Reporting Month',
      'valueCol': 'Total Incident Investigated',
-     'xlSheet': 'Trend — Total Incidents', 'mode': 'sum_value'},
+     'xlSheet': 'Trend - Total Incidents', 'mode': 'sum_value'},
     {'key': 'training_trend', 'reportId': '4766133025878916', 'campusCol': 'Campus Code', 'monthCol': 'Reporting Month',
      'valueCol': 'Total Hours of Training',
-     'xlSheet': 'Trend — Training Hours', 'mode': 'sum_value'},
+     'xlSheet': 'Trend - Training Hours', 'mode': 'sum_value'},
     {'key': 'ehs_trend', 'sheetId': '4947401822392196', 'campusCol': 'Campus Code', 'monthCol': 'Primary',
      'plannedCol': 'No. of EHS Inspections Planned', 'actualCol': 'No. of EHS Inspections Completed',
-     'xlSheet': 'Trend — EHS Inspection Rate', 'mode': 'pct'},
+     'xlSheet': 'Trend - EHS Inspection Rate', 'mode': 'pct'},
     {'key': 'compliance_trend', 'sheetId': '4198632256393092', 'campusCol': 'Campus Code', 'monthCol': 'Primary',
      'plannedCol': 'Applicable Compliance', 'actualCol': 'Actual Compliance',
-     'xlSheet': 'Trend — Compliance Rate', 'mode': 'pct'},
+     'xlSheet': 'Trend - Compliance Rate', 'mode': 'pct'},
 ]
 
 def _ss_fetch(endpoint, token):
@@ -421,7 +419,7 @@ class handler(BaseHTTPRequestHandler):
         try:
             xlsx_bytes = build_xlsx(token, month, year)
 
-            filename = report_name + ' — ' + month + ' ' + year + '.xlsx'
+            filename = report_name + ' - ' + month + ' ' + year + '.xlsx'
             self.send_response(200)
             self.send_header('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
             self.send_header('Content-Disposition', 'attachment; filename="' + filename + '"')
