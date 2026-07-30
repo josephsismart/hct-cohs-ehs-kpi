@@ -11,7 +11,7 @@ const QUARTERS: Record<string, string[]> = {
 };
 const QUARTER_LABELS: Record<string, string> = {
   Q1: 'Q1 (Jan\u2013Mar)', Q2: 'Q2 (Apr\u2013Jun)',
-  Q3: 'Q3 (Jul\u2013Sep)', Q4: 'Q4 (Oct\u2013Dec)',
+  Q3: 'Q3 (Jul\u2013Sep)', Q4: 'Q4 (Oct\u2013Dec)',h
 };
 
 const SUMMARY_CARDS = [
@@ -385,7 +385,7 @@ export default function Dashboard() {
                   <i className="fa fa-file-word"></i>
                   <span>Word</span>
                 </button>
-                <button className={'format-btn' + (selectedFormat==='excel' ? ' selected' : '')} onClick={() => setSelectedFormat('excel')} style={selectedFormat==='excel' ? {outline:'3px solid #1A1F71',outlineOffset:'2px'} : {}}>
+                <button className={"report-btn excel" + (selectedFormat==='excel' ? ' selected' : '')} onClick={() => setSelectedFormat('excel')} style={selectedFormat==='excel' ? {outline:'3px solid #1A1F71',outlineOffset:'2px'} : {}}>
                   <i className="fa fa-file-excel"></i>
                   <span>Excel</span>
                 </button>
