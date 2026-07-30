@@ -4,6 +4,7 @@ import Highcharts from 'highcharts';
 import HighchartsReact from 'highcharts-react-official';
 
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+const CAMPUS_CODES = new Set(['AAF','AAZ','ADA','ADB','ADC','ADH','MZY','DMC','DBN','DBA','FJF','FJH','SJA','SJB','RKA','RKB','HQ']);
 const QUARTERS: Record<string, string[]> = {
   Q1: ['January','February','March'], Q2: ['April','May','June'],
   Q3: ['July','August','September'], Q4: ['October','November','December'],
@@ -351,7 +352,8 @@ export default function Dashboard() {
         return { ...card, display: card.key === 'training' ? `${val} hrs` : String(val), sub: '' };
       }
       const val = agg.value || agg.actual || agg.planned;
-      return { ...card, display: String(val), sub: `${data.campuses.length} campuses` };
+      const campusCount = data.campuses.filter((c: string) => CAMPUS_CODES.has(c)).length;
+      return { ...card, display: String(val), sub: `${campusCount} campuses` };
     });
   }, [data, getRows]);
 
