@@ -4,7 +4,7 @@ import Highcharts from 'highcharts';
 import HighchartsReact from 'highcharts-react-official';
 
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
-const CAMPUS_CODES = new Set(['AAF','AAZ','ADA','ADB','ADC','ADH','MZY','DMC','DBN','DBA','FJF','FJH','SJA','SJB','RKA','RKB','HQ']);
+const CAMPUS_CODES = new Set(['AAF','AAZ','ADA','ADB','ADH','MZY','DMC','DBN','FJF','FJH','SJA','SJB','RKA','RKB','HQ']);
 const CAMPUS_CODES = new Set(['AAF','AAZ','ADA','ADB','ADC','ADH','MZY','DMC','DBN','DBA','FJF','FJH','SJA','SJB','RKA','RKB','HQ']);
 const QUARTERS: Record<string, string[]> = {
   Q1: ['January','February','March'], Q2: ['April','May','June'],
