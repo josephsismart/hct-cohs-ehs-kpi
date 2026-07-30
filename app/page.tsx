@@ -370,7 +370,7 @@ export default function Dashboard() {
             <div className="modal-body">
               <label>Report Name</label>
               <input type="text" value={reportName} onChange={e => setReportName(e.target.value)} placeholder="Enter report name..." />
-              {selectedFormat !== 'word' && (<><label>Region</label>
+              {selectedFormat !== 'word' && selectedFormat !== 'excel' && (<><label>Region</label>
               <select value={pptRegion} onChange={e => setPptRegion(e.target.value)} style={{width:'100%',padding:'8px',marginBottom:'12px',borderRadius:'4px',border:'1px solid #ccc'}}>
                 <option value="All">All</option>
                 {REPORT_REGIONS.map(r => <option key={r} value={r}>{r}</option>)}
@@ -385,6 +385,10 @@ export default function Dashboard() {
                   <i className="fa fa-file-word"></i>
                   <span>Word</span>
                 </button>
+                <button className={'format-btn' + (selectedFormat==='excel' ? ' selected' : '')} onClick={() => setSelectedFormat('excel')} style={selectedFormat==='excel' ? {outline:'3px solid #1A1F71',outlineOffset:'2px'} : {}}>
+                  <i className="fa fa-file-excel"></i>
+                  <span>Excel</span>
+                </button>
 
 
 
@@ -396,11 +400,12 @@ export default function Dashboard() {
                   const apiMap: Record<string,{endpoint:string;ext:string;setLoading:(v:boolean)=>void;label:string}> = {
                     ppt: {endpoint:'generate-ppt',ext:'.pptx',setLoading:setPptLoading,label:'PPT'},
                     word: {endpoint:'generate-word',ext:'.docx',setLoading:setWordLoading,label:'Word'},
+      excel: {endpoint:'generate-xlsx',ext:'.xlsx',setLoading:setWordLoading,label:'Excel'},
                     
                   };
                   const {endpoint,ext,setLoading,label} = apiMap[selectedFormat];
                   // Word is always overall — single file, no region loop
-                  if (selectedFormat === 'word') {
+                  if (selectedFormat === 'word' || selectedFormat === 'excel') {
                     window.open('/api/' + endpoint + '?month=' + encodeURIComponent(m) + '&year=' + y + '&reportName=' + encodeURIComponent(reportName));
                     setShowReport(false);
                     return;
@@ -429,7 +434,7 @@ export default function Dashboard() {
                     setShowReport(false);
                   }
                 }} style={{width:'100%',padding:'10px',marginTop:'12px',background:'#1A1F71',color:'white',border:'none',borderRadius:'6px',cursor:'pointer',fontSize:'14px',fontWeight:600}}>
-                  {(pptLoading || wordLoading) ? 'Generating...' : '\u2B07 Download ' + (selectedFormat==='ppt' ? 'PowerPoint' : selectedFormat==='word' ? 'Word' : 'Report')}
+                  {(pptLoading || wordLoading) ? 'Generating...' : '\u2B07 Download ' + (selectedFormat==='ppt' ? 'PowerPoint' : selectedFormat==='word' ? 'Word' : selectedFormat==='excel' ? 'Excel' : 'Report')}
                 </button>
               )}
               {downloadProgress.length > 0 && (
