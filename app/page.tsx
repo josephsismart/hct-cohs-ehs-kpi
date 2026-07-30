@@ -11,7 +11,7 @@ const QUARTERS: Record<string, string[]> = {
 };
 const QUARTER_LABELS: Record<string, string> = {
   Q1: 'Q1 (Jan\u2013Mar)', Q2: 'Q2 (Apr\u2013Jun)',
-  Q3: 'Q3 (Jul\u2013Sep)', Q4: 'Q4 (Oct\u2013Dec)',h
+  Q3: 'Q3 (Jul\u2013Sep)', Q4: 'Q4 (Oct\u2013Dec)',
 };
 
 const SUMMARY_CARDS = [
