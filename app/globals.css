@@ -259,6 +259,7 @@ body { font-family: var(--font); background: var(--light-bg); color: var(--text)
 .report-btn.ppt i { color: #d04423; }
 .report-btn.word i { color: #2b579a; }
 .report-btn.pdf i { color: #e2574c; }
+.report-btn.excel i { color: #1D7044; }
 
 /* BUTTON ICONS */
 .filter-controls button i { margin-right: 5px; }
