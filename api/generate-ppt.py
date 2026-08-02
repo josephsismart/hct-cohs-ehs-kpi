@@ -52,24 +52,21 @@ KPI_WEIGHTS = {
 }
 
 CHART_KPI_MAP = {
-    'chart5.xml': 0,  'chart6.xml': 2,
-    'chart8.xml': 3,  'chart7.xml': 4,
-    'chart11.xml': 5, 'chart12.xml': 6, 'chart13.xml': 7,
-    'chart16.xml': 8,
-    'chart20.xml': 10, 'chart21.xml': 11,
-    'chart22.xml': 12, 'chart23.xml': 13,
-    'chart27.xml': 14, 'chart28.xml': 15,
-    'chart29.xml': 17, 'chart30.xml': 16,
+    'chart2.xml': 0,   'chart3.xml': 2,                        # Slide 5: Accountability
+    'chart4.xml': 3,   'chart5.xml': 4,                        # Slide 6: Engagement
+    'chart6.xml': 5,   'chart7.xml': 6,   'chart8.xml': 7,     # Slide 7: Risk
+    'chart9.xml': 8,                                            # Slide 8: Training
+    'chart10.xml': 10, 'chart11.xml': 11,                       # Slide 9: OCP
+    'chart12.xml': 12, 'chart13.xml': 13,                       # Slide 10: Contractors
+    'chart14.xml': 14, 'chart15.xml': 15,                       # Slide 11: Inspection
+    'chart16.xml': 16, 'chart17.xml': 17,                       # Slide 12: Incidents
 }
 
-SINGLE_SERIES_CHARTS = {'chart7.xml', 'chart8.xml'}
-MERGE_CAMPUS_CHARTS = {'chart7.xml', 'chart8.xml'}
-REMOVE_UNDERLINE_CHARTS = {'chart5.xml'}
+SINGLE_SERIES_CHARTS = {'chart4.xml', 'chart5.xml'}
+MERGE_CAMPUS_CHARTS = {'chart4.xml', 'chart5.xml'}
+REMOVE_UNDERLINE_CHARTS = {'chart2.xml'}
 
-PIE_CHARTS = {'chart1.xml','chart2.xml','chart3.xml','chart4.xml',
-              'chart9.xml','chart10.xml','chart14.xml','chart15.xml',
-              'chart17.xml','chart18.xml','chart19.xml','chart24.xml',
-              'chart25.xml','chart26.xml'}
+PIE_CHARTS = {'chart1.xml'}
 
 # ── Smartsheet source → KPI row mapping ──
 SYNC_SOURCES = [
@@ -513,9 +510,9 @@ def fmt_waste(v):
     return f'{v:.1f}'.rstrip('0').rstrip('.')
 
 def _blank_waste_slide(file_contents, short_names):
-    slide22_path = 'ppt/slides/slide22.xml'
-    if slide22_path not in file_contents: return
-    xml = file_contents[slide22_path].decode('utf-8')
+    slide20_path = 'ppt/slides/slide20.xml'
+    if slide20_path not in file_contents: return
+    xml = file_contents[slide20_path].decode('utf-8')
     tree = ET.ElementTree(ET.fromstring(xml))
     root = tree.getroot()
     a_ns = NS['a']
@@ -532,11 +529,11 @@ def _blank_waste_slide(file_contents, short_names):
     xml = re.sub(r'\d+(?:,\d+)*(?:\.\d+)?\s*kg', '0 kg', xml)
     xml = re.sub(r'Recyclable:\s*\d+(?:,\d+)*(?:\.\d+)?\s*kg', 'Recyclable: 0 kg', xml)
     xml = re.sub(r'\d+(?:\.\d+)?%', '0.0%', xml)
-    file_contents[slide22_path] = xml.encode('utf-8')
+    file_contents[slide20_path] = xml.encode('utf-8')
 
 def update_waste_slide(file_contents, region_cfg, short_names, waste_data):
-    slide22_path = 'ppt/slides/slide22.xml'
-    if slide22_path not in file_contents: return
+    slide20_path = 'ppt/slides/slide20.xml'
+    if slide20_path not in file_contents: return
     campus_sheets = region_cfg['sheets']
     campus_waste = []
     for cs in campus_sheets:
@@ -550,7 +547,7 @@ def update_waste_slide(file_contents, region_cfg, short_names, waste_data):
         entry['_recycle_pct'] = recycle_pct
         campus_waste.append(entry)
 
-    xml = file_contents[slide22_path].decode('utf-8')
+    xml = file_contents[slide20_path].decode('utf-8')
     tree = ET.ElementTree(ET.fromstring(xml))
     root = tree.getroot()
     a_ns = NS['a']
@@ -602,7 +599,7 @@ def update_waste_slide(file_contents, region_cfg, short_names, waste_data):
         return m.group(0)
     xml = re.sub(r'\d+(?:\.\d+)?%', _rp, xml)
 
-    file_contents[slide22_path] = xml.encode('utf-8')
+    file_contents[slide20_path] = xml.encode('utf-8')
 
 
 # ── Main generation ──
@@ -664,11 +661,11 @@ def generate_presentation(template_bytes, region_name, period, kpi_data, waste_d
                     file_contents[rels_path] = new_rels.encode('utf-8')
 
     # 2. Update slides — replace campus name references
-    text_replacements = [('Baniyas Campus A', short_names[0] if short_names else ''), ('Baniyas A', short_names[0] if short_names else '')]
+    text_replacements = [('Campus X', short_names[0] if short_names else ''), ('Baniyas Campus A', short_names[0] if short_names else ''), ('Baniyas A', short_names[0] if short_names else '')]
     if len(short_names) > 1:
-        text_replacements += [('Baniyas Campus B', short_names[1]), ('Baniyas B', short_names[1])]
+        text_replacements += [('Campus Y', short_names[1]), ('Baniyas Campus B', short_names[1]), ('Baniyas B', short_names[1])]
     else:
-        text_replacements += [('Baniyas Campus B', ''), ('Baniyas B', '')]
+        text_replacements += [('Campus Y', ''), ('Baniyas Campus B', ''), ('Baniyas B', '')]
 
     for fname in file_contents:
         if fname.startswith('ppt/slides/slide') and fname.endswith('.xml') and fname != 'ppt/slides/slide1.xml':
@@ -690,15 +687,17 @@ def generate_presentation(template_bytes, region_name, period, kpi_data, waste_d
         xml = file_contents[slide1_path].decode('utf-8')
         date_str = datetime.now().strftime('%A, %B %d, %Y')
         xml = re.sub(r'(Wednesday, May 13, 2026|Monday, \w+ \d+, \d{4})', date_str, xml)
+        # Update meeting title with period
+        xml = re.sub(r'EHS Committee Meeting \w+ \d{4}', f'EHS Committee Meeting {period}', xml)
         new_sub = region_cfg['subtitle'].replace('&', '&amp;')
         xml = xml.replace('Baniyas Campus A &amp; Campus B', new_sub)
         xml = xml.replace('Baniyas Campus A & Campus B', region_cfg['subtitle'])
         file_contents[slide1_path] = xml.encode('utf-8')
 
-    # 4. Update slide 6 percentage shapes + bars
-    slide6_path = 'ppt/slides/slide6.xml'
-    if slide6_path in file_contents:
-        xml = file_contents[slide6_path].decode('utf-8')
+    # 4. Update slide 4 percentage shapes + bars
+    slide4_path = 'ppt/slides/slide4.xml'
+    if slide4_path in file_contents:
+        xml = file_contents[slide4_path].decode('utf-8')
         pct_values = []
         for pi_idx in range(5):
             row_vals = [c['pillar_scores'][pi_idx] for c in campuses]
@@ -737,7 +736,7 @@ def generate_presentation(template_bytes, region_name, period, kpi_data, waste_d
             row = [campuses[ci]['pillar_scores'][pi_idx] for ci in range(min(len(campuses), 2))]
             bar_pcts.append(row)
         xml = update_slide6_bars(xml, bar_pcts)
-        file_contents[slide6_path] = xml.encode('utf-8')
+        file_contents[slide4_path] = xml.encode('utf-8')
 
     # 5. Waste slide
     if waste_data and any(waste_data.values()):
@@ -792,11 +791,15 @@ class handler(BaseHTTPRequestHandler):
             self.wfile.write(json.dumps({'error': 'SMARTSHEET_TOKEN not set'}).encode())
             return
 
-        if region != 'All' and region not in REGIONS:
+        # Handle "All" — default to Abu Dhabi for PPT (template supports only 1 region)
+        if region.lower() == 'all':
+            region = 'Abu Dhabi'
+
+        if region not in REGIONS:
             self.send_response(400)
             self.send_header('Content-Type', 'application/json')
             self.end_headers()
-            self.wfile.write(json.dumps({'error': f'Invalid region. Available: {["All"] + list(REGIONS.keys())}'}).encode())
+            self.wfile.write(json.dumps({'error': f'Invalid region. Available: {list(REGIONS.keys())}'}).encode())
             return
 
         try:
@@ -806,56 +809,38 @@ class handler(BaseHTTPRequestHandler):
             # Fetch waste data
             waste_data = fetch_waste_data(token, month)
 
-            # Load template
-            template_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'templates')
-            template_path = os.path.join(template_dir, 'template.pptx')
+            # Load template — try multiple paths for Vercel compatibility
+            base = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+            template_path = os.path.join(base, 'templates', 'template.pptx')
+            if not os.path.exists(template_path):
+                # Vercel may place files relative to CWD
+                template_path = os.path.join(os.getcwd(), 'templates', 'template.pptx')
+            if not os.path.exists(template_path):
+                # Try relative to the api file itself
+                template_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'templates', 'template.pptx')
             with open(template_path, 'rb') as f:
                 template_bytes = f.read()
 
             period = f"{month} {year}"
+            pptx_bytes, error = generate_presentation(template_bytes, region, period, kpi_data, waste_data)
 
-            if region == 'All':
-                # Generate all regions and zip them
-                zip_buf = io.BytesIO()
-                with zipfile.ZipFile(zip_buf, 'w', zipfile.ZIP_DEFLATED) as zf:
-                    for rname in REGIONS:
-                        pptx_bytes, error = generate_presentation(template_bytes, rname, period, kpi_data, waste_data)
-                        if error:
-                            continue
-                        safe_name = rname.replace(' ', '_')
-                        fname = f"HCT_KPI_Committee_{safe_name}_{month}_{year}.pptx"
-                        zf.writestr(fname, pptx_bytes)
-
-                zip_bytes = zip_buf.getvalue()
-                filename = f"HCT_KPI_All_Regions_{month}_{year}.zip"
-
-                self.send_response(200)
-                self.send_header('Content-Type', 'application/zip')
-                self.send_header('Content-Disposition', f'attachment; filename="{filename}"')
-                self.send_header('Content-Length', str(len(zip_bytes)))
-                self.send_header('Access-Control-Allow-Origin', '*')
+            if error:
+                self.send_response(500)
+                self.send_header('Content-Type', 'application/json')
                 self.end_headers()
-                self.wfile.write(zip_bytes)
-            else:
-                pptx_bytes, error = generate_presentation(template_bytes, region, period, kpi_data, waste_data)
+                self.wfile.write(json.dumps({'error': error}).encode())
+                return
 
-                if error:
-                    self.send_response(500)
-                    self.send_header('Content-Type', 'application/json')
-                    self.end_headers()
-                    self.wfile.write(json.dumps({'error': error}).encode())
-                    return
+            safe_name = region.replace(' ', '_')
+            filename = f"HCT_KPI_Committee_{safe_name}_{month}_{year}.pptx"
 
-                safe_name = region.replace(' ', '_')
-                filename = f"HCT_KPI_Committee_{safe_name}_{month}_{year}.pptx"
-
-                self.send_response(200)
-                self.send_header('Content-Type', 'application/vnd.openxmlformats-officedocument.presentationml.presentation')
-                self.send_header('Content-Disposition', f'attachment; filename="{filename}"')
-                self.send_header('Content-Length', str(len(pptx_bytes)))
-                self.send_header('Access-Control-Allow-Origin', '*')
-                self.end_headers()
-                self.wfile.write(pptx_bytes)
+            self.send_response(200)
+            self.send_header('Content-Type', 'application/vnd.openxmlformats-officedocument.presentationml.presentation')
+            self.send_header('Content-Disposition', f'attachment; filename="{filename}"')
+            self.send_header('Content-Length', str(len(pptx_bytes)))
+            self.send_header('Access-Control-Allow-Origin', '*')
+            self.end_headers()
+            self.wfile.write(pptx_bytes)
 
         except Exception as e:
             import traceback
