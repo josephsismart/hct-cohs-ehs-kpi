@@ -1,4 +1,4 @@
-"""Vercel Python serverless function - HCT-COHS KPI Excel Report Generator.
+"""Vercel Python serverless function — HCT-COHS KPI Excel Report Generator.
 Fetches live data from Smartsheet API and generates downloadable .xlsx files
 matching the client template format.
 """
@@ -12,6 +12,7 @@ from datetime import datetime
 MONTH_NAMES = ['January','February','March','April','May','June',
                'July','August','September','October','November','December']
 
+# ── Region mapping (for HS Committee which uses region names) ──
 REGIONS = {
     'AD Al Ain':      {'sheets': ['AAF','AAZ']},
     'Abu Dhabi':      {'sheets': ['ADA','ADB']},
@@ -27,6 +28,16 @@ for rname, rcfg in REGIONS.items():
     for code in rcfg['sheets']:
         CAMPUS_TO_REGION[code] = rname
 
+VALID_CAMPUSES = {'AAF','AAZ','ADA','ADB','ADH','MZY','DMC','DBN','FJF','FJH','SJA','SJB','RKA','RKB','HQ'}
+VALID_REGIONS = set(REGIONS.keys())
+
+# Waste data source
+WASTE_SOURCE = {'sheetId': '8150747345538948', 'campusCol': 'Campus Code', 'monthCol': 'Reporting Month'}
+WASTE_TABLE_COLS = ['General Waste', 'Food Waste', 'Paper Waste', 'Aluminum',
+                    'PET Bottle', 'Tissue', 'Scrap Metal', 'E-waste', 'Hazardous']
+
+# ── Smartsheet source definitions ──
+# Each entry maps to one sheet in the Excel output
 SYNC_SOURCES = [
     {'key': 'v2_hs_committee', 'sheetId': '435993944477572', 'campusCol': 'Committee', 'monthCol': 'Reporting Month',
      'plannedCol': 'Meeting Planned', 'actualCol': 'Meeting Conducted',
@@ -57,8 +68,7 @@ SYNC_SOURCES = [
      'xlSheet': 'Incident Notification on Tim', 'xlType': 'planned_actual'},
     {'key': 'training', 'reportId': '4766133025878916', 'campusCol': 'Campus Code', 'monthCol': 'Reporting Month',
      'valueCol': 'Total Hours of Training',
-     'xlSheet': 'Total Hours of Training', 'xlType': 'value'},
-    {'key': 'v2_planned_training', 'sheetId': '8549734774951812', 'campusCol': 'Campus Code', 'monthCol': 'Reporting Month',
+     'xlSheet': 'Total Hours of Training', 'xlType': 'value'},    {'key': 'v2_planned_training', 'sheetId': '8549734774951812', 'campusCol': 'Campus Code', 'monthCol': 'Reporting Month',
      'plannedCol': 'Planned (Yes/No)', 'actualCol': 'Planned (Yes/No)',
      'xlSheet': 'Planned Training Report', 'xlType': 'planned_actual', 'yesNoCount': True},
     {'key': 'v2_drills', 'sheetId': '5053158949605252', 'campusCol': 'Campus Code', 'monthCol': 'Reporting Month',
@@ -78,20 +88,23 @@ SYNC_SOURCES = [
      'xlSheet': 'Permit to Work', 'xlType': 'planned_actual'},
 ]
 
+# Trend sources — these aggregate across all campuses per month
 TREND_SOURCES = [
     {'key': 'incidents', 'reportId': '6831846506581892', 'campusCol': 'Campus Code', 'monthCol': 'Reporting Month',
      'valueCol': 'Total Incident Investigated',
-     'xlSheet': 'Trend - Total Incidents', 'mode': 'sum_value'},
+     'xlSheet': 'Trend — Total Incidents', 'mode': 'sum_value'},
     {'key': 'training_trend', 'reportId': '4766133025878916', 'campusCol': 'Campus Code', 'monthCol': 'Reporting Month',
      'valueCol': 'Total Hours of Training',
-     'xlSheet': 'Trend - Training Hours', 'mode': 'sum_value'},
+     'xlSheet': 'Trend — Training Hours', 'mode': 'sum_value'},
     {'key': 'ehs_trend', 'sheetId': '4947401822392196', 'campusCol': 'Campus Code', 'monthCol': 'Primary',
      'plannedCol': 'No. of EHS Inspections Planned', 'actualCol': 'No. of EHS Inspections Completed',
-     'xlSheet': 'Trend - EHS Inspection Rate', 'mode': 'pct'},
+     'xlSheet': 'Trend — EHS Inspection Rate', 'mode': 'pct'},
     {'key': 'compliance_trend', 'sheetId': '4198632256393092', 'campusCol': 'Campus Code', 'monthCol': 'Primary',
      'plannedCol': 'Applicable Compliance', 'actualCol': 'Actual Compliance',
-     'xlSheet': 'Trend - Compliance Rate', 'mode': 'pct'},
+     'xlSheet': 'Trend — Compliance Rate', 'mode': 'pct'},
 ]
+
+# ── Smartsheet API ──
 
 def _ss_fetch(endpoint, token):
     url = 'https://api.smartsheet.com/2.0/' + endpoint
@@ -179,8 +192,8 @@ def safe_float(v, default=0.0):
 def detect_latest_month():
     return MONTH_NAMES[datetime.now().month - 1]
 
-
 def process_source(src, rows, month_filter):
+    """Aggregate rows by campus, filtered by month. Returns {campus: {planned, actual, value}}"""
     campus_agg = {}
     campus_col = src['campusCol']
     month_col = src.get('monthCol')
@@ -194,6 +207,16 @@ def process_source(src, rows, month_filter):
         campus = str(row.get(campus_col, '')).strip()
         if not campus:
             continue
+
+        # Filter by valid campus codes / region names
+        if use_region:
+            if campus not in VALID_REGIONS:
+                continue
+        else:
+            if campus not in VALID_CAMPUSES:
+                continue
+
+        # Month filter
         if month_col and month_filter:
             row_month = normalize_month(row.get(month_col))
             if not row_month:
@@ -202,12 +225,17 @@ def process_source(src, rows, month_filter):
                 row_month = normalize_month(row.get('Primary'))
             if row_month != month_filter:
                 continue
+
+        # Map campus to region if needed
         if use_region:
+            # HS Committee uses region names directly (e.g., "Abu Dhabi")
             key = campus
         else:
             key = campus
+
         if key not in campus_agg:
             campus_agg[key] = {'planned': 0, 'actual': 0, 'value': 0}
+
         if is_yes_no:
             p = 1 if str(row.get(planned_col, '')).strip().lower() == 'yes' else 0
             a = 1 if str(row.get(actual_col, '')).strip().lower() == 'yes' else 0
@@ -220,10 +248,12 @@ def process_source(src, rows, month_filter):
                 campus_agg[key]['actual'] += safe_float(row.get(actual_col))
             if value_col:
                 campus_agg[key]['value'] += safe_float(row.get(value_col))
+
     return campus_agg
 
 
 def process_trend(src, rows):
+    """Aggregate rows by month across all campuses. Returns {month_label: value}"""
     month_agg = {}
     campus_col = src['campusCol']
     month_col = src.get('monthCol', 'Reporting Month')
@@ -231,24 +261,28 @@ def process_trend(src, rows):
 
     for row in rows:
         campus = str(row.get(campus_col, '')).strip()
-        if not campus:
+        if not campus or campus not in VALID_CAMPUSES:
             continue
         row_month = normalize_month(row.get(month_col))
         if not row_month:
             row_month = normalize_month(row.get('Primary'))
         if not row_month:
             continue
+
         if row_month not in month_agg:
             month_agg[row_month] = {'planned': 0, 'actual': 0, 'value': 0}
+
         if mode == 'sum_value':
             month_agg[row_month]['value'] += safe_float(row.get(src.get('valueCol', '')))
         elif mode == 'pct':
             month_agg[row_month]['planned'] += safe_float(row.get(src.get('plannedCol', '')))
             month_agg[row_month]['actual'] += safe_float(row.get(src.get('actualCol', '')))
+
     return month_agg
 
 
 def build_xlsx(token, month_filter, year):
+    """Build the Excel workbook and return bytes."""
     try:
         import openpyxl
     except ImportError:
@@ -260,6 +294,7 @@ def build_xlsx(token, month_filter, year):
     from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
     from openpyxl.utils import get_column_letter
 
+    # Cache fetched sheets/reports to avoid duplicate API calls
     _cache = {}
     def cached_fetch(src):
         if src.get('reportId'):
@@ -274,8 +309,10 @@ def build_xlsx(token, month_filter, year):
             return _cache[key]
 
     wb = Workbook()
+    # Remove default sheet
     wb.remove(wb.active)
 
+    # Styles
     header_font = Font(bold=True, size=11, color='FFFFFF')
     header_fill = PatternFill('solid', fgColor='1A1F71')
     header_align = Alignment(horizontal='center', vertical='center')
@@ -291,6 +328,7 @@ def build_xlsx(token, month_filter, year):
     if not month_filter:
         month_filter = detect_latest_month()
 
+    # ── Process each KPI source ──
     for src in SYNC_SOURCES:
         print('Processing: ' + src['xlSheet'])
         try:
@@ -300,9 +338,13 @@ def build_xlsx(token, month_filter, year):
             rows = []
 
         campus_data = process_source(src, rows, month_filter)
-        ws = wb.create_sheet(title=src['xlSheet'][:31])
+
+        # Create sheet
+        ws = wb.create_sheet(title=src['xlSheet'][:31])  # Excel 31-char limit
+
         xl_type = src['xlType']
 
+        # Write headers based on type
         if xl_type == 'value' or xl_type == 'value_drills':
             headers = ['Campus', 'Value']
         elif xl_type == 'value_actual':
@@ -317,7 +359,9 @@ def build_xlsx(token, month_filter, year):
             cell.alignment = header_align
             cell.border = thin_border
 
-        campuses = sorted(campus_data.keys())
+        # Sort campuses, skip those with all-zero values
+        campuses = sorted(c for c in campus_data.keys()
+                          if any(v != 0 for v in campus_data[c].values()))
         for row_idx, campus in enumerate(campuses, 2):
             d = campus_data[campus]
             ws.cell(row=row_idx, column=1, value=campus).border = thin_border
@@ -329,16 +373,19 @@ def build_xlsx(token, month_filter, year):
                 c.alignment = data_align
                 c.border = thin_border
             elif xl_type == 'value_drills':
+                # Drills: value = actual (yes count)
                 val = d['actual']
                 c = ws.cell(row=row_idx, column=2, value=int(val) if val == int(val) else val)
                 c.alignment = data_align
                 c.border = thin_border
             elif xl_type == 'value_actual':
+                # Risk Assessment Validated: show actual as Value
                 val = d['actual']
                 c = ws.cell(row=row_idx, column=2, value=int(val) if val == int(val) else val)
                 c.alignment = data_align
                 c.border = thin_border
             else:
+                # planned_actual
                 p = d['planned']
                 a = d['actual']
                 c1 = ws.cell(row=row_idx, column=2, value=int(p) if p == int(p) else p)
@@ -348,11 +395,62 @@ def build_xlsx(token, month_filter, year):
                 c2.alignment = data_align
                 c2.border = thin_border
 
+        # Column widths
         ws.column_dimensions['A'].width = 22
         ws.column_dimensions['B'].width = 14
         if len(headers) > 2:
             ws.column_dimensions['C'].width = 14
 
+    # ── Waste Segregation sheet ──
+    print('Processing: Waste Segregation')
+    try:
+        waste_rows = cached_fetch(WASTE_SOURCE)
+    except Exception as e:
+        print('  WARNING: Failed to fetch waste data: ' + str(e))
+        waste_rows = []
+
+    ws_waste = wb.create_sheet(title='Waste Segregation')
+    waste_headers = ['Campus'] + WASTE_TABLE_COLS + ['Total Waste']
+    for col_idx, h in enumerate(waste_headers, 1):
+        cell = ws_waste.cell(row=1, column=col_idx, value=h)
+        cell.font = header_font
+        cell.fill = header_fill
+        cell.alignment = header_align
+        cell.border = thin_border
+
+    waste_row_idx = 2
+    waste_by_campus = {}
+    for row in waste_rows:
+        campus = str(row.get(WASTE_SOURCE['campusCol'], '')).strip()
+        if not campus or campus not in VALID_CAMPUSES:
+            continue
+        row_month = normalize_month(row.get(WASTE_SOURCE['monthCol']))
+        if row_month != month_filter:
+            continue
+        entry = {col: safe_float(row.get(col)) for col in WASTE_TABLE_COLS}
+        entry['Total Waste'] = safe_float(row.get('Total Waste')) or sum(entry.values())
+        waste_by_campus[campus] = entry
+
+    for campus in sorted(waste_by_campus.keys()):
+        entry = waste_by_campus[campus]
+        ws_waste.cell(row=waste_row_idx, column=1, value=campus).border = thin_border
+        for ci, col in enumerate(WASTE_TABLE_COLS, 2):
+            val = entry.get(col, 0)
+            c = ws_waste.cell(row=waste_row_idx, column=ci, value=round(val, 1) if val else 0)
+            c.alignment = data_align
+            c.border = thin_border
+        total = entry.get('Total Waste', 0)
+        c = ws_waste.cell(row=waste_row_idx, column=len(WASTE_TABLE_COLS) + 2, value=round(total, 1) if total else 0)
+        c.alignment = data_align
+        c.border = thin_border
+        waste_row_idx += 1
+
+    for ci in range(1, len(waste_headers) + 1):
+        ws_waste.column_dimensions[get_column_letter(ci)].width = 16
+    ws_waste.column_dimensions['A'].width = 22
+
+    # ── Trend sheets ──
+    # Fetch trend data (reuse some sources already fetched, but fetch fresh for trends)
     for src in TREND_SOURCES:
         print('Processing trend: ' + src['xlSheet'])
         try:
@@ -362,8 +460,10 @@ def build_xlsx(token, month_filter, year):
             rows = []
 
         month_data = process_trend(src, rows)
+
         ws = wb.create_sheet(title=src['xlSheet'][:31])
 
+        # Headers
         headers = ['Campus', 'Value']
         for col_idx, h in enumerate(headers, 1):
             cell = ws.cell(row=1, column=col_idx, value=h)
@@ -372,6 +472,7 @@ def build_xlsx(token, month_filter, year):
             cell.alignment = header_align
             cell.border = thin_border
 
+        # Write month rows in chronological order
         ordered_months = [m for m in MONTH_NAMES if m in month_data]
         for row_idx, m in enumerate(ordered_months, 2):
             d = month_data[m]
@@ -381,6 +482,7 @@ def build_xlsx(token, month_filter, year):
             if src['mode'] == 'sum_value':
                 val = d['value']
             else:
+                # pct mode: show as rounded percentage
                 val = round(d['actual'] / d['planned'] * 100) if d['planned'] > 0 else 0
 
             c = ws.cell(row=row_idx, column=2, value=val if isinstance(val, int) else round(val, 1))
@@ -390,6 +492,7 @@ def build_xlsx(token, month_filter, year):
         ws.column_dimensions['A'].width = 22
         ws.column_dimensions['B'].width = 14
 
+    # Save to bytes
     buf = io.BytesIO()
     wb.save(buf)
     buf.seek(0)
