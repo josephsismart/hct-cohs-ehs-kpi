@@ -1,8 +1,10 @@
 import { NextResponse } from 'next/server';
-import { SYNC_SOURCES, fetchSheet, fetchReport, processSource, KpiRow } from '@/lib/smartsheet';
+import { SYNC_SOURCES, fetchSheet, fetchReport, processSource, normalizeMonth, KpiRow } from '@/lib/smartsheet';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
+
+const WASTE_COLS = ['Total Waste','General Waste','Food Waste','Paper Waste','Paper Cup/Carton','PET Bottle','Single Use Plastic'];
 
 export async function GET() {
   const token = process.env.SMARTSHEET_TOKEN;
@@ -10,6 +12,7 @@ export async function GET() {
 
   const results: Record<string, { rows: KpiRow[]; error?: string }> = {};
   const errors: string[] = [];
+  let wasteData: Record<string, any>[] = [];
 
   const debug: Record<string, any> = {};
   await Promise.allSettled(
@@ -23,7 +26,6 @@ export async function GET() {
         debug[src.key] = { rawCount: raw.length, processedCount: processed.length, columns: raw.length > 0 ? Object.keys(raw[0]) : [], config: { campusCol: src.campusCol, monthCol: src.monthCol, plannedCol: src.plannedCol, actualCol: src.actualCol, valueCol: src.valueCol } };
         if (raw.length > 0 && (processed.length === 0 || processed.length !== raw.length)) {
           debug[src.key].sample = raw[0];
-          // Check for column mismatch
           const cols = Object.keys(raw[0]);
           const missing: string[] = [];
           if (src.campusCol && !cols.includes(src.campusCol)) missing.push(`campusCol: '${src.campusCol}'`);
@@ -34,6 +36,16 @@ export async function GET() {
           if (missing.length > 0) debug[src.key].missingColumns = missing;
         }
         results[src.key] = { rows: processed };
+        // For waste segregation, also pass raw columnar data for the table
+        if (src.key === 'v2_waste_segregation') {
+          wasteData = raw.map(r => {
+            const campus = String(r[src.campusCol] || '').trim();
+            const month = normalizeMonth(r[src.monthCol || '']);
+            const row: Record<string, any> = { campus, month };
+            WASTE_COLS.forEach(c => { row[c] = parseFloat(r[c]) || 0; });
+            return row;
+          }).filter(r => r.campus);
+        }
       } catch (e: any) {
         results[src.key] = { rows: [], error: e.message };
         errors.push(`${src.key}: ${e.message}`);
@@ -58,6 +70,7 @@ export async function GET() {
     campuses: [...campusSet].sort(),
     months: [...monthSet],
     errors,
+    wasteData,
     debug,
   });
 }
