@@ -1,10 +1,8 @@
 import { NextResponse } from 'next/server';
-import { SYNC_SOURCES, fetchSheet, fetchReport, processSource, normalizeMonth, KpiRow } from '@/lib/smartsheet';
+import { SYNC_SOURCES, fetchSheet, fetchReport, processSource, KpiRow } from '@/lib/smartsheet';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
-
-const WASTE_COLS = ['Total Waste','General Waste','Food Waste','Paper Waste','Paper Cup/Carton','PET Bottle','Single Use Plastic'];
 
 export async function GET() {
   const token = process.env.SMARTSHEET_TOKEN;
@@ -12,8 +10,8 @@ export async function GET() {
 
   const results: Record<string, { rows: KpiRow[]; error?: string }> = {};
   const errors: string[] = [];
-  let wasteData: Record<string, any>[] = [];
 
+  const debug: Record<string, any> = {};
   await Promise.allSettled(
     SYNC_SOURCES.map(async (src) => {
       try {
@@ -21,17 +19,21 @@ export async function GET() {
           ? await fetchSheet(src.sheetId, token)
           : await fetchReport(src.reportId!, token);
         const processed = processSource(src, raw);
-        results[src.key] = { rows: processed };
-        // For waste segregation, also pass raw columnar data for the table
-        if (src.key === 'v2_waste_segregation') {
-          wasteData = raw.map(r => {
-            const campus = String(r[src.campusCol] || '').trim();
-            const month = normalizeMonth(r[src.monthCol || '']);
-            const row: Record<string, any> = { campus, month };
-            WASTE_COLS.forEach(c => { row[c] = parseFloat(r[c]) || 0; });
-            return row;
-          }).filter(r => r.campus);
+        // Debug: always capture raw info for column verification
+        debug[src.key] = { rawCount: raw.length, processedCount: processed.length, columns: raw.length > 0 ? Object.keys(raw[0]) : [], config: { campusCol: src.campusCol, monthCol: src.monthCol, plannedCol: src.plannedCol, actualCol: src.actualCol, valueCol: src.valueCol } };
+        if (raw.length > 0 && (processed.length === 0 || processed.length !== raw.length)) {
+          debug[src.key].sample = raw[0];
+          // Check for column mismatch
+          const cols = Object.keys(raw[0]);
+          const missing: string[] = [];
+          if (src.campusCol && !cols.includes(src.campusCol)) missing.push(`campusCol: '${src.campusCol}'`);
+          if (src.monthCol && !cols.includes(src.monthCol)) missing.push(`monthCol: '${src.monthCol}'`);
+          if (src.plannedCol && !cols.includes(src.plannedCol)) missing.push(`plannedCol: '${src.plannedCol}'`);
+          if (src.actualCol && !cols.includes(src.actualCol)) missing.push(`actualCol: '${src.actualCol}'`);
+          if (src.valueCol && !cols.includes(src.valueCol)) missing.push(`valueCol: '${src.valueCol}'`);
+          if (missing.length > 0) debug[src.key].missingColumns = missing;
         }
+        results[src.key] = { rows: processed };
       } catch (e: any) {
         results[src.key] = { rows: [], error: e.message };
         errors.push(`${src.key}: ${e.message}`);
@@ -39,11 +41,13 @@ export async function GET() {
     })
   );
 
+  // Extract unique campuses and months — skip isolated sources (pie charts, committee, mgmt review)
   const campusSet = new Set<string>();
   const monthSet = new Set<string>();
-  Object.values(results).forEach(({ rows }) => {
+  const isolatedKeys = new Set(SYNC_SOURCES.filter(s => s.isolateFromCampusSet).map(s => s.key));
+  Object.entries(results).forEach(([key, { rows }]) => {
     rows.forEach(r => {
-      if (r.campus) campusSet.add(r.campus);
+      if (r.campus && !isolatedKeys.has(key)) campusSet.add(r.campus);
       if (r.month) monthSet.add(r.month);
     });
   });
@@ -54,6 +58,6 @@ export async function GET() {
     campuses: [...campusSet].sort(),
     months: [...monthSet],
     errors,
-    wasteData,
+    debug,
   });
 }
