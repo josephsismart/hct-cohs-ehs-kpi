@@ -130,13 +130,13 @@ function KpiBarChart({ chartDef, rows }: { chartDef: typeof KPI_CHARTS[0]; rows:
   }
 
   const options: Highcharts.Options = {
-    chart: { type: 'column', height: 280, style: { fontFamily: "'Segoe UI', Arial, sans-serif" } },
+    chart: { type: 'column', height: 370, style: { fontFamily: "'Segoe UI', Arial, sans-serif" } },
     title: { text: undefined },
-    xAxis: { categories: campuses, labels: { style: { fontSize: '10px' } } },
+    xAxis: { categories: campuses, labels: { style: { fontSize: '12px' } } },
     yAxis: { title: { text: null }, gridLineColor: '#f0f0f0' },
-    legend: { align: 'center', verticalAlign: 'bottom', itemStyle: { fontSize: '10px' } },
+    legend: { align: 'center', verticalAlign: 'bottom', itemStyle: { fontSize: '11px' } },
     plotOptions: {
-      column: { borderRadius: 2, groupPadding: 0.15, pointPadding: 0.05, dataLabels: { enabled: true, overflow: 'allow' as any, crop: false, y: -2, style: { fontSize: '9px', fontWeight: 'normal', textOutline: 'none' }, formatter: function(): string { return (this as any).y === 0 ? '' : String((this as any).y); } } },
+      column: { borderRadius: 2, groupPadding: 0.12, pointPadding: 0.04, dataLabels: { enabled: true, overflow: 'allow' as any, crop: false, y: -4, style: { fontSize: '11px', fontWeight: '600', textOutline: 'none' }, formatter: function(): string { return (this as any).y === 0 ? '' : String((this as any).y); } } },
     },
     series,
     credits: { enabled: false },
