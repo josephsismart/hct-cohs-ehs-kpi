@@ -11,7 +11,7 @@
   --card-bg: #FFFFFF;
   --border: #DDE3EF;
   --text: #1C2340;
-  --font: 'Segoe UI', Arial, sans-serif;
+  --font: 'Segoe UI', Arial, sans-serif;h
 }
 
 body { font-family: var(--font); background: var(--light-bg); color: var(--text); }
@@ -107,7 +107,7 @@ body { font-family: var(--font); background: var(--light-bg); color: var(--text)
 }
 
 /* CHARTS GRID */
-.charts-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
+.charts-grid { display: grid; grid-template-columns: 1fr; gap: 16px; }
 @media (max-width: 900px) { .charts-grid { grid-template-columns: 1fr; } }
 
 .chart-card {
