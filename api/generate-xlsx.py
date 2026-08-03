@@ -1,4 +1,4 @@
-"""Vercel Python serverless function — HCT-COHS KPI Excel Report Generator.
+"""Vercel Python serverless function â HCT-COHS KPI Excel Report Generator.
 Fetches live data from Smartsheet API and generates downloadable .xlsx files
 matching the client template format.
 """
@@ -12,7 +12,7 @@ from datetime import datetime
 MONTH_NAMES = ['January','February','March','April','May','June',
                'July','August','September','October','November','December']
 
-# ── Region mapping (for HS Committee which uses region names) ──
+# ââ Region mapping (for HS Committee which uses region names) ââ
 REGIONS = {
     'AD Al Ain':      {'sheets': ['AAF','AAZ']},
     'Abu Dhabi':      {'sheets': ['ADA','ADB']},
@@ -36,7 +36,7 @@ WASTE_SOURCE = {'sheetId': '8150747345538948', 'campusCol': 'Campus Code', 'mont
 WASTE_TABLE_COLS = ['General Waste', 'Food Waste', 'Paper Waste', 'Aluminum',
                     'PET Bottle', 'Tissue', 'Scrap Metal', 'E-waste', 'Hazardous']
 
-# ── Smartsheet source definitions ──
+# ââ Smartsheet source definitions ââ
 # Each entry maps to one sheet in the Excel output
 SYNC_SOURCES = [
     {'key': 'v2_hs_committee', 'sheetId': '435993944477572', 'campusCol': 'Committee', 'monthCol': 'Reporting Month',
@@ -45,13 +45,13 @@ SYNC_SOURCES = [
     {'key': 'v2_external_compliance', 'sheetId': '4198632256393092', 'campusCol': 'Campus Code', 'monthCol': 'Primary',
      'plannedCol': 'Applicable Compliance', 'actualCol': 'Actual Compliance',
      'xlSheet': 'External Authority Complianc', 'xlType': 'planned_actual'},
-    {'key': 'v2_risk_validated', 'sheetId': '7323092115214212', 'campusCol': 'Campus', 'monthCol': 'Primary',
+    {'key': 'v2_risk_validated', 'sheetId': '7323092115214212', 'campusCol': 'Campus Code', 'monthCol': 'Primary',
      'plannedCol': 'Total Assessments Register', 'actualCol': 'RA Validated and Signed Off',
      'xlSheet': 'Risk Assessment Validated', 'xlType': 'value_actual'},
     {'key': 'v2_findings_on_time', 'sheetId': '4947401822392196', 'campusCol': 'Campus Code', 'monthCol': 'Primary',
      'plannedCol': 'No. of Findings in Reporting Month', 'actualCol': 'No. of Findings Due',
      'xlSheet': 'Findings Closed On Time', 'xlType': 'planned_actual'},
-    {'key': 'v2_risk_closed', 'sheetId': '7323092115214212', 'campusCol': 'Campus', 'monthCol': 'Primary',
+    {'key': 'v2_risk_closed', 'sheetId': '7323092115214212', 'campusCol': 'Campus Code', 'monthCol': 'Primary',
      'plannedCol': 'Total Risk Assessments Registered', 'actualCol': 'Risk Assessment Closed',
      'xlSheet': 'Risk Assessment Closed', 'xlType': 'planned_actual'},
     {'key': 'v2_ehs_inspection', 'sheetId': '4947401822392196', 'campusCol': 'Campus Code', 'monthCol': 'Primary',
@@ -66,9 +66,10 @@ SYNC_SOURCES = [
     {'key': 'notification', 'reportId': '1199821531598724', 'campusCol': 'Campus Code', 'monthCol': 'Reporting Month',
      'plannedCol': 'Total Incident', 'actualCol': 'Notification Submitted on Time',
      'xlSheet': 'Incident Notification on Tim', 'xlType': 'planned_actual'},
-    {'key': 'training', 'reportId': '4766133025878916', 'campusCol': 'Campus Code', 'monthCol': 'Reporting Month',
-     'valueCol': 'Total Hours of Training',
-     'xlSheet': 'Total Hours of Training', 'xlType': 'value'},    {'key': 'v2_planned_training', 'sheetId': '8549734774951812', 'campusCol': 'Campus Code', 'monthCol': 'Reporting Month',
+    {'key': 'training', 'sheetId': '8549734774951812', 'campusCol': 'Campus Code', 'monthCol': 'Reporting Month',
+     'valueCol': 'Total Hours',
+     'xlSheet': 'Total Hours of Training', 'xlType': 'value'},
+    {'key': 'v2_planned_training', 'sheetId': '8549734774951812', 'campusCol': 'Campus Code', 'monthCol': 'Reporting Month',
      'plannedCol': 'Planned (Yes/No)', 'actualCol': 'Planned (Yes/No)',
      'xlSheet': 'Planned Training Report', 'xlType': 'planned_actual', 'yesNoCount': True},
     {'key': 'v2_drills', 'sheetId': '5053158949605252', 'campusCol': 'Campus Code', 'monthCol': 'Reporting Month',
@@ -80,7 +81,7 @@ SYNC_SOURCES = [
     {'key': 'v2_hazard_id', 'sheetId': '7323092115214212', 'campusCol': 'Campus Code', 'monthCol': 'Reporting Month',
      'plannedCol': 'Total Controls Identified', 'actualCol': 'Implemented Controls',
      'xlSheet': 'Hazard Identification', 'xlType': 'planned_actual'},
-    {'key': 'v2_safe_working', 'sheetId': '1693592581001092', 'campusCol': 'Campus', 'monthCol': 'Primary',
+    {'key': 'v2_safe_working', 'sheetId': '1693592581001092', 'campusCol': 'Campus Code', 'monthCol': 'Primary',
      'plannedCol': 'No. of SOPs Verified', 'actualCol': 'No. of SOPs Implemented',
      'xlSheet': 'Safe Working Procedure', 'xlType': 'planned_actual'},
     {'key': 'v2_permit_to_work', 'sheetId': '5899016251330436', 'campusCol': 'Campus Code', 'monthCol': 'Reporting Month',
@@ -88,23 +89,23 @@ SYNC_SOURCES = [
      'xlSheet': 'Permit to Work', 'xlType': 'planned_actual'},
 ]
 
-# Trend sources — these aggregate across all campuses per month
+# Trend sources â these aggregate across all campuses per month
 TREND_SOURCES = [
     {'key': 'incidents', 'reportId': '6831846506581892', 'campusCol': 'Campus Code', 'monthCol': 'Reporting Month',
      'valueCol': 'Total Incident Investigated',
-     'xlSheet': 'Trend — Total Incidents', 'mode': 'sum_value'},
-    {'key': 'training_trend', 'reportId': '4766133025878916', 'campusCol': 'Campus Code', 'monthCol': 'Reporting Month',
-     'valueCol': 'Total Hours of Training',
-     'xlSheet': 'Trend — Training Hours', 'mode': 'sum_value'},
+     'xlSheet': 'Trend â Total Incidents', 'mode': 'sum_value'},
+    {'key': 'training_trend', 'sheetId': '8549734774951812', 'campusCol': 'Campus Code', 'monthCol': 'Reporting Month',
+     'valueCol': 'Total Hours',
+     'xlSheet': 'Trend â Training Hours', 'mode': 'sum_value'},
     {'key': 'ehs_trend', 'sheetId': '4947401822392196', 'campusCol': 'Campus Code', 'monthCol': 'Primary',
      'plannedCol': 'No. of EHS Inspections Planned', 'actualCol': 'No. of EHS Inspections Completed',
-     'xlSheet': 'Trend — EHS Inspection Rate', 'mode': 'pct'},
+     'xlSheet': 'Trend â EHS Inspection Rate', 'mode': 'pct'},
     {'key': 'compliance_trend', 'sheetId': '4198632256393092', 'campusCol': 'Campus Code', 'monthCol': 'Primary',
      'plannedCol': 'Applicable Compliance', 'actualCol': 'Actual Compliance',
-     'xlSheet': 'Trend — Compliance Rate', 'mode': 'pct'},
+     'xlSheet': 'Trend â Compliance Rate', 'mode': 'pct'},
 ]
 
-# ── Smartsheet API ──
+# ââ Smartsheet API ââ
 
 def _ss_fetch(endpoint, token):
     url = 'https://api.smartsheet.com/2.0/' + endpoint
@@ -191,6 +192,7 @@ def safe_float(v, default=0.0):
 
 def detect_latest_month():
     return MONTH_NAMES[datetime.now().month - 1]
+
 
 def process_source(src, rows, month_filter):
     """Aggregate rows by campus, filtered by month. Returns {campus: {planned, actual, value}}"""
@@ -328,7 +330,7 @@ def build_xlsx(token, month_filter, year):
     if not month_filter:
         month_filter = detect_latest_month()
 
-    # ── Process each KPI source ──
+    # ââ Process each KPI source ââ
     for src in SYNC_SOURCES:
         print('Processing: ' + src['xlSheet'])
         try:
@@ -401,7 +403,7 @@ def build_xlsx(token, month_filter, year):
         if len(headers) > 2:
             ws.column_dimensions['C'].width = 14
 
-    # ── Waste Segregation sheet ──
+    # ââ Waste Segregation sheet ââ
     print('Processing: Waste Segregation')
     try:
         waste_rows = cached_fetch(WASTE_SOURCE)
@@ -449,7 +451,7 @@ def build_xlsx(token, month_filter, year):
         ws_waste.column_dimensions[get_column_letter(ci)].width = 16
     ws_waste.column_dimensions['A'].width = 22
 
-    # ── Trend sheets ──
+    # ââ Trend sheets ââ
     # Fetch trend data (reuse some sources already fetched, but fetch fresh for trends)
     for src in TREND_SOURCES:
         print('Processing trend: ' + src['xlSheet'])
