@@ -11,7 +11,7 @@
   --card-bg: #FFFFFF;
   --border: #DDE3EF;
   --text: #1C2340;
-  --font: 'Segoe UI', Arial, sans-serif;h
+  --font: 'Segoe UI', Arial, sans-serif;
 }
 
 body { font-family: var(--font); background: var(--light-bg); color: var(--text); }
