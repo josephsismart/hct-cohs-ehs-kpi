@@ -137,11 +137,11 @@ function KpiBarChart({ chartDef, rows }: { chartDef: typeof KPI_CHARTS[0]; rows:
   }
 
   const options: Highcharts.Options = {
-    chart: { type: 'column', height: 280, style: { fontFamily: "'Segoe UI', Arial, sans-serif" } },
+    chart: { type: 'column', height: 280, spacingBottom: 5, style: { fontFamily: "'Segoe UI', Arial, sans-serif" } },
     title: { text: undefined },
     xAxis: { categories: campuses, labels: { style: { fontSize: '10px' } } },
     yAxis: { title: { text: null }, gridLineColor: '#f0f0f0' },
-    legend: { align: 'center', verticalAlign: 'bottom', itemStyle: { fontSize: '10px' } },
+    legend: { align: 'center', verticalAlign: 'bottom', margin: 5, itemStyle: { fontSize: '9px' } },
     plotOptions: {
       column: { borderRadius: 2, groupPadding: 0.15, pointPadding: 0.05, dataLabels: { enabled: true, style: { fontSize: '9px', fontWeight: 'normal' } } },
     },
