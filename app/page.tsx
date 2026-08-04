@@ -846,85 +846,71 @@ export default function Dashboard() {
         if (!chartDef) return null;
         const sourceKey = (chartDef as any).sourceKey || chartDef.key;
         const rows = getRows(sourceKey);
+        const byCampus = aggregateByCampus(rows);
+        const campuses = Object.keys(byCampus).sort();
+        const dlStyle = { enabled: true, allowOverlap: false, crop: false, overflow: 'allow' as const, y: -6, style: { fontSize: '13px', fontWeight: 'bold' as const, textOutline: '2px white' } };
+        const baseChart = { type: 'column' as const, height: 520, style: { fontFamily: "'Segoe UI', Arial, sans-serif" } };
+        const baseAxis = { categories: campuses, labels: { style: { fontSize: '13px', fontWeight: 'bold' as const } } };
+        let expandedOpts: Highcharts.Options | null = null;
+
+        if (chartDef.type === 'pie') {
+          /* pie uses existing component */
+        } else if (chartDef.type === 'rate_pct') {
+          const d = campuses.map(c => { const { planned, actual } = byCampus[c]; const pct = planned > 0 ? Math.min(Math.round(actual / planned * 100), 100) : 0; return { pct, met: pct >= 100 }; });
+          expandedOpts = {
+            chart: baseChart, title: { text: undefined }, xAxis: baseAxis,
+            yAxis: { title: { text: null }, max: 100, labels: { format: '{value}%' }, gridLineColor: '#f0f0f0' },
+            legend: { align: 'center', verticalAlign: 'bottom', itemStyle: { fontSize: '13px' } },
+            plotOptions: { column: { borderRadius: 3, groupPadding: 0.2, pointPadding: 0.08, dataLabels: { ...dlStyle, format: '{y}%' } } },
+            series: [
+              { type: 'column', name: 'Met Target', data: d.map(x => ({ y: x.met ? x.pct : 0, color: '#1D9E75' })), showInLegend: true, color: '#1D9E75' },
+              { type: 'column', name: 'Below Target', data: d.map(x => ({ y: !x.met && x.pct > 0 ? x.pct : 0, color: '#EA352E' })), showInLegend: true, color: '#EA352E' },
+            ],
+            credits: { enabled: false }, tooltip: { shared: true },
+          };
+        } else if (chartDef.type === 'value_hours') {
+          expandedOpts = {
+            chart: baseChart, title: { text: undefined }, xAxis: baseAxis,
+            yAxis: { title: { text: null }, gridLineColor: '#f0f0f0' },
+            legend: { enabled: false },
+            plotOptions: { column: { borderRadius: 3, dataLabels: { ...dlStyle, format: '{y}h' } } },
+            series: [{ type: 'column', name: 'Hours', data: campuses.map(c => byCampus[c].value || byCampus[c].actual), color: '#4A90D9' }],
+            credits: { enabled: false },
+          };
+        } else {
+          const series: any[] = [];
+          if (chartDef.type === 'value') {
+            series.push({ type: 'column', name: (chartDef as any).valueLabel || 'Value', data: campuses.map(c => byCampus[c].value || byCampus[c].actual || byCampus[c].planned), color: '#4A90D9' });
+          } else if (chartDef.type === 'planned_actual_below') {
+            series.push(
+              { type: 'column', name: (chartDef as any).plannedLabel || 'Planned', data: campuses.map(c => byCampus[c].planned), color: 'rgba(74,144,217,0.4)' },
+              { type: 'column', name: (chartDef as any).actualLabel || 'Met/Exceeded', data: campuses.map(c => Math.max(0, byCampus[c].actual)), color: '#1D9E75' },
+              { type: 'column', name: (chartDef as any).belowLabel || 'Below Target', data: campuses.map(c => Math.max(0, byCampus[c].planned - byCampus[c].actual)), color: '#EA352E' },
+            );
+          } else {
+            series.push(
+              { type: 'column', name: (chartDef as any).plannedLabel || 'Planned / Target', data: campuses.map(c => byCampus[c].planned), color: 'rgba(74,144,217,0.4)' },
+              { type: 'column', name: (chartDef as any).actualLabel || 'Actual', data: campuses.map(c => byCampus[c].actual), color: '#0a3d62' },
+            );
+          }
+          expandedOpts = {
+            chart: baseChart, title: { text: undefined }, xAxis: baseAxis,
+            yAxis: { title: { text: null }, gridLineColor: '#f0f0f0' },
+            legend: { align: 'center', verticalAlign: 'bottom', itemStyle: { fontSize: '13px' } },
+            plotOptions: { column: { borderRadius: 3, groupPadding: 0.2, pointPadding: 0.08, dataLabels: dlStyle } },
+            series, credits: { enabled: false }, tooltip: { shared: true },
+          };
+        }
+
         return (
           <div className="modal-overlay" onClick={() => setExpandedChart(null)} style={{ zIndex: 9999 }}>
-            <div onClick={e => e.stopPropagation()} style={{ background: '#fff', borderRadius: '8px', width: '95vw', maxWidth: '1400px', maxHeight: '90vh', overflow: 'auto', padding: '20px', position: 'relative' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                <h3 style={{ margin: 0, color: '#1A1F71', fontSize: '18px' }}><i className="fa fa-chart-bar" style={{ marginRight: 8 }}></i>{chartDef.label}</h3>
-                <button onClick={() => setExpandedChart(null)} style={{ background: 'none', border: 'none', fontSize: '24px', cursor: 'pointer', color: '#666', padding: '4px 8px' }}><i className="fa fa-times"></i></button>
+            <div onClick={e => e.stopPropagation()} style={{ background: '#fff', borderRadius: '10px', width: '95vw', maxWidth: '1400px', maxHeight: '90vh', overflow: 'auto', padding: '24px', boxShadow: '0 8px 32px rgba(0,0,0,0.3)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', borderBottom: '2px solid #1A1F71', paddingBottom: '12px' }}>
+                <h3 style={{ margin: 0, color: '#1A1F71', fontSize: '20px' }}><i className="fa fa-chart-bar" style={{ marginRight: 8 }}></i>{chartDef.label}</h3>
+                <button onClick={() => setExpandedChart(null)} style={{ background: '#f0f0f0', border: 'none', fontSize: '18px', cursor: 'pointer', color: '#666', padding: '6px 12px', borderRadius: '6px' }}><i className="fa fa-times"></i> Close</button>
               </div>
               {chartDef.type === 'pie' ? <KpiPieChart rows={rows} /> :
-               chartDef.type === 'rate_pct' ? (
-                 (() => {
-                   const byCampus = aggregateByCampus(rows);
-                   const campuses = Object.keys(byCampus).sort();
-                   if (campuses.length === 0) return <div className="no-data">No data available</div>;
-                   const d = campuses.map(c => { const { planned, actual } = byCampus[c]; const pct = planned > 0 ? Math.min(Math.round(actual / planned * 100), 100) : 0; return { campus: c, pct, met: pct >= 100 }; });
-                   const opts: Highcharts.Options = {
-                     chart: { type: 'column', height: 500, style: { fontFamily: "'Segoe UI', Arial, sans-serif" }, scrollablePlotArea: { minWidth: campuses.length * 90, scrollPositionX: 0 } },
-                     title: { text: undefined },
-                     xAxis: { categories: campuses, labels: { style: { fontSize: '12px' } } },
-                     yAxis: { title: { text: null }, max: 100, labels: { format: '{value}%' }, gridLineColor: '#f0f0f0' },
-                     legend: { align: 'center', verticalAlign: 'bottom', itemStyle: { fontSize: '12px' } },
-                     plotOptions: { column: { borderRadius: 2, groupPadding: 0.15, pointPadding: 0.05, dataLabels: { enabled: true, format: '{y}%', style: { fontSize: '12px', fontWeight: 'bold' } } } },
-                     series: [
-                       { type: 'column', name: 'Met Target', data: d.map(x => ({ y: x.met ? x.pct : 0, color: '#1D9E75' })), showInLegend: true, color: '#1D9E75' },
-                       { type: 'column', name: 'Below Target', data: d.map(x => ({ y: !x.met && x.pct > 0 ? x.pct : 0, color: '#EA352E' })), showInLegend: true, color: '#EA352E' },
-                     ],
-                     credits: { enabled: false }, tooltip: { shared: true },
-                   };
-                   return <HighchartsReact highcharts={Highcharts} options={opts} />;
-                 })()
-               ) : chartDef.type === 'value_hours' ? (
-                 (() => {
-                   const byCampus = aggregateByCampus(rows);
-                   const campuses = Object.keys(byCampus).sort();
-                   if (campuses.length === 0) return <div className="no-data">No data available</div>;
-                   const opts: Highcharts.Options = {
-                     chart: { type: 'column', height: 500, style: { fontFamily: "'Segoe UI', Arial, sans-serif" }, scrollablePlotArea: { minWidth: campuses.length * 90, scrollPositionX: 0 } },
-                     title: { text: undefined },
-                     xAxis: { categories: campuses, labels: { style: { fontSize: '12px' } } },
-                     yAxis: { title: { text: null }, gridLineColor: '#f0f0f0' },
-                     legend: { enabled: false },
-                     plotOptions: { column: { borderRadius: 2, dataLabels: { enabled: true, format: '{y}h', style: { fontSize: '12px', fontWeight: 'bold' } } } },
-                     series: [{ type: 'column', name: 'Hours', data: campuses.map(c => byCampus[c].value || byCampus[c].actual), color: '#4A90D9' }],
-                     credits: { enabled: false },
-                   };
-                   return <HighchartsReact highcharts={Highcharts} options={opts} />;
-                 })()
-               ) : (
-                 (() => {
-                   const byCampus = aggregateByCampus(rows);
-                   const campuses = Object.keys(byCampus).sort();
-                   if (campuses.length === 0) return <div className="no-data">No data available</div>;
-                   const series: any[] = [];
-                   if (chartDef.type === 'value') {
-                     series.push({ type: 'column', name: (chartDef as any).valueLabel || 'Value', data: campuses.map(c => byCampus[c].value || byCampus[c].actual || byCampus[c].planned), color: '#4A90D9' });
-                   } else if (chartDef.type === 'planned_actual_below') {
-                     series.push(
-                       { type: 'column', name: (chartDef as any).plannedLabel || 'Planned', data: campuses.map(c => byCampus[c].planned), color: 'rgba(74,144,217,0.4)' },
-                       { type: 'column', name: (chartDef as any).actualLabel || 'Met/Exceeded', data: campuses.map(c => Math.max(0, byCampus[c].actual)), color: '#1D9E75' },
-                       { type: 'column', name: (chartDef as any).belowLabel || 'Below Target', data: campuses.map(c => Math.max(0, byCampus[c].planned - byCampus[c].actual)), color: '#EA352E' },
-                     );
-                   } else {
-                     series.push(
-                       { type: 'column', name: (chartDef as any).plannedLabel || 'Planned / Target', data: campuses.map(c => byCampus[c].planned), color: 'rgba(74,144,217,0.4)' },
-                       { type: 'column', name: (chartDef as any).actualLabel || 'Actual', data: campuses.map(c => byCampus[c].actual), color: '#0a3d62' },
-                     );
-                   }
-                   const opts: Highcharts.Options = {
-                     chart: { type: 'column', height: 500, style: { fontFamily: "'Segoe UI', Arial, sans-serif" }, scrollablePlotArea: { minWidth: campuses.length * 90, scrollPositionX: 0 } },
-                     title: { text: undefined },
-                     xAxis: { categories: campuses, labels: { style: { fontSize: '12px' } } },
-                     yAxis: { title: { text: null }, gridLineColor: '#f0f0f0' },
-                     legend: { align: 'center', verticalAlign: 'bottom', itemStyle: { fontSize: '12px' } },
-                     plotOptions: { column: { borderRadius: 2, groupPadding: 0.15, pointPadding: 0.05, dataLabels: { enabled: true, style: { fontSize: '12px', fontWeight: 'bold' } } } },
-                     series,
-                     credits: { enabled: false }, tooltip: { shared: true },
-                   };
-                   return <HighchartsReact highcharts={Highcharts} options={opts} />;
-                 })()
-               )}
+               expandedOpts ? <HighchartsReact highcharts={Highcharts} options={expandedOpts} /> : null}
             </div>
           </div>
         );
