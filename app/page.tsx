@@ -848,8 +848,8 @@ export default function Dashboard() {
         const rows = getRows(sourceKey);
         const byCampus = aggregateByCampus(rows);
         const campuses = Object.keys(byCampus).sort();
-        const dlStyle = { enabled: true, allowOverlap: false, crop: false, overflow: 'allow' as const, y: -6, style: { fontSize: '13px', fontWeight: 'bold' as const, textOutline: '2px white' } };
-        const baseChart = { type: 'column' as const, height: 520, style: { fontFamily: "'Segoe UI', Arial, sans-serif" } };
+        const dlStyle = { enabled: true, allowOverlap: true, crop: false, overflow: 'allow' as const, inside: false, y: -5, style: { fontSize: '12px', fontWeight: 'bold' as const, textOutline: '2px white' } };
+        const baseChart = { type: 'column' as const, height: 550, spacingTop: 30, style: { fontFamily: "'Segoe UI', Arial, sans-serif" } };
         const baseAxis = { categories: campuses, labels: { style: { fontSize: '13px', fontWeight: 'bold' as const } } };
         let expandedOpts: Highcharts.Options | null = null;
 
