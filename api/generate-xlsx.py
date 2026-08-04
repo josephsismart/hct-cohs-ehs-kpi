@@ -1,4 +1,4 @@
-"""Vercel Python serverless function â HCT-COHS KPI Excel Report Generator.
+"""Vercel Python serverless function — HCT-COHS KPI Excel Report Generator.
 Fetches live data from Smartsheet API and generates downloadable .xlsx files
 matching the client template format.
 """
@@ -12,7 +12,7 @@ from datetime import datetime
 MONTH_NAMES = ['January','February','March','April','May','June',
                'July','August','September','October','November','December']
 
-# ââ Region mapping (for HS Committee which uses region names) ââ
+# ── Region mapping (for HS Committee which uses region names) ──
 REGIONS = {
     'AD Al Ain':      {'sheets': ['AAF','AAZ']},
     'Abu Dhabi':      {'sheets': ['ADA','ADB']},
@@ -36,7 +36,7 @@ WASTE_SOURCE = {'sheetId': '8150747345538948', 'campusCol': 'Campus Code', 'mont
 WASTE_TABLE_COLS = ['General Waste', 'Food Waste', 'Paper Waste', 'Aluminum',
                     'PET Bottle', 'Tissue', 'Scrap Metal', 'E-waste', 'Hazardous']
 
-# ââ Smartsheet source definitions ââ
+# ── Smartsheet source definitions ──
 # Each entry maps to one sheet in the Excel output
 SYNC_SOURCES = [
     {'key': 'v2_hs_committee', 'sheetId': '435993944477572', 'campusCol': 'Committee', 'monthCol': 'Reporting Month',
@@ -57,9 +57,9 @@ SYNC_SOURCES = [
     {'key': 'v2_ehs_inspection', 'sheetId': '4947401822392196', 'campusCol': 'Campus Code', 'monthCol': 'Primary',
      'plannedCol': 'No. of EHS Inspections Planned', 'actualCol': 'No. of EHS Inspections Completed',
      'xlSheet': 'Scheduled EHS Inspection', 'xlType': 'planned_actual'},
-    {'key': 'v2_hs_kpi_report', 'reportId': '4811266391494532', 'campusCol': 'Campuses', 'monthCol': 'Primary',
-     'valueCol': 'Submitted',
-     'xlSheet': 'HS KPI Report Submission', 'xlType': 'value'},
+    # v2_hs_kpi_report disabled — report 404
+    # {'key': 'v2_hs_kpi_report', 'reportId': '4811266391494532', 'campusCol': 'Campuses', 'monthCol': 'Primary',
+    #  'valueCol': 'Submitted', 'xlSheet': 'HS KPI Report Submission', 'xlType': 'value'},
     {'key': 'v2_investigation_on_time', 'reportId': '6831846506581892', 'campusCol': 'Campus Code', 'monthCol': 'Reporting Month',
      'plannedCol': 'Total Incident Investigated', 'actualCol': 'Investigation Completed on Time',
      'xlSheet': 'Investigation Completed on T', 'xlType': 'planned_actual'},
@@ -87,25 +87,28 @@ SYNC_SOURCES = [
     {'key': 'v2_permit_to_work', 'sheetId': '5899016251330436', 'campusCol': 'Campus Code', 'monthCol': 'Reporting Month',
      'plannedCol': 'No. of PTWs Issued', 'actualCol': 'Total Work Registered',
      'xlSheet': 'Permit to Work', 'xlType': 'planned_actual'},
+    {'key': 'v2_mgmt_review_actions', 'sheetId': '3267265049874308', 'campusCol': 'Campus Group', 'monthCol': 'Reporting Month',
+     'plannedCol': 'Total Actions', 'actualCol': 'Actions Closed',
+     'xlSheet': 'Management Review Actions', 'xlType': 'planned_actual', 'useRegion': True},
 ]
 
-# Trend sources â these aggregate across all campuses per month
+# Trend sources — these aggregate across all campuses per month
 TREND_SOURCES = [
     {'key': 'incidents', 'reportId': '6831846506581892', 'campusCol': 'Campus Code', 'monthCol': 'Reporting Month',
      'valueCol': 'Total Incident Investigated',
-     'xlSheet': 'Trend â Total Incidents', 'mode': 'sum_value'},
+     'xlSheet': 'Trend — Total Incidents', 'mode': 'sum_value'},
     {'key': 'training_trend', 'sheetId': '8549734774951812', 'campusCol': 'Campus Code', 'monthCol': 'Reporting Month',
      'valueCol': 'Total Hours',
-     'xlSheet': 'Trend â Training Hours', 'mode': 'sum_value'},
+     'xlSheet': 'Trend — Training Hours', 'mode': 'sum_value'},
     {'key': 'ehs_trend', 'sheetId': '4947401822392196', 'campusCol': 'Campus Code', 'monthCol': 'Primary',
      'plannedCol': 'No. of EHS Inspections Planned', 'actualCol': 'No. of EHS Inspections Completed',
-     'xlSheet': 'Trend â EHS Inspection Rate', 'mode': 'pct'},
+     'xlSheet': 'Trend — EHS Inspection Rate', 'mode': 'pct'},
     {'key': 'compliance_trend', 'sheetId': '4198632256393092', 'campusCol': 'Campus Code', 'monthCol': 'Primary',
      'plannedCol': 'Applicable Compliance', 'actualCol': 'Actual Compliance',
-     'xlSheet': 'Trend â Compliance Rate', 'mode': 'pct'},
+     'xlSheet': 'Trend — Compliance Rate', 'mode': 'pct'},
 ]
 
-# ââ Smartsheet API ââ
+# ── Smartsheet API ──
 
 def _ss_fetch(endpoint, token):
     url = 'https://api.smartsheet.com/2.0/' + endpoint
@@ -114,7 +117,7 @@ def _ss_fetch(endpoint, token):
         return json.loads(resp.read())
 
 def fetch_sheet_rows(sheet_id, token):
-    data = _ss_fetch('sheets/' + str(sheet_id) + '?pageSize=500', token)
+    data = _ss_fetch('sheets/' + str(sheet_id) + '?pageSize=10000', token)
     if not data.get('rows'):
         return []
     col_map = {}
@@ -128,13 +131,17 @@ def fetch_sheet_rows(sheet_id, token):
             if title:
                 raw = cell.get('value')
                 display = cell.get('displayValue')
-                rec[title] = raw if isinstance(raw, (int, float)) else (display or raw or '')
+                # Prefer displayValue for date/text columns, raw for numbers
+                if isinstance(raw, (int, float)):
+                    rec[title] = raw
+                else:
+                    rec[title] = display or raw or ''
         if rec:
             rows.append(rec)
     return rows
 
 def fetch_report_rows(report_id, token):
-    data = _ss_fetch('reports/' + str(report_id) + '?pageSize=500&level=1', token)
+    data = _ss_fetch('reports/' + str(report_id) + '?pageSize=10000&level=1', token)
     if not data.get('rows'):
         return []
     col_map = {}
@@ -152,7 +159,10 @@ def fetch_report_rows(report_id, token):
             if title:
                 raw = cell.get('value')
                 display = cell.get('displayValue')
-                rec[title] = raw if isinstance(raw, (int, float)) else (display or raw or '')
+                if isinstance(raw, (int, float)):
+                    rec[title] = raw
+                else:
+                    rec[title] = display or raw or ''
         if rec:
             rows.append(rec)
     return rows
@@ -170,16 +180,14 @@ def normalize_month(v):
     abbr_map = {m[:3].lower(): m for m in MONTH_NAMES}
     if abbr in abbr_map:
         return abbr_map[abbr]
-    try:
-        d = datetime.strptime(s, '%Y-%m-%d')
-        return MONTH_NAMES[d.month - 1]
-    except Exception:
-        pass
-    try:
-        d = datetime.strptime(s, '%m/%d/%Y')
-        return MONTH_NAMES[d.month - 1]
-    except Exception:
-        pass
+    # Try various date formats
+    for fmt in ['%Y-%m-%d', '%Y-%m-%dT%H:%M:%S', '%Y-%m-%dT%H:%M:%S.%f',
+                '%m/%d/%Y', '%d/%m/%Y', '%Y/%m/%d', '%m-%d-%Y']:
+        try:
+            d = datetime.strptime(s.split('+')[0].split('Z')[0], fmt)
+            return MONTH_NAMES[d.month - 1]
+        except Exception:
+            pass
     return None
 
 def safe_float(v, default=0.0):
@@ -214,9 +222,6 @@ def process_source(src, rows, month_filter):
         if use_region:
             if campus not in VALID_REGIONS:
                 continue
-        else:
-            if campus not in VALID_CAMPUSES:
-                continue
 
         # Month filter
         if month_col and month_filter:
@@ -230,7 +235,6 @@ def process_source(src, rows, month_filter):
 
         # Map campus to region if needed
         if use_region:
-            # HS Committee uses region names directly (e.g., "Abu Dhabi")
             key = campus
         else:
             key = campus
@@ -263,7 +267,7 @@ def process_trend(src, rows):
 
     for row in rows:
         campus = str(row.get(campus_col, '')).strip()
-        if not campus or campus not in VALID_CAMPUSES:
+        if not campus:
             continue
         row_month = normalize_month(row.get(month_col))
         if not row_month:
@@ -330,7 +334,7 @@ def build_xlsx(token, month_filter, year):
     if not month_filter:
         month_filter = detect_latest_month()
 
-    # ââ Process each KPI source ââ
+    # ── Process each KPI source ──
     for src in SYNC_SOURCES:
         print('Processing: ' + src['xlSheet'])
         try:
@@ -375,19 +379,16 @@ def build_xlsx(token, month_filter, year):
                 c.alignment = data_align
                 c.border = thin_border
             elif xl_type == 'value_drills':
-                # Drills: value = actual (yes count)
                 val = d['actual']
                 c = ws.cell(row=row_idx, column=2, value=int(val) if val == int(val) else val)
                 c.alignment = data_align
                 c.border = thin_border
             elif xl_type == 'value_actual':
-                # Risk Assessment Validated: show actual as Value
                 val = d['actual']
                 c = ws.cell(row=row_idx, column=2, value=int(val) if val == int(val) else val)
                 c.alignment = data_align
                 c.border = thin_border
             else:
-                # planned_actual
                 p = d['planned']
                 a = d['actual']
                 c1 = ws.cell(row=row_idx, column=2, value=int(p) if p == int(p) else p)
@@ -403,7 +404,18 @@ def build_xlsx(token, month_filter, year):
         if len(headers) > 2:
             ws.column_dimensions['C'].width = 14
 
-    # ââ Waste Segregation sheet ââ
+    # ── HS KPI Report Submission (placeholder — report 404) ──
+    ws_kpi = wb.create_sheet(title='HS KPI Report Submission')
+    for col_idx, h in enumerate(['Campus', 'Submitted'], 1):
+        cell = ws_kpi.cell(row=1, column=col_idx, value=h)
+        cell.font = header_font
+        cell.fill = header_fill
+        cell.alignment = header_align
+        cell.border = thin_border
+    ws_kpi.column_dimensions['A'].width = 22
+    ws_kpi.column_dimensions['B'].width = 14
+
+    # ── Waste Segregation sheet ──
     print('Processing: Waste Segregation')
     try:
         waste_rows = cached_fetch(WASTE_SOURCE)
@@ -451,8 +463,7 @@ def build_xlsx(token, month_filter, year):
         ws_waste.column_dimensions[get_column_letter(ci)].width = 16
     ws_waste.column_dimensions['A'].width = 22
 
-    # ââ Trend sheets ââ
-    # Fetch trend data (reuse some sources already fetched, but fetch fresh for trends)
+    # ── Trend sheets ──
     for src in TREND_SOURCES:
         print('Processing trend: ' + src['xlSheet'])
         try:
