@@ -137,13 +137,13 @@ function KpiBarChart({ chartDef, rows }: { chartDef: typeof KPI_CHARTS[0]; rows:
   }
 
   const options: Highcharts.Options = {
-    chart: { type: 'column', height: 280, style: { fontFamily: "'Segoe UI', Arial, sans-serif" } },
+    chart: { type: 'column', height: 320, style: { fontFamily: "'Segoe UI', Arial, sans-serif" }, scrollablePlotArea: { minWidth: campuses.length * 80, scrollPositionX: 0 } },
     title: { text: undefined },
-    xAxis: { categories: campuses, labels: { style: { fontSize: '10px' } } },
+    xAxis: { categories: campuses, labels: { style: { fontSize: '11px' } } },
     yAxis: { title: { text: null }, gridLineColor: '#f0f0f0' },
     legend: { align: 'center', verticalAlign: 'bottom', itemStyle: { fontSize: '10px' } },
     plotOptions: {
-      column: { borderRadius: 2, groupPadding: 0.15, pointPadding: 0.05, dataLabels: { enabled: true, style: { fontSize: '9px', fontWeight: 'normal' } } },
+      column: { borderRadius: 2, groupPadding: 0.15, pointPadding: 0.05, dataLabels: { enabled: true, style: { fontSize: '10px', fontWeight: 'bold' } } },
     },
     series,
     credits: { enabled: false },
@@ -180,12 +180,12 @@ function KpiRateChart({ rows }: { rows: KpiRow[] }) {
     return { campus: c, pct, met: pct >= 100 };
   });
   const options: Highcharts.Options = {
-    chart: { type: 'column', height: 280, style: { fontFamily: "'Segoe UI', Arial, sans-serif" } },
+    chart: { type: 'column', height: 320, style: { fontFamily: "'Segoe UI', Arial, sans-serif" }, scrollablePlotArea: { minWidth: campuses.length * 80, scrollPositionX: 0 } },
     title: { text: undefined },
-    xAxis: { categories: campuses, labels: { style: { fontSize: '10px' } } },
+    xAxis: { categories: campuses, labels: { style: { fontSize: '11px' } } },
     yAxis: { title: { text: null }, max: 100, labels: { format: '{value}%' }, gridLineColor: '#f0f0f0' },
     legend: { align: 'center', verticalAlign: 'bottom', itemStyle: { fontSize: '10px' } },
-    plotOptions: { column: { borderRadius: 2, groupPadding: 0.15, pointPadding: 0.05, dataLabels: { enabled: true, format: '{y}%', style: { fontSize: '9px', fontWeight: 'normal' } } } },
+    plotOptions: { column: { borderRadius: 2, groupPadding: 0.15, pointPadding: 0.05, dataLabels: { enabled: true, format: '{y}%', style: { fontSize: '10px', fontWeight: 'bold' } } } },
     series: [
       { type: 'column', name: 'Met Target', data: data.map(d => ({ y: d.met ? d.pct : 0, color: '#1D9E75' })), showInLegend: true, color: '#1D9E75' },
       { type: 'column', name: 'Below Target', data: data.map(d => ({ y: !d.met && d.pct > 0 ? d.pct : 0, color: '#EA352E' })), showInLegend: true, color: '#EA352E' },
@@ -201,12 +201,12 @@ function KpiValueHoursChart({ rows }: { rows: KpiRow[] }) {
   const campuses = Object.keys(byCampus).sort();
   if (campuses.length === 0) return <div className="no-data">No data available</div>;
   const options: Highcharts.Options = {
-    chart: { type: 'column', height: 280, style: { fontFamily: "'Segoe UI', Arial, sans-serif" } },
+    chart: { type: 'column', height: 320, style: { fontFamily: "'Segoe UI', Arial, sans-serif" }, scrollablePlotArea: { minWidth: campuses.length * 80, scrollPositionX: 0 } },
     title: { text: undefined },
-    xAxis: { categories: campuses, labels: { style: { fontSize: '10px' } } },
+    xAxis: { categories: campuses, labels: { style: { fontSize: '11px' } } },
     yAxis: { title: { text: null }, gridLineColor: '#f0f0f0' },
     legend: { enabled: false },
-    plotOptions: { column: { borderRadius: 2, dataLabels: { enabled: true, format: '{y}h', style: { fontSize: '9px', fontWeight: 'normal' } } } },
+    plotOptions: { column: { borderRadius: 2, dataLabels: { enabled: true, format: '{y}h', style: { fontSize: '10px', fontWeight: 'bold' } } } },
     series: [{ type: 'column', name: 'Hours', data: campuses.map(c => byCampus[c].value || byCampus[c].actual), color: '#4A90D9' }],
     credits: { enabled: false },
   };
