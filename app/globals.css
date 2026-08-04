@@ -107,7 +107,7 @@ body { font-family: var(--font); background: var(--light-bg); color: var(--text)
 }
 
 /* CHARTS GRID */
-.charts-grid { display: grid; grid-template-columns: 1fr; gap: 16px; }
+.charts-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
 @media (max-width: 900px) { .charts-grid { grid-template-columns: 1fr; } }
 
 .chart-card {
@@ -125,7 +125,7 @@ body { font-family: var(--font); background: var(--light-bg); color: var(--text)
   display: inline-block;
 }
 .btn-smartsheet:hover { background: #001a7a; }
-.chart-card-body { padding: 8px 12px; }
+.chart-card-body { padding: 8px 12px; overflow-x: auto; }
 .no-data { text-align: center; padding: 40px; color: #aaa; font-size: 13px; }
 
 /* PLACEHOLDER SECTIONS */
