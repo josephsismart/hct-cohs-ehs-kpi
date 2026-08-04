@@ -850,7 +850,6 @@ export default function Dashboard() {
         const campuses = Object.keys(byCampus).sort();
         const dlStyle = { enabled: true, allowOverlap: true, crop: false, overflow: 'allow' as const, inside: false, y: -5, style: { fontSize: '12px', fontWeight: 'bold' as const, textOutline: '2px white' } };
         const baseChart = { type: 'column' as const, height: 550, spacingTop: 30, style: { fontFamily: "'Segoe UI', Arial, sans-serif" } };
-         const basePlotOpts = { column: { pointPadding: 0.05, groupPadding: 0.08, borderWidth: 1 } };
         const baseAxis = { categories: campuses, labels: { style: { fontSize: '13px', fontWeight: 'bold' as const } } };
         let expandedOpts: Highcharts.Options | null = null;
 
@@ -858,7 +857,7 @@ export default function Dashboard() {
           /* pie uses existing component */
         } else if (chartDef.type === 'rate_pct') {
           const d = campuses.map(c => { const { planned, actual } = byCampus[c]; const pct = planned > 0 ? Math.min(Math.round(actual / planned * 100), 100) : 0; return { pct, met: pct >= 100 }; });
-          expandedOpts = { plotOptions: basePlotOpts,
+          expandedOpts = {
             chart: baseChart, title: { text: undefined }, xAxis: baseAxis,
             yAxis: { title: { text: null }, max: 100, labels: { format: '{value}%' }, gridLineColor: '#f0f0f0' },
             legend: { align: 'center', verticalAlign: 'bottom', itemStyle: { fontSize: '13px' } },
@@ -870,7 +869,7 @@ export default function Dashboard() {
             credits: { enabled: false }, tooltip: { shared: true },
           };
         } else if (chartDef.type === 'value_hours') {
-          expandedOpts = { plotOptions: basePlotOpts,
+          expandedOpts = {
             chart: baseChart, title: { text: undefined }, xAxis: baseAxis,
             yAxis: { title: { text: null }, gridLineColor: '#f0f0f0' },
             legend: { enabled: false },
@@ -894,7 +893,7 @@ export default function Dashboard() {
               { type: 'column', name: (chartDef as any).actualLabel || 'Actual', data: campuses.map(c => byCampus[c].actual), color: '#0a3d62' },
             );
           }
-          expandedOpts = { plotOptions: basePlotOpts,
+          expandedOpts = {
             chart: baseChart, title: { text: undefined }, xAxis: baseAxis,
             yAxis: { title: { text: null }, gridLineColor: '#f0f0f0' },
             legend: { align: 'center', verticalAlign: 'bottom', itemStyle: { fontSize: '13px' } },
