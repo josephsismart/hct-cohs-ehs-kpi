@@ -400,6 +400,13 @@ export default function Dashboard() {
                     pdf: {endpoint:'generate-xlsx',ext:'.pdf',setLoading:setXlsxLoading,label:'Excel'},
                   };
                   const {endpoint,ext,setLoading,label} = apiMap[selectedFormat];
+
+      // xlsx: single file download (no region splitting)
+      if (selectedFormat === 'xlsx') {
+        window.open('/api/' + endpoint + '?month=' + encodeURIComponent(m) + '&year=' + y + '&reportName=' + encodeURIComponent(reportName));
+        setShowReport(false);
+        return;
+      }
                   if (pptRegion === 'All') {
                     setLoading(true);
                     downloadCancelledRef.current = false;
