@@ -141,7 +141,7 @@ function KpiBarChart({ chartDef, rows }: { chartDef: typeof KPI_CHARTS[0]; rows:
     title: { text: undefined },
     xAxis: { categories: campuses, labels: { style: { fontSize: '10px' } } },
     yAxis: { title: { text: null }, gridLineColor: '#f0f0f0' },
-    legend: { align: 'center', verticalAlign: 'bottom', margin: 5, itemStyle: { fontSize: '9px' } },
+    legend: { align: 'center', verticalAlign: 'bottom', margin: 2, padding: 0, itemMarginTop: 0, itemMarginBottom: 0, itemStyle: { fontSize: '8px' } },
     plotOptions: {
       column: { borderRadius: 2, groupPadding: 0.15, pointPadding: 0.05, dataLabels: { enabled: true, style: { fontSize: '9px', fontWeight: 'normal' } } },
     },
@@ -184,7 +184,7 @@ function KpiRateChart({ rows }: { rows: KpiRow[] }) {
     title: { text: undefined },
     xAxis: { categories: campuses, labels: { style: { fontSize: '10px' } } },
     yAxis: { title: { text: null }, max: 100, labels: { format: '{value}%' }, gridLineColor: '#f0f0f0' },
-    legend: { align: 'center', verticalAlign: 'bottom', itemStyle: { fontSize: '10px' } },
+    legend: { align: 'center', verticalAlign: 'bottom', margin: 2, padding: 0, itemMarginTop: 0, itemMarginBottom: 0, itemStyle: { fontSize: '8px' } },
     plotOptions: { column: { borderRadius: 2, groupPadding: 0.15, pointPadding: 0.05, dataLabels: { enabled: true, format: '{y}%', style: { fontSize: '9px', fontWeight: 'normal' } } } },
     series: [
       { type: 'column', name: 'Met Target', data: data.map(d => ({ y: d.met ? d.pct : 0, color: '#1D9E75' })), showInLegend: true, color: '#1D9E75' },
