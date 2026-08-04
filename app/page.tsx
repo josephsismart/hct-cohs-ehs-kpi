@@ -154,9 +154,9 @@ function KpiPieChart({ rows }: { rows: KpiRow[] }) {
   const entries = Object.entries(byCampus).sort((a, b) => b[1].value - a[1].value);
   if (entries.length === 0) return <div className="no-data">No data available</div>;
   const options: Highcharts.Options = {
-    chart: { type: 'pie', height: 340, style: { fontFamily: "'Segoe UI', Arial, sans-serif" } },
+    chart: { type: 'pie', height: 420, style: { fontFamily: "'Segoe UI', Arial, sans-serif" } },
     title: { text: undefined },
-    plotOptions: { pie: { size: '65%', center: ['50%', '45%'], dataLabels: { enabled: true, format: '{point.y}', distance: -25, style: { fontSize: '13px', fontWeight: 'bold', color: 'white', textOutline: 'none' } }, showInLegend: true } },
+    plotOptions: { pie: { size: '90%', center: ['50%', '42%'], dataLabels: { enabled: true, format: '{point.y}', distance: -25, style: { fontSize: '13px', fontWeight: 'bold', color: 'white', textOutline: 'none' } }, showInLegend: true } },
     legend: { align: 'center', verticalAlign: 'bottom', layout: 'horizontal', itemStyle: { fontSize: '10px' }, itemDistance: 12 },
     series: [{ type: 'pie', name: 'Incidents', data: entries.map(([name, v], i) => ({ name, y: v.value, color: PIE_COLORS[i % PIE_COLORS.length] })) }],
     credits: { enabled: false },
