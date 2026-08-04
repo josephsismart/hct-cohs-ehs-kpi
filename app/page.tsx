@@ -173,7 +173,7 @@ function KpiPieChart({ rows }: { rows: KpiRow[] }) {
 function KpiRateChart({ rows }: { rows: KpiRow[] }) {
   const byCampus = aggregateByCampus(rows);
   const campuses = Object.keys(byCampus).sort();
-  if (campuses.length === 0) return <div className="no-data">No data available</dit>;
+  if (campuses.length === 0) return <div className="no-data">No data available</div>;
   const data = campuses.map(c => {
     const { planned, actual } = byCampus[c];
     const pct = planned > 0 ? Math.min(Math.round(actual / planned * 100), 100) : 0;
