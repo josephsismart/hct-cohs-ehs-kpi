@@ -137,13 +137,13 @@ function KpiBarChart({ chartDef, rows }: { chartDef: typeof KPI_CHARTS[0]; rows:
   }
 
   const options: Highcharts.Options = {
-    chart: { type: 'column', height: 320, style: { fontFamily: "'Segoe UI', Arial, sans-serif" }, scrollablePlotArea: { minWidth: campuses.length * 80, scrollPositionX: 0 } },
+    chart: { type: 'column', height: 280, style: { fontFamily: "'Segoe UI', Arial, sans-serif" } },
     title: { text: undefined },
-    xAxis: { categories: campuses, labels: { style: { fontSize: '11px' } } },
+    xAxis: { categories: campuses, labels: { style: { fontSize: '10px' } } },
     yAxis: { title: { text: null }, gridLineColor: '#f0f0f0' },
     legend: { align: 'center', verticalAlign: 'bottom', itemStyle: { fontSize: '10px' } },
     plotOptions: {
-      column: { borderRadius: 2, groupPadding: 0.15, pointPadding: 0.05, dataLabels: { enabled: true, style: { fontSize: '10px', fontWeight: 'bold' } } },
+      column: { borderRadius: 2, groupPadding: 0.15, pointPadding: 0.05, dataLabels: { enabled: true, style: { fontSize: '9px', fontWeight: 'normal' } } },
     },
     series,
     credits: { enabled: false },
@@ -180,12 +180,12 @@ function KpiRateChart({ rows }: { rows: KpiRow[] }) {
     return { campus: c, pct, met: pct >= 100 };
   });
   const options: Highcharts.Options = {
-    chart: { type: 'column', height: 320, style: { fontFamily: "'Segoe UI', Arial, sans-serif" }, scrollablePlotArea: { minWidth: campuses.length * 80, scrollPositionX: 0 } },
+    chart: { type: 'column', height: 280, style: { fontFamily: "'Segoe UI', Arial, sans-serif" } },
     title: { text: undefined },
-    xAxis: { categories: campuses, labels: { style: { fontSize: '11px' } } },
+    xAxis: { categories: campuses, labels: { style: { fontSize: '10px' } } },
     yAxis: { title: { text: null }, max: 100, labels: { format: '{value}%' }, gridLineColor: '#f0f0f0' },
     legend: { align: 'center', verticalAlign: 'bottom', itemStyle: { fontSize: '10px' } },
-    plotOptions: { column: { borderRadius: 2, groupPadding: 0.15, pointPadding: 0.05, dataLabels: { enabled: true, format: '{y}%', style: { fontSize: '10px', fontWeight: 'bold' } } } },
+    plotOptions: { column: { borderRadius: 2, groupPadding: 0.15, pointPadding: 0.05, dataLabels: { enabled: true, format: '{y}%', style: { fontSize: '9px', fontWeight: 'normal' } } } },
     series: [
       { type: 'column', name: 'Met Target', data: data.map(d => ({ y: d.met ? d.pct : 0, color: '#1D9E75' })), showInLegend: true, color: '#1D9E75' },
       { type: 'column', name: 'Below Target', data: data.map(d => ({ y: !d.met && d.pct > 0 ? d.pct : 0, color: '#EA352E' })), showInLegend: true, color: '#EA352E' },
@@ -201,12 +201,12 @@ function KpiValueHoursChart({ rows }: { rows: KpiRow[] }) {
   const campuses = Object.keys(byCampus).sort();
   if (campuses.length === 0) return <div className="no-data">No data available</div>;
   const options: Highcharts.Options = {
-    chart: { type: 'column', height: 320, style: { fontFamily: "'Segoe UI', Arial, sans-serif" }, scrollablePlotArea: { minWidth: campuses.length * 80, scrollPositionX: 0 } },
+    chart: { type: 'column', height: 280, style: { fontFamily: "'Segoe UI', Arial, sans-serif" } },
     title: { text: undefined },
-    xAxis: { categories: campuses, labels: { style: { fontSize: '11px' } } },
+    xAxis: { categories: campuses, labels: { style: { fontSize: '10px' } } },
     yAxis: { title: { text: null }, gridLineColor: '#f0f0f0' },
     legend: { enabled: false },
-    plotOptions: { column: { borderRadius: 2, dataLabels: { enabled: true, format: '{y}h', style: { fontSize: '10px', fontWeight: 'bold' } } } },
+    plotOptions: { column: { borderRadius: 2, dataLabels: { enabled: true, format: '{y}h', style: { fontSize: '9px', fontWeight: 'normal' } } } },
     series: [{ type: 'column', name: 'Hours', data: campuses.map(c => byCampus[c].value || byCampus[c].actual), color: '#4A90D9' }],
     credits: { enabled: false },
   };
@@ -243,6 +243,7 @@ export default function Dashboard() {
   const [pptLoading, setPptLoading] = useState(false);
   const [wordLoading, setWordLoading] = useState(false);
   const [xlsxLoading, setXlsxLoading] = useState(false);
+  const [expandedChart, setExpandedChart] = useState<string | null>(null);
   const [downloadProgress, setDownloadProgress] = useState<{region:string;status:string}[]>([]);
   const downloadCancelledRef = useRef(false);
   const [selectedFormat, setSelectedFormat] = useState('');
@@ -571,7 +572,12 @@ export default function Dashboard() {
                         <span>{chartDef.label}</span>
                         {(chartDef as any).subtitle && <div style={{ fontSize: '10px', color: '#999', fontWeight: 400 }}>{(chartDef as any).subtitle}</div>}
                       </div>
-                      {ssLink ? <a className="btn-smartsheet" href={ssLink} target="_blank" rel="noopener noreferrer">View in Smartsheet</a> : null}
+                      <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                        {ssLink ? <a className="btn-smartsheet" href={ssLink} target="_blank" rel="noopener noreferrer">View in Smartsheet</a> : null}
+                        <button onClick={() => setExpandedChart(chartDef.key)} style={{ background: '#1A1F71', color: '#fff', border: 'none', borderRadius: '4px', padding: '4px 10px', fontSize: '12px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }} title="Expand chart">
+                          <i className="fa fa-expand"></i> Expand
+                        </button>
+                      </div>
                     </div>
                     <div className="chart-card-body">
                       {chartDef.type === 'pie' ? <KpiPieChart rows={rows} /> :
@@ -833,6 +839,96 @@ export default function Dashboard() {
           </>
         )}
       </div>
+
+      {/* Expanded Chart Modal */}
+      {expandedChart && (() => {
+        const chartDef = [...KPI_CHARTS, ...EXTRA_CHARTS].find(d => d.key === expandedChart);
+        if (!chartDef) return null;
+        const sourceKey = (chartDef as any).sourceKey || chartDef.key;
+        const rows = getRows(sourceKey);
+        return (
+          <div className="modal-overlay" onClick={() => setExpandedChart(null)} style={{ zIndex: 9999 }}>
+            <div onClick={e => e.stopPropagation()} style={{ background: '#fff', borderRadius: '8px', width: '95vw', maxWidth: '1400px', maxHeight: '90vh', overflow: 'auto', padding: '20px', position: 'relative' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                <h3 style={{ margin: 0, color: '#1A1F71', fontSize: '18px' }}><i className="fa fa-chart-bar" style={{ marginRight: 8 }}></i>{chartDef.label}</h3>
+                <button onClick={() => setExpandedChart(null)} style={{ background: 'none', border: 'none', fontSize: '24px', cursor: 'pointer', color: '#666', padding: '4px 8px' }}><i className="fa fa-times"></i></button>
+              </div>
+              {chartDef.type === 'pie' ? <KpiPieChart rows={rows} /> :
+               chartDef.type === 'rate_pct' ? (
+                 (() => {
+                   const byCampus = aggregateByCampus(rows);
+                   const campuses = Object.keys(byCampus).sort();
+                   if (campuses.length === 0) return <div className="no-data">No data available</div>;
+                   const d = campuses.map(c => { const { planned, actual } = byCampus[c]; const pct = planned > 0 ? Math.min(Math.round(actual / planned * 100), 100) : 0; return { campus: c, pct, met: pct >= 100 }; });
+                   const opts: Highcharts.Options = {
+                     chart: { type: 'column', height: 500, style: { fontFamily: "'Segoe UI', Arial, sans-serif" }, scrollablePlotArea: { minWidth: campuses.length * 90, scrollPositionX: 0 } },
+                     title: { text: undefined },
+                     xAxis: { categories: campuses, labels: { style: { fontSize: '12px' } } },
+                     yAxis: { title: { text: null }, max: 100, labels: { format: '{value}%' }, gridLineColor: '#f0f0f0' },
+                     legend: { align: 'center', verticalAlign: 'bottom', itemStyle: { fontSize: '12px' } },
+                     plotOptions: { column: { borderRadius: 2, groupPadding: 0.15, pointPadding: 0.05, dataLabels: { enabled: true, format: '{y}%', style: { fontSize: '12px', fontWeight: 'bold' } } } },
+                     series: [
+                       { type: 'column', name: 'Met Target', data: d.map(x => ({ y: x.met ? x.pct : 0, color: '#1D9E75' })), showInLegend: true, color: '#1D9E75' },
+                       { type: 'column', name: 'Below Target', data: d.map(x => ({ y: !x.met && x.pct > 0 ? x.pct : 0, color: '#EA352E' })), showInLegend: true, color: '#EA352E' },
+                     ],
+                     credits: { enabled: false }, tooltip: { shared: true },
+                   };
+                   return <HighchartsReact highcharts={Highcharts} options={opts} />;
+                 })()
+               ) : chartDef.type === 'value_hours' ? (
+                 (() => {
+                   const byCampus = aggregateByCampus(rows);
+                   const campuses = Object.keys(byCampus).sort();
+                   if (campuses.length === 0) return <div className="no-data">No data available</div>;
+                   const opts: Highcharts.Options = {
+                     chart: { type: 'column', height: 500, style: { fontFamily: "'Segoe UI', Arial, sans-serif" }, scrollablePlotArea: { minWidth: campuses.length * 90, scrollPositionX: 0 } },
+                     title: { text: undefined },
+                     xAxis: { categories: campuses, labels: { style: { fontSize: '12px' } } },
+                     yAxis: { title: { text: null }, gridLineColor: '#f0f0f0' },
+                     legend: { enabled: false },
+                     plotOptions: { column: { borderRadius: 2, dataLabels: { enabled: true, format: '{y}h', style: { fontSize: '12px', fontWeight: 'bold' } } } },
+                     series: [{ type: 'column', name: 'Hours', data: campuses.map(c => byCampus[c].value || byCampus[c].actual), color: '#4A90D9' }],
+                     credits: { enabled: false },
+                   };
+                   return <HighchartsReact highcharts={Highcharts} options={opts} />;
+                 })()
+               ) : (
+                 (() => {
+                   const byCampus = aggregateByCampus(rows);
+                   const campuses = Object.keys(byCampus).sort();
+                   if (campuses.length === 0) return <div className="no-data">No data available</div>;
+                   const series: any[] = [];
+                   if (chartDef.type === 'value') {
+                     series.push({ type: 'column', name: (chartDef as any).valueLabel || 'Value', data: campuses.map(c => byCampus[c].value || byCampus[c].actual || byCampus[c].planned), color: '#4A90D9' });
+                   } else if (chartDef.type === 'planned_actual_below') {
+                     series.push(
+                       { type: 'column', name: (chartDef as any).plannedLabel || 'Planned', data: campuses.map(c => byCampus[c].planned), color: 'rgba(74,144,217,0.4)' },
+                       { type: 'column', name: (chartDef as any).actualLabel || 'Met/Exceeded', data: campuses.map(c => Math.max(0, byCampus[c].actual)), color: '#1D9E75' },
+                       { type: 'column', name: (chartDef as any).belowLabel || 'Below Target', data: campuses.map(c => Math.max(0, byCampus[c].planned - byCampus[c].actual)), color: '#EA352E' },
+                     );
+                   } else {
+                     series.push(
+                       { type: 'column', name: (chartDef as any).plannedLabel || 'Planned / Target', data: campuses.map(c => byCampus[c].planned), color: 'rgba(74,144,217,0.4)' },
+                       { type: 'column', name: (chartDef as any).actualLabel || 'Actual', data: campuses.map(c => byCampus[c].actual), color: '#0a3d62' },
+                     );
+                   }
+                   const opts: Highcharts.Options = {
+                     chart: { type: 'column', height: 500, style: { fontFamily: "'Segoe UI', Arial, sans-serif" }, scrollablePlotArea: { minWidth: campuses.length * 90, scrollPositionX: 0 } },
+                     title: { text: undefined },
+                     xAxis: { categories: campuses, labels: { style: { fontSize: '12px' } } },
+                     yAxis: { title: { text: null }, gridLineColor: '#f0f0f0' },
+                     legend: { align: 'center', verticalAlign: 'bottom', itemStyle: { fontSize: '12px' } },
+                     plotOptions: { column: { borderRadius: 2, groupPadding: 0.15, pointPadding: 0.05, dataLabels: { enabled: true, style: { fontSize: '12px', fontWeight: 'bold' } } } },
+                     series,
+                     credits: { enabled: false }, tooltip: { shared: true },
+                   };
+                   return <HighchartsReact highcharts={Highcharts} options={opts} />;
+                 })()
+               )}
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }
