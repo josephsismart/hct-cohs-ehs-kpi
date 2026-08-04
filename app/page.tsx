@@ -143,7 +143,8 @@ function KpiBarChart({ chartDef, rows }: { chartDef: typeof KPI_CHARTS[0]; rows:
     tooltip: { shared: true },
   };
 
-  return <HighchartsReact highcharts={Highcharts} options={options} />;
+  const minW = campuses.length > 8 ? campuses.length * 70 : undefined;
+  return <div style={minW ? { minWidth: minW + 'px' } : undefined}><HighchartsReact highcharts={Highcharts} options={options} /></div>;
 }
 
 const PIE_COLORS = ['#1A1F71', '#F59E0B', '#1D9E75', '#4A90D9', '#7C3AED', '#FFA500', '#EA352E'];
