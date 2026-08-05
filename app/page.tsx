@@ -25,25 +25,28 @@ const SUMMARY_CARDS = [
 ];
 
 const SMARTSHEET_LINKS: Record<string, string> = {
-  v2_onsite_induction: 'https://app.smartsheet.com/reports/488MxwHw83MF8fwxqJx95PgqwjGrjgMXFR7hXGq1',
-  v2_permit_to_work: 'https://app.smartsheet.com/reports/MgpHGX276R7R7pxw4jx8X5KcCX3PQRHHG7p62hc1',
-  v2_hazard_id: 'https://app.smartsheet.com/reports/JCXVCQFPM5F6vWgjcVj3Mm66Mp7VMH97G2MvcMC1',
-  v2_risk_closed: 'https://app.smartsheet.com/reports/MWxppxgGMMq85WhfCpg57x3w92Qqp6pHg79Gwx71',
-  v2_risk_validated: 'https://app.smartsheet.com/reports/FvCmH32V3fp6pMPgp7gX2wv53chVCrW57qqGQ5H1',
-  v2_safe_working: 'https://app.smartsheet.com/reports/39xG9RjhqVjR6fPpV4Qgh4Gr2w7X9rGM8xccWqc1',
-  v2_findings_on_time: 'https://app.smartsheet.com/reports/wC59JHJM3x57Q6vFCRFmVpgc93gXr8GxxQ2gwXq1',
-  v2_ehs_inspection: 'https://app.smartsheet.com/reports/FmV6pG8cXJg5cfhxgppGWwwJM94Qv4QQWfPh2j61',
-  v2_hs_committee: 'https://app.smartsheet.com/reports/X828rgMpqgWpj2MRFRj7wRw9CG465PGfxQMGrg91',
-  v2_planned_training: 'https://app.smartsheet.com/reports/6wXHp4RpPR378F6F2r7Q9FpvjmMqhFmcgGwXcmp1',
-  incidents: 'https://app.smartsheet.com/reports/Gcg9cW5qG3FGXR3xcwcrHHwxMR8w9QxXp9JxHVC1',
-  v2_incident_types: 'https://app.smartsheet.com/reports/pJJP7hJ3WghvVfC9w7GPx73mMwVCvRq4X3fC2Cx1',
-  v2_hs_kpi_report: 'https://app.smartsheet.com/reports/Gcg9cW5qG3FGXR3xcwcrHHwxMR8w9QxXp9JxHVC1',
-  v2_external_compliance: 'https://app.smartsheet.com/reports/pJJP7hJ3WghvVfC9w7GPx73mMwVCvRq4X3fC2Cx1',
-  v2_investigation_on_time: 'https://app.smartsheet.com/reports/Gcg9cW5qG3FGXR3xcwcrHHwxMR8w9QxXp9JxHVC1',
-  notification: 'https://app.smartsheet.com/reports/Gcg9cW5qG3FGXR3xcwcrHHwxMR8w9QxXp9JxHVC1',
-  training: 'https://app.smartsheet.com/reports/v5VMcRR6j97qWvFjJm9rjr9WPVmpGcfg3jfvg561',
-  ehs_rate: 'https://app.smartsheet.com/reports/FmV6pG8cXJg5cfhxgppGWwwJM94Qv4QQWfPh2j61',
-  findings_rate: 'https://app.smartsheet.com/reports/wC59JHJM3x57Q6vFCRFmVpgc93gXr8GxxQ2gwXq1',
+  v2_onsite_induction: 'https://app.smartsheet.com/reports/fX59xqr6qGHmQf7mRjvvCRwQgfjFxhg6RVMFW8g1',
+  v2_permit_to_work: 'https://app.smartsheet.com/reports/GrWG8P5q35WvFmf2HmvQ3fwHxfx27mC3CPc4jW31',
+  v2_hazard_id: 'https://app.smartsheet.com/reports/h8j2pr5QPcRMm6qJc8XJm4V3P4vpHXvfH47fVXm1',
+  v2_risk_closed: 'https://app.smartsheet.com/reports/PJqX8cvQx3JfR4m3RQvQRWGvQVqJ7MVQxWQJRp21',
+  v2_risk_validated: 'https://app.smartsheet.com/reports/X54FCPjRPq2wGqqw3H4hVPCG8mv7gfj4WWPFRQv1',
+  v2_safe_working: 'https://app.smartsheet.com/reports/Fq67jCWCQpw2F6Vr73Qc6pQgHv9Qrc85H4Pvmjj1',
+  v2_findings_on_time: 'https://app.smartsheet.com/reports/QM3QP3HFVjGC3Pv6XWFMwQ39fhpjCMH9QfRGCWP1',
+  v2_ehs_inspection: 'https://app.smartsheet.com/reports/MX7q7VrFvJmf39vvC4wgxGJrRJJPrw9H8F4vwMm1',
+  v2_hs_committee: 'https://app.smartsheet.com/reports/FW4f8qMFrW7hHMHpV7q5w7PJ9ghqQW9jcGC5rC51',
+  v2_planned_training: 'https://app.smartsheet.com/reports/Gxf8gGwxCGWcqr45rf4P24FcPPrcg3jG2wrXQp71',
+  incidents: 'https://app.smartsheet.com/reports/4VWCcpqw3R5p6J5gXvCmgHmXP9crVP3pxH92c2x1',
+  v2_incident_types: 'https://app.smartsheet.com/reports/QG4mfCP4CHW68qr455RfgX2gpRXrG9C35MXFMHJ1',
+  v2_hs_kpi_report: 'https://app.smartsheet.com/reports/4VWCcpqw3R5p6J5gXvCmgHmXP9crVP3pxH92c2x1',
+  v2_external_compliance: 'https://app.smartsheet.com/reports/VX8phCh6rPh8rpCwcHw2XjpfHvcvRXJWc6vv9R21',
+  v2_investigation_on_time: 'https://app.smartsheet.com/reports/Cq58QHJ8xWjW4RCWf7g58Gr7Px7CP2qM9x8xJ971',
+  notification: 'https://app.smartsheet.com/reports/G3pVJpCpjMJ6pxX68hXJxRrcfjmpwRfxMPGpFr81',
+  training: 'https://app.smartsheet.com/reports/5V2V2Wm4Rp5R5PwG3fP5WPmFQxM8XmvrF6qww381',
+  ehs_rate: 'https://app.smartsheet.com/reports/MX7q7VrFvJmf39vvC4wgxGJrRJJPrw9H8F4vwMm1',
+  findings_rate: 'https://app.smartsheet.com/reports/QM3QP3HFVjGC3Pv6XWFMwQ39fhpjCMH9QfRGCWP1',
+  drills: 'https://app.smartsheet.com/reports/M8RpVP64QQr2xjcv345ffc5WmGj9C6mrmQ3h2gp1',
+  v2_mgmt_review_actions: 'https://app.smartsheet.com/reports/CgFq9HVWvpVPv6G5mc9756F2QxRjwFVxGRf9wwX1',
+  v2_waste_segregation: 'https://app.smartsheet.com/reports/r97F4HgPH6vxFf5R3Mjqrxf8VFxpV9v7Jr4pr741',
 };
 
 const REPORT_REGIONS = ['AD Al Ain','Abu Dhabi','AD Remote','Dubai','Fujairah','Sharjah','Ras Al Khaimah'];
@@ -615,7 +618,7 @@ export default function Dashboard() {
                 <div className="chart-card" style={{ overflowX: 'auto' }}>
                   <div className="chart-card-header">
                     <span>Waste Segregation by Campus (kg)</span>
-                    <a className="btn-smartsheet" href="https://app.smartsheet.com/reports/FwPfmrvwgpxRMmvp8VX6m59WvpvQ5RGvFCXF8Wx1" target="_blank" rel="noopener noreferrer">View in Smartsheet</a>
+                    <a className="btn-smartsheet" href="https://app.smartsheet.com/reports/r97F4HgPH6vxFf5R3Mjqrxf8VFxpV9v7Jr4pr741" target="_blank" rel="noopener noreferrer">View in Smartsheet</a>
                   </div>
                   <table className="waste-table">
                     <thead>
