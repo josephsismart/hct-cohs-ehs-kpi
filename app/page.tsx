@@ -76,6 +76,929 @@ const EXTRA_CHARTS = [
   { key: 'findings_rate', label: 'Findings Closed Rate', subtitle: 'Total Findings vs Findings Closed', sourceKey: 'findings', type: 'rate_pct' },
 ];
 
+interface KpiRow { campus: string; month: string | null; planned: number; actual: number; value: number; realCampus?: string; }
+interface SyncData {
+  syncedAt: string;
+  sources: Record<string, { rows: KpiRow[]; error?: string }>;
+  campuses: string[];
+  months: string[];
+  errors: string[];
+  wasteData?: Record<string, any>[];
+}
+
+function filterRows(rows: KpiRow[], campus: string, month: string, quarter: string): KpiRow[] {
+  let filtered = rows;
+  if (campus !== 'ALL') filtered = filtered.filter(r => (r.realCampus || r.campus) === campus);
+  if (month !== 'ALL') {
+    filtered = filtered.filter(r => r.month === month);
+  } else if (quarter !== 'ALL' && QUARTERS[quarter]) {
+    filtered = filtered.filter(r => r.month && QUARTERS[quarter].includes(r.month));
+  }
+  return filtered;
+}
+
+function aggregate(rows: KpiRow[]) {
+  return rows.reduce((acc, r) => ({
+    planned: acc.planned + r.planned, actual: acc.actual + r.actual, value: acc.value + r.value,
+  }), { planned: 0, actual: 0, value: 0 });
+}
+
+function aggregateByCampus(rows: KpiRow[]) {
+  const map: Record<string, { planned: number; actual: number; value: number }> = {};
+  rows.forEach(r => {
+    if (!map[r.campus]) map[r.campus] = { planned: 0, actual: 0, value: 0 };
+    map[r.campus].planned += r.planned;
+    map[r.campus].actual += r.actual;
+    map[r.campus].value += r.value;
+  });
+  return map;
+}
+
+function KpiBarChart({ chartDef, rows }: { chartDef: typeof KPI_CHARTS[0]; rows: KpiRow[] }) {
+  const byCampus = aggregateByCampus(rows);
+  const campuses = Object.keys(byCampus).sort();
+  if (campuses.length === 0) return <div className="no-data">No data available</div>;
+
+  const series: Highcharts.SeriesOptionsType[] = [];
+  if (chartDef.type === 'value') {
+    series.push({
+      type: 'column', name: chartDef.valueLabel || 'Value',
+      data: campuses.map(c => byCampus[c].value || byCampus[c].actual || byCampus[c].planned),
+      color: '#4A90D9',
+    });
+  } else if (chartDef.type === 'planned_actual_below') {
+    series.push(
+      { type: 'column', name: chartDef.plannedLabel || 'Planned', data: campuses.map(c => byCampus[c].planned), color: 'rgba(74,144,217,0.4)' },
+      { type: 'column', name: chartDef.actualLabel || 'Met/Exceeded', data: campuses.map(c => Math.max(0, byCampus[c].actual)), color: '#1D9E75' },
+      { type: 'column', name: chartDef.belowLabel || 'Below Target', data: campuses.map(c => Math.max(0, byCampus[c].planned - byCampus[c].actual)), color: '#EA352E' },
+    );
+  } else {
+    series.push(
+      { type: 'column', name: chartDef.plannedLabel || 'Planned / Target', data: campuses.map(c => byCampus[c].planned), color: 'rgba(74,144,217,0.4)' },
+      { type: 'column', name: chartDef.actualLabel || 'Actual', data: campuses.map(c => byCampus[c].actual), color: '#0a3d62' },
+    );
+  }
+
+  const options: Highcharts.Options = {
+    chart: { type: 'column', height: 280, spacingBottom: 5, style: { fontFamily: "'Segoe UI', Arial, sans-serif" } },
+    title: { text: undefined },
+    xAxis: { categories: campuses, labels: { style: { fontSize: '10px' } } },
+    yAxis: { title: { text: null }, gridLineColor: '#f0f0f0' },
+    legend: { align: 'center', verticalAlign: 'bottom', margin: 2, padding: 0, itemMarginTop: 0, itemMarginBottom: 0, itemStyle: { fontSize: '8px' } },
+    plotOptions: {
+      column: { borderRadius: 2, groupPadding: 0.15, pointPadding: 0.05, dataLabels: { enabled: true, style: { fontSize: '9px', fontWeight: 'normal' } } },
+    },
+    series,
+    credits: { enabled: false },
+    tooltip: { shared: true },
+  };
+
+  return <HighchartsReact highcharts={Highcharts} options={options} />;
+}
+
+const PIE_COLORS = ['#1A1F71', '#F59E0B', '#1D9E75', '#4A90D9', '#7C3AED', '#FFA500', '#EA352E'];
+
+function KpiPieChart({ rows }: { rows: KpiRow[] }) {
+  const byCampus = aggregateByCampus(rows);
+  const entries = Object.entries(byCampus).sort((a, b) => b[1].value - a[1].value);
+  if (entries.length === 0) return <div className="no-data">No data available</div>;
+  const options: Highcharts.Options = {
+    chart: { type: 'pie', height: 380, style: { fontFamily: "'Segoe UI', Arial, sans-serif" } },
+    title: { text: undefined },
+    plotOptions: { pie: { dataLabels: { enabled: true, format: '{point.y}', distance: -15, style: { fontSize: '11px', fontWeight: 'bold', color: 'white', textOutline: 'none' } }, showInLegend: true } },
+    legend: { align: 'center', verticalAlign: 'bottom', layout: 'horizontal', itemStyle: { fontSize: '11px' } },
+    series: [{ type: 'pie', name: 'Incidents', data: entries.map(([name, v], i) => ({ name, y: v.value, color: PIE_COLORS[i % PIE_COLORS.length] })) }],
+    credits: { enabled: false },
+  };
+  return <HighchartsReact highcharts={Highcharts} options={options} />;
+}
+
+function KpiRateChart({ rows }: { rows: KpiRow[] }) {
+  const byCampus = aggregateByCampus(rows);
+  const campuses = Object.keys(byCampus).sort();
+  if (campuses.length === 0) return <div className="no-data">No data available</div>;
+  const data = campuses.map(c => {
+    const { planned, actual } = byCampus[c];
+    const pct = planned > 0 ? Math.min(Math.round(actual / planned * 100), 100) : 0;
+    return { campus: c, pct, met: pct >= 100 };
+  });
+  const options: Highcharts.Options = {
+    chart: { type: 'column', height: 280, style: { fontFamily: "'Segoe UI', Arial, sans-serif" } },
+    title: { text: undefined },
+    xAxis: { categories: campuses, labels: { style: { fontSize: '10px' } } },
+    yAxis: { title: { text: null }, max: 100, labels: { format: '{value}%' }, gridLineColor: '#f0f0f0' },
+    legend: { align: 'center', verticalAlign: 'bottom', margin: 2, padding: 0, itemMarginTop: 0, itemMarginBottom: 0, itemStyle: { fontSize: '8px' } },
+    plotOptions: { column: { borderRadius: 2, groupPadding: 0.15, pointPadding: 0.05, dataLabels: { enabled: true, format: '{y}%', style: { fontSize: '9px', fontWeight: 'normal' } } } },
+    series: [
+      { type: 'column', name: 'Met Target', data: data.map(d => ({ y: d.met ? d.pct : 0, color: '#1D9E75' })), showInLegend: true, color: '#1D9E75' },
+      { type: 'column', name: 'Below Target', data: data.map(d => ({ y: !d.met && d.pct > 0 ? d.pct : 0, color: '#EA352E' })), showInLegend: true, color: '#EA352E' },
+    ],
+    credits: { enabled: false },
+    tooltip: { shared: true },
+  };
+  return <HighchartsReact highcharts={Highcharts} options={options} />;
+}
+
+function KpiValueHoursChart({ rows }: { rows: KpiRow[] }) {
+  const byCampus = aggregateByCampus(rows);
+  const campuses = Object.keys(byCampus).sort();
+  if (campuses.length === 0) return <div className="no-data">No data available</div>;
+  const options: Highcharts.Options = {
+    chart: { type: 'column', height: 280, style: { fontFamily: "'Segoe UI', Arial, sans-serif" } },
+    title: { text: undefined },
+    xAxis: { categories: campuses, labels: { style: { fontSize: '10px' } } },
+    yAxis: { title: { text: null }, gridLineColor: '#f0f0f0' },
+    legend: { enabled: false },
+    plotOptions: { column: { borderRadius: 2, dataLabels: { enabled: true, format: '{y}h', style: { fontSize: '9px', fontWeight: 'normal' } } } },
+    series: [{ type: 'column', name: 'Hours', data: campuses.map(c => byCampus[c].value || byCampus[c].actual), color: '#4A90D9' }],
+    credits: { enabled: false },
+  };
+  return <HighchartsReact highcharts={Highcharts} options={options} />;
+}
+
+function SyncBadge({ syncedAt }: { syncedAt: string }) {
+  const mins = Math.round((Date.now() - new Date(syncedAt).getTime()) / 60000);
+  let label: string;
+  let cls: string;
+  if (mins < 5) { label = 'Just now'; cls = 'sync-fresh'; }
+  else if (mins < 60) { label = `${mins} min ago`; cls = 'sync-fresh'; }
+  else if (mins < 1440) { label = `${Math.round(mins / 60)} hr ago`; cls = 'sync-stale'; }
+  else { label = `${Math.round(mins / 1440)} days ago`; cls = 'sync-old'; }
+  return <span className={`sync-badge ${cls}`}>Synced {label}</span>;
+}
+
+function defaultChartConfig() {
+  return [...KPI_CHARTS, ...EXTRA_CHARTS].map(d => ({ key: d.key, label: d.label, visible: true }));
+}
+
+export default function Dashboard() {
+  const [data, setData] = useState<SyncData | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [campus, setCampus] = useState('ALL');
+  const [month, setMonth] = useState('ALL');
+  const [quarter, setQuarter] = useState('ALL');
+  const [year, setYear] = useState('ALL');
+  const [darkMode, setDarkMode] = useState(false);
+  const [showReport, setShowReport] = useState(false);
+  const [reportName, setReportName] = useState('');
+  const [pptRegion, setPptRegion] = useState('All');
+  const [pptLoading, setPptLoading] = useState(false);
+  const [wordLoading, setWordLoading] = useState(false);
+  const [xlsxLoading, setXlsxLoading] = useState(false);
+  const [expandedChart, setExpandedChart] = useState<string | null>(null);
+  const [downloadProgress, setDownloadProgress] = useState<{region:string;status:string}[]>([]);
+  const downloadCancelledRef = useRef(false);
+  const [selectedFormat, setSelectedFormat] = useState('');
+  const [showCustomize, setShowCustomize] = useState(false);
+  const [chartConfig, setChartConfig] = useState(() => {
+    const defaultCfg = defaultChartConfig();
+    if (typeof window !== 'undefined') {
+      try { const s = localStorage.getItem('hct-chart-config'); if (s) return JSON.parse(s); } catch {}
+    }
+    return defaultCfg;
+  });
+  const [dragIdx, setDragIdx] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('hct-chart-config', JSON.stringify(chartConfig));
+    }
+  }, [chartConfig]);
+
+  const getReportParams = useCallback(() => {
+    const m = month !== 'ALL' ? month : MONTHS[new Date().getMonth() - 1] || 'December';
+    const y = year !== 'ALL' ? year : String(new Date().getFullYear());
+    return { month: m, year: y };
+  }, [month, year]);
+
+  const downloadFile = useCallback(async (endpoint: string, ext: string, setLoading: (v: boolean) => void) => {
+    setLoading(true);
+    try {
+      const { month: m, year: y } = getReportParams();
+      const url = `/api/${endpoint}?region=${encodeURIComponent(pptRegion)}&month=${encodeURIComponent(m)}&year=${y}`;
+      const res = await fetch(url);
+      if (!res.ok) { const err = await res.json(); throw new Error(err.error || `HTTP ${res.status}`); }
+      const blob = await res.blob();
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      const fileExt = pptRegion === 'All' ? 'zip' : ext;
+      a.download = `HCT_KPI_${pptRegion.replace(/ /g, '_')}_${m}_${y}.${fileExt}`;
+      a.click();
+      URL.revokeObjectURL(a.href);
+    } catch (e: any) { alert(`${ext.toUpperCase()} generation failed: ` + e.message); }
+    finally { setLoading(false); }
+  }, [pptRegion, getReportParams]);
+
+  
+
+    const downloadPpt = useCallback(() => { downloadFile('generate-ppt', 'pptx', setPptLoading); }, [downloadFile, setPptLoading]);
+    const downloadWord = useCallback(() => { downloadFile('generate-word', 'docx', setWordLoading); }, [downloadFile, setWordLoading]);
+    const downloadXlsx = useCallback(() => { downloadFile('generate-xlsx', 'pdf', setXlsxLoading); }, [downloadFile, setXlsxLoading]);
+
+  const doSync = useCallback(async () => {
+    setLoading(true); setError('');
+    try {
+      const res = await fetch('/api/sync', { cache: 'no-store' });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      setData(await res.json());
+    } catch (e: any) { setError(e.message); }
+    finally { setLoading(false); }
+  }, []);
+
+  // Auto-sync on first load
+  useEffect(() => {
+    doSync();
+    // Auto-poll every 60 seconds for near real-time updates
+    const interval = setInterval(() => {
+      fetch('/api/sync', { cache: 'no-store' })
+        .then(res => res.ok ? res.json() : null)
+        .then(d => { if (d) setData(d); })
+        .catch(() => {});
+    }, 60000);
+    
+  return () => clearInterval(interval);
+  }, [doSync]);
+
+  // Dark mode toggle
+  useEffect(() => {
+    document.documentElement.classList.toggle('dark', darkMode);
+  }, [darkMode]);
+
+  // Generate report name from filters
+  useEffect(() => {
+    const parts = ['HCT_COHS_EHS_KPI'];
+    if (year !== 'ALL') parts.push(year);
+    if (quarter !== 'ALL') parts.push(quarter);
+    if (month !== 'ALL') parts.push(month);
+    if (campus !== 'ALL') parts.push(campus);
+    setReportName(parts.join('_'));
+  }, [year, quarter, month, campus]);
+
+  const getRows = useCallback((key: string): KpiRow[] => {
+    if (!data?.sources[key]) return [];
+    const rows = data.sources[key].rows;
+    const allNullMonth = rows.every(r => !r.month);
+    if (allNullMonth && (month !== 'ALL' || quarter !== 'ALL'))
+      return filterRows(rows, campus, 'ALL', 'ALL');
+    return filterRows(rows, campus, month, quarter);
+  }, [data, campus, month, quarter]);
+
+  const summaryValues = useMemo(() => {
+    if (!data) return null;
+    return SUMMARY_CARDS.map(card => {
+      const rows = getRows(card.key);
+      const agg = aggregate(rows);
+      if (card.unit === 'pct') {
+        const pct = agg.planned > 0 ? Math.min(Math.round(agg.actual / agg.planned * 100), 100) : 0;
+        return { ...card, display: `${pct}%`, sub: `${agg.actual} / ${agg.planned}` };
+      }
+      if (card.unit === 'val') {
+        const val = agg.value || agg.actual || agg.planned;
+        return { ...card, display: card.key === 'training' ? `${val} hrs` : String(val), sub: '' };
+      }
+      const val = agg.value || agg.actual || agg.planned;
+      return { ...card, display: String(val), sub: `${data.campuses.filter((c: string) => CAMPUS_CODES.has(c)).length} campuses` };
+    });
+  }, [data, getRows]);
+
+  return (
+    <div className={`dashboard${darkMode ? " dark" : ""}`}>
+      {/* REPORT MODAL */}
+      {showReport && (
+        <div className="modal-overlay" onClick={() => setShowReport(false)}>
+          <div className="modal-content" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3><i className="fa fa-file-export" style={{ marginRight: 8 }}></i>Export Report</h3>
+              <button className="modal-close" onClick={() => setShowReport(false)}><i className="fa fa-times"></i></button>
+            </div>
+            <div className="modal-body">
+              <label>Report Name</label>
+              <input type="text" value={reportName} onChange={e => setReportName(e.target.value)} placeholder="Enter report name..." />
+              <label>Region</label>
+              <select value={pptRegion} onChange={e => setPptRegion(e.target.value)} style={{width:'100%',padding:'8px',marginBottom:'12px',borderRadius:'4px',border:'1px solid #ccc'}}>
+                <option value="All">All</option>
+                {REPORT_REGIONS.map(r => <option key={r} value={r}>{r}</option>)}
+              </select>
+              <label>Choose Format</label>
+              <div className="report-buttons">
+                <button className={"report-btn ppt" + (selectedFormat==='ppt' ? ' selected' : '')} onClick={() => setSelectedFormat('ppt')} style={selectedFormat==='ppt' ? {outline:'3px solid #1A1F71',outlineOffset:'2px'} : {}}>
+                    <i className="fa fa-file-powerpoint"></i>
+                    <span>PowerPoint</span>
+                  </button>
+                <button className={"report-btn word" + (selectedFormat==='word' ? ' selected' : '')} onClick={() => setSelectedFormat('word')} style={selectedFormat==='word' ? {outline:'3px solid #1A1F71',outlineOffset:'2px'} : {}}>
+                  <i className="fa fa-file-word"></i>
+                  <span>Word</span>
+                </button>
+                <button className={"report-btn pdf" + (selectedFormat==='xlsx' ? ' selected' : '')} onClick={() => setSelectedFormat('xlsx')} style={selectedFormat==='xlsx' ? {outline:'3px solid #1A1F71',outlineOffset:'2px'} : {}}>
+                  <i className="fa fa-file-excel"></i>
+                  <span>Excel</span>
+                </button>
+              </div>
+              {selectedFormat && (
+                <button disabled={pptLoading || wordLoading || xlsxLoading} onClick={async () => {
+                  const {month:m,year:y} = getReportParams();
+                  const apiMap: Record<string,{endpoint:string;ext:string;setLoading:(v:boolean)=>void;label:string}> = {
+                    ppt: {endpoint:'generate-ppt',ext:'.pptx',setLoading:setPptLoading,label:'PPT'},
+                    word: {endpoint:'generate-word',ext:'.docx',setLoading:setWordLoading,label:'Word'},
+                    pdf: {endpoint:'generate-xlsx',ext:'.pdf',setLoading:setXlsxLoading,label:'Excel'},
+                  };
+                  const {endpoint,ext,setLoading,label} = apiMap[selectedFormat];
+
+      // xlsx: single file download (no region splitting)
+      if (selectedFormat === 'xlsx') {
+        window.open('/api/' + endpoint + '?month=' + encodeURIComponent(m) + '&year=' + y + '&reportName=' + encodeURIComponent(reportName));
+        setShowReport(false);
+        return;
+      }
+                  if (pptRegion === 'All') {
+                    setLoading(true);
+                    downloadCancelledRef.current = false;
+                    const regions = ['AD Al Ain','Abu Dhabi','AD Remote','Dubai','Fujairah','Sharjah','Ras Al Khaimah'];
+                    setDownloadProgress(regions.map(r => ({region:r,status:'pending'})));
+                    try {
+                      for (let i = 0; i < regions.length; i++) {
+                        if (downloadCancelledRef.current) { setDownloadProgress(prev => prev.map((p,idx) => p.status==='pending' ? {...p,status:'cancelled'} : p)); break; }
+                        setDownloadProgress(prev => prev.map((p,idx) => idx === i ? {...p,status:'downloading'} : p));
+                        const res = await fetch('/api/' + endpoint + '?region=' + encodeURIComponent(regions[i]) + '&month=' + encodeURIComponent(m) + '&year=' + y);
+                        if (!res.ok) { setDownloadProgress(prev => prev.map((p,idx) => idx === i ? {...p,status:'failed'} : p)); continue; }
+                        const blob = await res.blob();
+                        const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+                        a.download = reportName + '_' + regions[i].replace(/ /g,'_') + ext;
+                        a.click(); URL.revokeObjectURL(a.href);
+                        setDownloadProgress(prev => prev.map((p,idx) => idx === i ? {...p,status:'done'} : p));
+                      }
+                    } catch(e: any) { alert(label + ' generation failed: ' + e.message); }
+                    finally { setLoading(false); }
+                  } else {
+                    window.open('/api/' + endpoint + '?region=' + encodeURIComponent(pptRegion) + '&month=' + encodeURIComponent(m) + '&year=' + y + '&name=' + encodeURIComponent(reportName));
+                    setShowReport(false);
+                  }
+                }} style={{width:'100%',padding:'10px',marginTop:'12px',background:'#1A1F71',color:'white',border:'none',borderRadius:'6px',cursor:'pointer',fontSize:'14px',fontWeight:600}}>
+                  {(pptLoading || wordLoading || xlsxLoading) ? 'Generating...' : '\u2B07 Download ' + (selectedFormat==='ppt' ? 'PowerPoint' : selectedFormat==='word' ? 'Word' : 'PDF')}
+                </button>
+              )}
+              {downloadProgress.length > 0 && (
+                <div style={{marginTop:'16px',padding:'12px',background:'#f8f9fa',borderRadius:'8px',border:'1px solid #e9ecef'}}>
+                  <div style={{fontWeight:600,marginBottom:'8px',fontSize:'13px'}}>Download Progress</div>
+                  {downloadProgress.map((p,i) => (
+                    <div key={i} style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'6px 8px',borderBottom:i < downloadProgress.length-1 ? '1px solid #e9ecef' : 'none',fontSize:'13px'}}>
+                      <span>{p.region}</span>
+                      <span style={{fontWeight:500,color: p.status==='done' ? '#198754' : p.status==='downloading' ? '#0d6efd' : p.status==='failed' ? '#dc3545' : p.status==='cancelled' ? '#fd7e14' : '#6c757d'}}>
+                        {p.status==='pending' ? 'Waiting...' : p.status==='downloading' ? 'Downloading...' : p.status==='done' ? '\u2714 Done' : p.status==='cancelled' ? '\u26D4 Cancelled' : '\u2718 Failed'}
+                      </span>
+                    </div>
+                  ))}
+                  {(pptLoading || wordLoading || xlsxLoading) && (
+                    <div style={{textAlign:'center',marginTop:'10px'}}>
+                      <button onClick={() => { downloadCancelledRef.current = true; setPptLoading(false); setWordLoading(false); setXlsxLoading(false); }} style={{padding:'6px 20px',background:'#dc3545',color:'white',border:'none',borderRadius:'4px',cursor:'pointer',fontSize:'13px'}}>Cancel Downloads</button>
+                    </div>
+                  )}
+                  {downloadProgress.every(p => p.status==='done' || p.status==='failed' || p.status==='cancelled') && (
+                    <div style={{textAlign:'center',marginTop:'10px'}}>
+                      <button onClick={() => { setDownloadProgress([]); setShowReport(false); }} style={{padding:'6px 20px',background:'#1A1F71',color:'white',border:'none',borderRadius:'4px',cursor:'pointer',fontSize:'13px'}}>Close</button>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* HEADER */}
+      <div className="brand-header">
+        <div className="brand-logo brand-ohs">
+          <img src="/ohs-logo.png" alt="OHS" onError={(e) => (e.currentTarget.style.display = 'none')} />
+        </div>
+        <div className="brand-title">HCT - COHS EHS KPI REPORTING</div>
+        <div className="brand-logo brand-hct">
+          <img src="/hct-logo.png" alt="HCT" onError={(e) => (e.currentTarget.style.display = 'none')} />
+        </div>
+      </div>
+
+      {/* FILTER BAR */}
+      <div className="filter-bar">
+        <span className="filter-label">Health &amp; Safety Performance Report</span>
+        <div className="filter-controls">
+          <label>Year
+            <select value={year} onChange={e => setYear(e.target.value)}>
+              <option value="ALL">All Years</option>
+              <option value="2026">2026</option>
+            </select>
+          </label>
+          <label>Quarter
+            <select value={quarter} onChange={e => { setQuarter(e.target.value); if (e.target.value !== 'ALL') setMonth('ALL'); }}>
+              <option value="ALL">All Quarters</option>
+              {Object.keys(QUARTERS).map(q => <option key={q} value={q}>{QUARTER_LABELS[q]}</option>)}
+            </select>
+          </label>
+          <label>Month
+            <select value={month} onChange={e => { setMonth(e.target.value); if (e.target.value !== 'ALL') setQuarter('ALL'); }}>
+              <option value="ALL">All Months</option>
+              {MONTHS.map(m => <option key={m} value={m}>{m}</option>)}
+            </select>
+          </label>
+          <label>Campus
+            <select value={campus} onChange={e => setCampus(e.target.value)}>
+              <option value="ALL">All Campuses</option>
+              {data?.campuses.map(c => <option key={c} value={c}>{c}</option>)}
+            </select>
+          </label>
+          <div className="btn-group">
+            <button className="btn-refresh" onClick={() => { setCampus('ALL'); setMonth('ALL'); setQuarter('ALL'); setYear('ALL'); }}><i className="fa fa-redo"></i> Refresh</button>
+            <button className="btn-sync" onClick={doSync} disabled={loading}>
+              <i className="fa fa-sync"></i> {loading ? 'Syncing...' : 'Sync Now'}
+            </button>
+            <button className="btn-customize" onClick={() => setShowCustomize(!showCustomize)}><i className="fa fa-sliders"></i> Customize</button>
+                <button className="btn-theme" onClick={() => setDarkMode(!darkMode)}>
+              <i className={darkMode ? 'fa fa-sun' : 'fa fa-moon'}></i> {darkMode ? 'Light' : 'Dark'}
+            </button>
+            <button className="btn-report" onClick={() => setShowReport(true)}>
+              <i className="fa fa-file-export"></i> Export Report
+            </button>
+          </div>
+          {data && <SyncBadge syncedAt={data.syncedAt} />}
+        </div>
+      </div>
+
+      {/* CONTENT */}
+      <div className="content">
+        {error && <div className="alert-error">{error}</div>}
+
+        {!data && !loading && (
+          <div className="empty-state">
+            <h3>No data loaded</h3>
+            <p>Click &quot;Sync Now&quot; to fetch data from Smartsheet</p>
+            <button className="btn-sync btn-lg" onClick={doSync}>Sync Now</button>
+          </div>
+        )}
+
+        {loading && (
+          <div className="loading-overlay">
+            <div className="spinner" />
+            <p>Syncing data from Smartsheet...</p>
+          </div>
+        )}
+
+        {data && (
+          <>
+            <h3 className="section-title">OVERALL KPI SUMMARY</h3>
+            <div className="kpi-summary-grid">
+              {summaryValues?.map(card => (
+                <div key={card.key} className="kpi-summary-card">
+                  <div className="kpi-card-label">{card.label.toUpperCase()}</div>
+                  <div className="kpi-card-value" style={{ color: card.color }}>{card.display}</div>
+                  {card.sub && <div className="kpi-card-sub">{card.sub}</div>}
+                </div>
+              ))}
+            </div>
+            <div className="legend-row">
+              <span className="legend-dot" style={{ background: '#4A90D9' }} /> Planned / Target
+              <span className="legend-dot" style={{ background: '#1D9E75' }} /> Actual {'\u2014'} Met or Exceeded
+              <span className="legend-dot" style={{ background: '#EA352E' }} /> Actual {'\u2014'} Below Target
+              <span className="legend-dot" style={{ background: '#F59E0B' }} /> No target set
+            </div>
+
+            <h3 className="section-title">KPI CHARTS</h3>
+            <div className="charts-grid">
+              {chartConfig.filter(ci => ci.visible).map(item => {
+                const chartDef = [...KPI_CHARTS, ...EXTRA_CHARTS].find(d => d.key === item.key);
+                if (!chartDef) return null;
+                const sourceKey = (chartDef as any).sourceKey || chartDef.key;
+                const rows = getRows(sourceKey);
+                const ssLink = SMARTSHEET_LINKS[chartDef.key];
+                return (
+                  <div key={chartDef.key} className="chart-card">
+                    <div className="chart-card-header">
+                      <div>
+                        <span>{chartDef.label}</span>
+                        {(chartDef as any).subtitle && <div style={{ fontSize: '10px', color: '#999', fontWeight: 400 }}>{(chartDef as any).subtitle}</div>}
+                      </div>
+                      <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                        {ssLink ? <a className="btn-smartsheet" href={ssLink} target="_blank" rel="noopener noreferrer">View in Smartsheet</a> : null}
+                        <button onClick={() => setExpandedChart(chartDef.key)} style={{ background: '#1A1F71', color: '#fff', border: 'none', borderRadius: '4px', padding: '4px 10px', fontSize: '12px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }} title="Expand chart">
+                          <i className="fa fa-expand"></i> Expand
+                        </button>
+                      </div>
+                    </div>
+                    <div className="chart-card-body">
+                      {chartDef.type === 'pie' ? <KpiPieChart rows={rows} /> :
+                       chartDef.type === 'rate_pct' ? <KpiRateChart rows={rows} /> :
+                       chartDef.type === 'value_hours' ? <KpiValueHoursChart rows={rows} /> :
+                       <KpiBarChart chartDef={chartDef as any} rows={rows} />}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            <h3 className="section-title">WASTE SEGREGATION</h3>
+            {(() => {
+              const WASTE_COLS = ['Total Waste','General Waste','Food Waste','Paper Waste','Paper Cup/Carton','PET Bottle','Single Use Plastic'];
+              let wd = data.wasteData || [];
+              if (campus !== 'ALL') wd = wd.filter((r: any) => r.campus === campus);
+              if (month !== 'ALL') wd = wd.filter((r: any) => r.month === month);
+              else if (quarter !== 'ALL' && QUARTERS[quarter]) wd = wd.filter((r: any) => r.month && QUARTERS[quarter].includes(r.month));
+              // Aggregate by campus
+              const map: Record<string, Record<string, number>> = {};
+              wd.forEach((r: any) => {
+                if (!map[r.campus]) map[r.campus] = {};
+                WASTE_COLS.forEach(col => { map[r.campus][col] = (map[r.campus][col] || 0) + (r[col] || 0); });
+              });
+              // Compute Total Waste as sum of subcategories (API returns 0 for formula columns)
+              const SUB_COLS = ['General Waste','Food Waste','Paper Waste','Paper Cup/Carton','PET Bottle','Single Use Plastic'];
+              Object.keys(map).forEach(c => { map[c]['Total Waste'] = SUB_COLS.reduce((s, col) => s + (map[c][col] || 0), 0); });
+              const campuses = Object.keys(map).sort();
+              if (campuses.length === 0) return <div className="placeholder-section"><h4>WASTE SEGREGATION</h4><p>No data available</p></div>;
+              // Compute totals row
+              const totals: Record<string, number> = {};
+              WASTE_COLS.forEach(col => { totals[col] = campuses.reduce((s, c) => s + (map[c][col] || 0), 0); });
+              return (
+                <div className="chart-card" style={{ overflowX: 'auto' }}>
+                  <div className="chart-card-header">
+                    <span>Waste Segregation by Campus (kg)</span>
+                    <a className="btn-smartsheet" href="https://app.smartsheet.com/reports/r97F4HgPH6vxFf5R3Mjqrxf8VFxpV9v7Jr4pr741" target="_blank" rel="noopener noreferrer">View in Smartsheet</a>
+                  </div>
+                  <table className="waste-table">
+                    <thead>
+                      <tr><th>Campus</th>{WASTE_COLS.map(c => <th key={c}>{c}</th>)}</tr>
+                    </thead>
+                    <tbody>
+                      {campuses.map(c => (
+                        <tr key={c}><td>{c}</td>{WASTE_COLS.map(col => <td key={col}>{(map[c][col] || 0).toLocaleString(undefined, {maximumFractionDigits: 1})}</td>)}</tr>
+                      ))}
+                      <tr className="totals-row"><td><strong>Total</strong></td>{WASTE_COLS.map(col => <td key={col}><strong>{totals[col].toLocaleString(undefined, {maximumFractionDigits: 1})}</strong></td>)}</tr>
+                    </tbody>
+                  </table>
+                </div>
+              );
+            })()}
+
+            {/*  KPI SUMMARY */}
+            <h3 className="section-title">EXECUTIVE KPI SUMMARY — BY CAMPUS</h3>
+            {(() => {
+              const EXEC_KPIS = [
+                { key: 'drills', label: 'Drills Completion', type: 'pct' },
+                { key: 'ehs', label: 'EHS Inspection', type: 'pct' },
+                { key: 'findings', label: 'Findings Closed', type: 'pct' },
+                { key: 'notification', label: 'Incident Notification', type: 'pct' },
+                { key: 'risk', label: 'Risk Assessment', type: 'pct' },
+                { key: 'training', label: 'Training Hours', type: 'val' },
+                { key: 'incidents', label: 'Total Incidents', type: 'count' },
+              ];
+              // Get all campuses from the data
+              const campusSet = new Set<string>();
+              EXEC_KPIS.forEach(kpi => {
+                const rows = getRows(kpi.key);
+                rows.forEach(r => { if (r.campus) campusSet.add(r.campus); });
+              });
+              const allCampuses = [...campusSet].sort();
+              if (allCampuses.length === 0) return <div className="placeholder-section"><h4>EXECUTIVE KPI SUMMARY</h4><p>No data available</p></div>;
+
+              // Compute per-campus values
+              const campusData: Record<string, Record<string, { planned: number; actual: number; value: number }>> = {};
+              allCampuses.forEach(c => { campusData[c] = {}; });
+              EXEC_KPIS.forEach(kpi => {
+                const rows = getRows(kpi.key);
+                allCampuses.forEach(c => {
+                  const cr = rows.filter(r => r.campus === c);
+                  const agg = cr.reduce((a, r) => ({ planned: a.planned + r.planned, actual: a.actual + r.actual, value: a.value + r.value }), { planned: 0, actual: 0, value: 0 });
+                  campusData[c][kpi.key] = agg;
+                });
+              });
+
+              // Color function
+              const pctColor = (pct: number) => {
+                if (pct >= 100) return '#c6efce';
+                if (pct >= 75) return '#ffeb9c';
+                if (pct >= 50) return '#fdd';
+                return '#ffc7ce';
+              };
+
+              // Total row
+              const totals: Record<string, { planned: number; actual: number; value: number }> = {};
+              EXEC_KPIS.forEach(kpi => {
+                totals[kpi.key] = allCampuses.reduce((a, c) => {
+                  const d = campusData[c][kpi.key];
+                  return { planned: a.planned + d.planned, actual: a.actual + d.actual, value: a.value + d.value };
+                }, { planned: 0, actual: 0, value: 0 });
+              });
+
+              const renderCell = (kpi: typeof EXEC_KPIS[0], d: { planned: number; actual: number; value: number }) => {
+                if (kpi.type === 'val') return <td style={{ background: '#dce6f1' }}>{d.value ? d.value.toLocaleString() + ' hrs' : '\u2014'}</td>;
+                if (kpi.type === 'count') return <td style={{ background: d.value > 0 ? '#ffc7ce' : '#c6efce' }}>{d.value || '\u2014'}</td>;
+                if (!d.planned) return <td style={{ background: '#f0f0f0' }}>{'\u2014'}</td>;
+                const pct = Math.min(100, Math.round((d.actual / d.planned) * 100));
+                return <td style={{ background: pctColor(pct) }}>{pct}%</td>;
+              };
+
+              return (
+                <div className="chart-card" style={{ overflowX: 'auto' }}>
+                  <table className="waste-table">
+                    <thead>
+                      <tr><th>Campus</th>{EXEC_KPIS.map(k => <th key={k.key}>{k.label}</th>)}</tr>
+                    </thead>
+                    <tbody>
+                      {allCampuses.map(c => (
+                        <tr key={c}><td>{c}</td>{EXEC_KPIS.map(kpi => renderCell(kpi, campusData[c][kpi.key]))}</tr>
+                      ))}
+                      <tr className="totals-row">
+                        <td><strong>TOTAL / AVG</strong></td>
+                        {EXEC_KPIS.map(kpi => {
+                          const d = totals[kpi.key];
+                          if (kpi.type === 'val') return <td key={kpi.key} style={{ background: '#dce6f1' }}><strong>{d.value ? d.value.toLocaleString() + ' hrs' : '\u2014'}</strong></td>;
+                          if (kpi.type === 'count') return <td key={kpi.key} style={{ background: '#ffc7ce' }}><strong>{d.value}</strong></td>;
+                          const pct = d.planned ? Math.min(100, Math.round((d.actual / d.planned) * 100)) : 0;
+                          return <td key={kpi.key} style={{ background: pctColor(pct) }}><strong>{pct}%</strong></td>;
+                        })}
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              );
+            })()}
+
+            {/* 6-MONTH TREND ANALYSIS */}
+            {(() => {
+              // Respect dashboard filters: campus, month, quarter
+              let availableMonths = MONTHS.filter(m => data.months.includes(m));
+              if (month !== 'ALL') { availableMonths = availableMonths.filter(m => m === month); }
+              else if (quarter !== 'ALL' && QUARTERS[quarter]) { availableMonths = availableMonths.filter(m => QUARTERS[quarter].includes(m)); }
+              const allSrc = ['incidents','v2_ehs_inspection','training','v2_external_compliance'];
+              const trendMonths = availableMonths.filter(m => allSrc.some(k => { const rows = data.sources[k]?.rows || []; const filtered = campus !== 'ALL' ? rows.filter(r => r.campus === campus) : rows; return filtered.some(r => r.month === m); }));
+              if (trendMonths.length === 0) return null;
+              const label = `6-MONTH TREND ANALYSIS (${trendMonths[0].toUpperCase()} \u2013 ${trendMonths[trendMonths.length-1].toUpperCase()})`;
+
+              const TREND_CHARTS: { title: string; sourceKey: string; mode: 'sum'|'pct'; color: string; fillColor: string }[] = [
+                { title: 'Total Incidents \u2014 Monthly Trend', sourceKey: 'incidents', mode: 'sum', color: '#dc3545', fillColor: 'rgba(220,53,69,0.12)' },
+                { title: 'EHS Inspection Rate % \u2014 Monthly Trend', sourceKey: 'v2_ehs_inspection', mode: 'pct', color: '#198754', fillColor: 'rgba(25,135,84,0.10)' },
+                { title: 'Training Hours \u2014 Monthly Trend', sourceKey: 'training', mode: 'sum', color: '#4A90D9', fillColor: 'rgba(74,144,217,0.12)' },
+                { title: 'Compliance Rate % \u2014 Monthly Trend', sourceKey: 'v2_external_compliance', mode: 'pct', color: '#1A1F71', fillColor: 'rgba(26,31,113,0.10)' },
+              ];
+
+              return (<>
+                <h3 className="section-title">{label}</h3>
+                <div className="trend-grid">
+                  {TREND_CHARTS.map(tc => {
+                    const allRows = data.sources[tc.sourceKey]?.rows || [];
+                    const srcRows = campus !== 'ALL' ? allRows.filter(r => r.campus === campus) : allRows;
+                    const pts = trendMonths.map(m => {
+                      const mRows = srcRows.filter(r => r.month === m);
+                      if (tc.mode === 'sum') {
+                        return Math.round(mRows.reduce((s, r) => s + (r.value || r.actual || 0), 0) * 10) / 10;
+                      } else {
+                        const p = mRows.reduce((s, r) => s + r.planned, 0);
+                        const a = mRows.reduce((s, r) => s + r.actual, 0);
+                        return p > 0 ? Math.round(a / p * 100) : 0;
+                      }
+                    });
+                    const opts: Highcharts.Options = {
+                      chart: { type: 'areaspline', height: 220, style: { fontFamily: 'var(--font)' } },
+                      title: { text: tc.title, style: { fontSize: '13px', fontWeight: '700', fontStyle: 'italic' } },
+                      xAxis: { categories: trendMonths, labels: { style: { fontSize: '10px' } } },
+                      yAxis: { title: { text: '' }, labels: { style: { fontSize: '10px' } }, min: 0 },
+                      legend: { enabled: false },
+                      credits: { enabled: false },
+                      plotOptions: { areaspline: { fillColor: tc.fillColor, marker: { enabled: true, radius: 4, fillColor: tc.color }, lineColor: tc.color, lineWidth: 2, dataLabels: { enabled: true, style: { fontSize: '10px', fontWeight: '600' } } } },
+                      series: [{ type: 'areaspline', name: tc.title, data: pts, color: tc.color }],
+                    };
+                    return (
+                      <div key={tc.sourceKey} className="chart-card">
+                        <div className="chart-card-body">
+                          <HighchartsReact highcharts={Highcharts} options={opts} />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </>);
+            })()}
+
+            {data.errors.length > 0 && (
+              <div className="sync-errors">
+                <h4>Sync Errors ({data.errors.length})</h4>
+                <ul>{data.errors.map((e, i) => <li key={i}>{e}</li>)}</ul>
+              </div>
+            )}
+
+            {showCustomize && (
+            <div className="customize-panel">
+              <div className="customize-header">
+                <h3>Customize Dashboard</h3>
+                <p>Drag to reorder. Toggle visibility. Auto-saved.</p>
+                <button onClick={() => setShowCustomize(false)}>&times;</button>
+              </div>
+              <div className="customize-list">
+                {chartConfig.map((item, idx) => (
+                  <div
+                    key={item.key}
+                    className={"customize-item" + (dragIdx === idx ? " dragging" : "")}
+                    draggable
+                    onDragStart={() => setDragIdx(idx)}
+                    onDragOver={(e) => { e.preventDefault(); }}
+                    onDrop={() => {
+                      if (dragIdx === null || dragIdx === idx) return;
+                      const next = [...chartConfig];
+                      const [moved] = next.splice(dragIdx, 1);
+                      next.splice(idx, 0, moved);
+                      setChartConfig(next);
+                      setDragIdx(null);
+                    }}
+                    onDragEnd={() => setDragIdx(null)}
+                  >
+                    <span className="drag-handle">&#9776;</span>
+                    <input type="checkbox" checked={item.visible} onChange={() => {
+                      const next = [...chartConfig];
+                      next[idx] = { ...next[idx], visible: !next[idx].visible };
+                      setChartConfig(next);
+                    }} />
+                    <span className={"chart-name" + (!item.visible ? " chart-hidden" : "")}>{item.label}</span>
+                    <div className="customize-arrows">
+                      <button disabled={idx === 0} onClick={() => {
+                        const next = [...chartConfig];
+                        [next[idx - 1], next[idx]] = [next[idx], next[idx - 1]];
+                        setChartConfig(next);
+                      }}>&uarr;</button>
+                      <button disabled={idx === chartConfig.length - 1} onClick={() => {
+                        const next = [...chartConfig];
+                        [next[idx], next[idx + 1]] = [next[idx + 1], next[idx]];
+                        setChartConfig(next);
+                      }}>&darr;</button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div className="customize-footer">
+                <button onClick={() => setChartConfig(defaultChartConfig())}>Reset to Default</button>
+              </div>
+            </div>
+          )}
+
+            {/* FOOTER */}
+            <div className="dashboard-footer">
+              Data sourced from Smartsheet {'\u2022'} Last synced: {data.syncedAt ? new Date(data.syncedAt).toLocaleString() : 'N/A'} {'\u2022'} Click Sync Now to force reload
+            </div>
+          </>
+        )}
+      </div>
+
+      {/* Expanded Chart Modal */}
+      {expandedChart && (() => {
+        const chartDef = [...KPI_CHARTS, ...EXTRA_CHARTS].find(d => d.key === expandedChart);
+        if (!chartDef) return null;
+        const sourceKey = (chartDef as any).sourceKey || chartDef.key;
+        const rows = getRows(sourceKey);
+        const byCampus = aggregateByCampus(rows);
+        const campuses = Object.keys(byCampus).sort();
+        const dlStyle = { enabled: true, allowOverlap: false, crop: false, overflow: 'allow' as const, inside: false, verticalAlign: 'bottom' as const, y: -5, style: { fontSize: '11px', fontWeight: 'bold' as const, textOutline: '2px white', color: '#000' } };
+        const baseChart = { type: 'column' as const, height: 550, spacingTop: 30, style: { fontFamily: "'Segoe UI', Arial, sans-serif" } };
+        const baseAxis = { categories: campuses, labels: { style: { fontSize: '13px', fontWeight: 'bold' as const } } };
+        let expandedOpts: Highcharts.Options | null = null;
+
+        if (chartDef.type === 'pie') {
+          /* pie uses existing component */
+        } else if (chartDef.type === 'rate_pct') {
+          const d = campuses.map(c => { const { planned, actual } = byCampus[c]; const pct = planned > 0 ? Math.min(Math.round(actual / planned * 100), 100) : 0; return { pct, met: pct >= 100 }; });
+          expandedOpts = {
+            chart: baseChart, title: { text: undefined }, xAxis: baseAxis,
+            yAxis: { title: { text: null }, max: 100, labels: { format: '{value}%' }, gridLineColor: '#f0f0f0' },
+            legend: { align: 'center', verticalAlign: 'bottom', itemStyle: { fontSize: '13px' } },
+            plotOptions: { column: { borderRadius: 3, groupPadding: 0.08, pointPadding: 0.02, dataLabels: { ...dlStyle, format: '{y}%' } } },
+            series: [
+              { type: 'column', name: 'Met Target', data: d.map(x => ({ y: x.met ? x.pct : 0, color: '#1D9E75' })), showInLegend: true, color: '#1D9E75' },
+              { type: 'column', name: 'Below Target', data: d.map(x => ({ y: !x.met && x.pct > 0 ? x.pct : 0, color: '#EA352E' })), showInLegend: true, color: '#EA352E' },
+            ],
+            credits: { enabled: false }, tooltip: { shared: true },
+          };
+        } else if (chartDef.type === 'value_hours') {
+          expandedOpts = {
+            chart: baseChart, title: { text: undefined }, xAxis: baseAxis,
+            yAxis: { title: { text: null }, gridLineColor: '#f0f0f0' },
+            legend: { enabled: false },
+            plotOptions: { column: { borderRadius: 3, dataLabels: { ...dlStyle, format: '{y}h' } } },
+            series: [{ type: 'column', name: 'Hours', data: campuses.map(c => byCampus[c].value || byCampus[c].actual), color: '#4A90D9' }],
+            credits: { enabled: false },
+          };
+        } else {
+          const series: any[] = [];
+          if (chartDef.type === 'value') {
+            series.push({ type: 'column', name: (chartDef as any).valueLabel || 'Value', data: campuses.map(c => byCampus[c].value || byCampus[c].actual || byCampus[c].planned), color: '#4A90D9' });
+          } else if (chartDef.type === 'planned_actual_below') {
+            series.push(
+              { type: 'column', name: (chartDef as any).plannedLabel || 'Planned', data: campuses.map(c => byCampus[c].planned), color: 'rgba(74,144,217,0.4)' },
+              { type: 'column', name: (chartDef as any).actualLabel || 'Met/Exceeded', data: campuses.map(c => Math.max(0, byCampus[c].actual)), color: '#1D9E75' },
+              { type: 'column', name: (chartDef as any).belowLabel || 'Below Target', data: campuses.map(c => Math.max(0, byCampus[c].planned - byCampus[c].actual)), color: '#EA352E' },
+            );
+          } else {
+            series.push(
+              { type: 'column', name: (chartDef as any).plannedLabel || 'Planned / Target', data: campuses.map(c => byCampus[c].planned), color: 'rgba(74,144,217,0.4)' },
+              { type: 'column', name: (chartDef as any).actualLabel || 'Actual', data: campuses.map(c => byCampus[c].actual), color: '#0a3d62' },
+            );
+          }
+          expandedOpts = {
+            chart: baseChart, title: { text: undefined }, xAxis: baseAxis,
+            yAxis: { title: { text: null }, gridLineColor: '#f0f0f0' },
+            legend: { align: 'center', verticalAlign: 'bottom', itemStyle: { fontSize: '13px' } },
+            plotOptions: { column: { borderRadius: 3, groupPadding: 0.08, pointPadding: 0.02, dataLabels: dlStyle } },
+            series, credits: { enabled: false }, tooltip: { shared: true },
+          };
+        }
+
+        return (
+          <div className="modal-overlay" onClick={() => setExpandedChart(null)} style={{ zIndex: 9999 }}>
+            <div onClick={e => e.stopPropagation()} style={{ background: '#fff', borderRadius: '10px', width: '95vw', maxWidth: '1400px', maxHeight: '90vh', overflow: 'auto', padding: '24px', boxShadow: '0 8px 32px rgba(0,0,0,0.3)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', borderBottom: '2px solid #1A1F71', paddingBottom: '12px' }}>
+                <h3 style={{ margin: 0, color: '#1A1F71', fontSize: '20px' }}><i className="fa fa-chart-bar" style={{ marginRight: 8 }}></i>{chartDef.label}</h3>
+                <button onClick={() => setExpandedChart(null)} style={{ background: '#f0f0f0', border: 'none', fontSize: '18px', cursor: 'pointer', color: '#666', padding: '6px 12px', borderRadius: '6px' }}><i className="fa fa-times"></i> Close</button>
+              </div>
+              {chartDef.type === 'pie' ? <KpiPieChart rows={rows} /> :
+               expandedOpts ? <HighchartsReact highcharts={Highcharts} options={expandedOpts} /> : null}
+            </div>
+          </div>
+        );
+      })()}
+    </div>
+  );
+}
+'use client';
+import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
+import Highcharts from 'highcharts';
+import HighchartsReact from 'highcharts-react-official';
+
+const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+const CAMPUS_CODES = new Set(['AAF','AAZ','ADA','ADB','ADC','ADH','MZY','DMC','DBN','DBA','FJF','FJH','SJA','SJB','RKA','RKB','HQ']);
+const QUARTERS: Record<string, string[]> = {
+  Q1: ['January','February','March'], Q2: ['April','May','June'],
+  Q3: ['July','August','September'], Q4: ['October','November','December'],
+};
+const QUARTER_LABELS: Record<string, string> = {
+  Q1: 'Q1 (Jan\u2013Mar)', Q2: 'Q2 (Apr\u2013Jun)',
+  Q3: 'Q3 (Jul\u2013Sep)', Q4: 'Q4 (Oct\u2013Dec)',
+};
+
+const SUMMARY_CARDS = [
+  { key: 'incidents', label: 'Total Incidents', unit: 'count', color: '#dc3545' },
+  { key: 'training', label: 'Training Hours', unit: 'val', color: '#0d6efd' },
+  { key: 'ehs', label: 'EHS Inspection Rate', unit: 'pct', color: '#198754' },
+  { key: 'drills', label: 'Drills Completion', unit: 'pct', color: '#20c997' },
+  { key: 'findings', label: 'Findings Closed', unit: 'pct', color: '#ffc107' },
+  { key: 'notification', label: 'Notification Rate', unit: 'pct', color: '#fd7e14' },
+  { key: 'risk', label: 'Risk Assessment', unit: 'pct', color: '#6f42c1' },
+];
+
+const SMARTSHEET_LINKS: Record<string, string> = {
+  v2_onsite_induction: 'https://app.smartsheet.com/reports/fX59xqr6qGHmQf7mRjvvCRwQgfjFxhg6RVMFW8g1',
+  v2_permit_to_work: 'https://app.smartsheet.com/reports/GrWG8P5q35WvFmf2HmvQ3fwHxfx27mC3CPc4jW31',
+  v2_hazard_id: 'https://app.smartsheet.com/reports/h8j2pr5QPcRMm6qJc8XJm4V3P4vpHXvfH47fVXm1',
+  v2_risk_closed: 'https://app.smartsheet.com/reports/PJqX8cvQx3JfR4m3RQvQRWGvQVqJ7MVQxWQJRp21',
+  v2_risk_validated: 'https://app.smartsheet.com/reports/X54FCPjRPq2wGqqw3H4hVPCG8mv7gfj4WWPFRQv1',
+  v2_safe_working: 'https://app.smartsheet.com/reports/Fq67jCWCQpw2F6Vr73Qc6pQgHv9Qrc85H4Pvmjj1',
+  v2_findings_on_time: 'https://app.smartsheet.com/reports/QM3QP3HFVjGC3Pv6XWFMwQ39fhpjCMH9QfRGCWP1',
+  v2_ehs_inspection: 'https://app.smartsheet.com/reports/MX7q7VrFvJmf39vvC4wgxGJrRJJPrw9H8F4vwMm1',
+  v2_hs_committee: 'https://app.smartsheet.com/reports/FW4f8qMFrW7hHMHpV7q5w7PJ9ghqQW9jcGC5rC51',
+  v2_planned_training: 'https://app.smartsheet.com/reports/Gxf8gGwxCGWcqr45rf4P24FcPPrcg3jG2wrXQp71',
+  incidents: 'https://app.smartsheet.com/reports/4VWCcpqw3R5p6J5gXvCmgHmXP9crVP3pxH92c2x1',
+  v2_incident_types: 'https://app.smartsheet.com/reports/QG4mfCP4CHW68qr455RfgX2gpRXrG9C35MXFMHJ1',
+  v2_hs_kpi_report: 'https://app.smartsheet.com/reports/4VWCcpqw3R5p6J5gXvCmgHmXP9crVP3pxH92c2x1',
+  v2_external_compliance: 'https://app.smartsheet.com/reports/VX8phCh6rPh8rpCwcHw2XjpfHvcvRXJWc6vv9R21',
+  v2_investigation_on_time: 'https://app.smartsheet.com/reports/Cq58QHJ8xWjW4RCWf7g58Gr7Px7CP2qM9x8xJ971',
+  notification: 'https://app.smartsheet.com/reports/G3pVJpCpjMJ6pxX68hXJxRrcfjmpwRfxMPGpFr81',
+  training: 'https://app.smartsheet.com/reports/5V2V2Wm4Rp5R5PwG3fP5WPmFQxM8XmvrF6qww381',
+  ehs_rate: 'https://app.smartsheet.com/reports/MX7q7VrFvJmf39vvC4wgxGJrRJJPrw9H8F4vwMm1',
+  findings_rate: 'https://app.smartsheet.com/reports/QM3QP3HFVjGC3Pv6XWFMwQ39fhpjCMH9QfRGCWP1',
+  drills: 'https://app.smartsheet.com/reports/M8RpVP64QQr2xjcv345ffc5WmGj9C6mrmQ3h2gp1',
+  v2_mgmt_review_actions: 'https://app.smartsheet.com/reports/CgFq9HVWvpVPv6G5mc9756F2QxRjwFVxGRf9wwX1',
+  v2_waste_segregation: 'https://app.smartsheet.com/reports/r97F4HgPH6vxFf5R3Mjqrxf8VFxpV9v7Jr4pr741',
+};
+
+const REPORT_REGIONS = ['AD Al Ain','Abu Dhabi','AD Remote','Dubai','Fujairah','Sharjah','Ras Al Khaimah'];
+
+const KPI_CHARTS = [
+  { key: 'v2_onsite_induction', label: 'Contractor Activity', plannedLabel: 'No. of New Contractors (Individuals)', actualLabel: 'Contractors Inducted in the Reporting Month \u2014 Met/Exceeded', belowLabel: 'Contractors Inducted in the Reporting Month \u2014 Below Target', type: 'planned_actual_below' },
+  { key: 'v2_permit_to_work', label: 'Permit to Work', plannedLabel: 'No. of PTWs Issued', actualLabel: 'Total Work Registered', type: 'planned_actual' },
+  { key: 'v2_hazard_id', label: 'Implemented Control Measures', plannedLabel: 'Total Control Sampled', actualLabel: 'Implemented Controls \u2014 Met/Exceeded', belowLabel: 'Implemented Controls \u2014 Below Target', type: 'planned_actual_below' },
+  { key: 'v2_risk_closed', label: 'Risk Assessment Closed', plannedLabel: 'Total Risk Assessments Registered', actualLabel: 'Risk Assessment Closed \u2014 Met/Exceeded', belowLabel: 'Risk Assessment Closed \u2014 Below Target', type: 'planned_actual_below' },
+  { key: 'v2_risk_validated', label: 'Risk Assessment Validated & Signed Off', plannedLabel: 'Total Assessments Register', actualLabel: 'RA Validated and Signed Off \u2014 Met/Exceeded', belowLabel: 'RA Validated and Signed Off \u2014 Below Target', type: 'planned_actual_below' },
+  { key: 'v2_safe_working', label: 'Safe Working Procedure', plannedLabel: 'No. of SOPs Verified', actualLabel: 'No. of SOPs Implemented \u2014 Met/Exceeded', belowLabel: 'No. of SOPs Implemented \u2014 Below Target', type: 'planned_actual_below' },
+  { key: 'v2_findings_on_time', label: 'Findings Closed On Time', plannedLabel: 'No. of Findings in Reporting Month', actualLabel: 'No. of Findings Closed \u2014 Met/Exceeded', belowLabel: 'No. of Findings Closed \u2014 Below Target', type: 'planned_actual_below' },
+  { key: 'v2_ehs_inspection', label: 'Scheduled EHS Inspection', plannedLabel: 'No. of EHS Inspections Planned', actualLabel: 'No. of EHS Inspections Completed \u2014 Met/Exceeded', belowLabel: 'No. of EHS Inspections Completed \u2014 Below Target', type: 'planned_actual_below' },
+  { key: 'v2_hs_committee', label: 'EHS Committee Meeting', valueLabel: 'No. of Committee Meeting', type: 'value' },
+  { key: 'v2_planned_training', label: 'Planned Training Report', plannedLabel: 'Planned Training', actualLabel: 'Training Conducted \u2014 Met/Exceeded', belowLabel: 'Training Conducted \u2014 Below Target', type: 'planned_actual_below' },
+  // { key: 'v2_hs_kpi_report', label: 'HS KPI Report', valueLabel: 'Submitted', type: 'value' }, // Hidden: reportId 404
+  { key: 'v2_external_compliance', label: 'External Authority Compliance', plannedLabel: 'Applicable Compliance', actualLabel: 'Actual Compliance \u2014 Met/Exceeded', belowLabel: 'Actual Compliance \u2014 Below Target', type: 'planned_actual_below' },
+  { key: 'v2_investigation_on_time', label: 'Investigation Completed on Time', plannedLabel: 'Total Incident', actualLabel: 'Investigation Completed on Time', type: 'planned_actual' },
+  { key: 'notification', label: 'Notification on Time', plannedLabel: 'Total Incident', actualLabel: 'Notification Submitted on Time', type: 'planned_actual' },
+];
+
+const EXTRA_CHARTS = [
+  { key: 'incidents', label: 'Total Incidents', subtitle: 'Incident count by campus \u2014 lower is better', valueLabel: 'Incidents', type: 'value' },
+  { key: 'v2_incident_types', label: 'Incidents by Type', subtitle: 'Count of incidents per category', type: 'pie' },
+  { key: 'training', label: 'Total Training Hours by Campus', subtitle: 'Actual training hours per campus', valueLabel: 'Hours', type: 'value_hours' },
+  { key: 'ehs_rate', label: 'EHS Inspection Rate', subtitle: 'Scheduled vs Completed EHS Inspections', sourceKey: 'ehs', type: 'rate_pct' },
+  { key: 'findings_rate', label: 'Findings Closed Rate', subtitle: 'Total Findings vs Findings Closed', sourceKey: 'findings', type: 'rate_pct' },
+];
+
 interface KpiRow { campus: string; month: string | null; planned: number; actual: number; value: number; }
 interface SyncData {
   syncedAt: string;
