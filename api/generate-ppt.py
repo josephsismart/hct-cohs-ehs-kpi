@@ -202,7 +202,8 @@ def fetch_kpi_data(token, month_filter):
             if not campus: continue
 
             # Month filter
-            if month_col and month_filter:
+            # Month filter — skip if month_filter is None (cumulative mode)
+            if month_filter and month_col:
                 row_month = normalize_month(row.get(month_col))
                 if not row_month: continue
                 # Also try fallback month columns
@@ -253,14 +254,20 @@ def fetch_waste_data(token, month_filter):
     for row in rows:
         campus = str(row.get(WASTE_SOURCE['campusCol'], '')).strip()
         month = normalize_month(row.get(WASTE_SOURCE['monthCol']))
-        if not campus or month != month_filter: continue
-        entry = {}
+        if not campus: continue
+        if month_filter and month != month_filter: continue
+        if campus not in waste:
+            entry = {}
+            for col in WASTE_TABLE_COLS:
+                entry[col] = 0.0
+            entry['Total Waste'] = 0.0
+            waste[campus] = entry
         for col in WASTE_TABLE_COLS:
-            entry[col] = safe_float(row.get(col))
-        entry['Total Waste'] = safe_float(row.get('Total Waste'))
-        if entry['Total Waste'] == 0:
-            entry['Total Waste'] = sum(entry.get(c, 0) for c in WASTE_TABLE_COLS)
-        waste[campus] = entry
+            waste[campus][col] += safe_float(row.get(col))
+        row_total = safe_float(row.get('Total Waste'))
+        if row_total == 0:
+            row_total = sum(safe_float(row.get(c)) for c in WASTE_TABLE_COLS)
+        waste[campus]['Total Waste'] += row_total
     return waste
 
 
@@ -666,6 +673,11 @@ def generate_presentation(template_bytes, region_name, period, kpi_data, waste_d
         text_replacements += [('Campus Y', short_names[1]), ('Baniyas Campus B', short_names[1]), ('Baniyas B', short_names[1])]
     else:
         text_replacements += [('Campus Y', ''), ('Baniyas Campus B', ''), ('Baniyas B', '')]
+    # Also replace generic Campus A/B if short names differ
+    if short_names and short_names[0] != 'Campus A':
+        text_replacements.append(('Campus A', short_names[0]))
+    if len(short_names) > 1 and short_names[1] != 'Campus B':
+        text_replacements.append(('Campus B', short_names[1]))
 
     for fname in file_contents:
         if fname.startswith('ppt/slides/slide') and fname.endswith('.xml') and fname != 'ppt/slides/slide1.xml':
@@ -780,7 +792,8 @@ class handler(BaseHTTPRequestHandler):
         params = parse_qs(parsed.query)
 
         region = params.get('region', ['Abu Dhabi'])[0]
-        month = params.get('month', [MONTH_NAMES[datetime.now().month - 2] if datetime.now().month > 1 else 'December'])[0]
+        month_param = params.get('month', [None])[0]
+        month = month_param  # None means cumulative (all months)
         year = params.get('year', [str(datetime.now().year)])[0]
 
         token = os.environ.get('SMARTSHEET_TOKEN')
@@ -821,7 +834,7 @@ class handler(BaseHTTPRequestHandler):
             with open(template_path, 'rb') as f:
                 template_bytes = f.read()
 
-            period = f"{month} {year}"
+            period = f"{month} {year}" if month else f"YTD {year}"
             pptx_bytes, error = generate_presentation(template_bytes, region, period, kpi_data, waste_data)
 
             if error:
