@@ -851,7 +851,7 @@ export default function Dashboard() {
         const rows = getRows(sourceKey);
         const byCampus = aggregateByCampus(rows);
         const campuses = Object.keys(byCampus).sort();
-        const dlStyle = { enabled: true, allowOverlap: false, crop: false, overflow: 'allow' as const, inside: true, verticalAlign: 'top' as const, y: 2, style: { fontSize: '11px', fontWeight: 'bold' as const, textOutline: '2px white', color: '#000' } };
+        const dlStyle = { enabled: true, allowOverlap: false, crop: false, overflow: 'allow' as const, inside: false, verticalAlign: 'bottom' as const, y: -5, style: { fontSize: '11px', fontWeight: 'bold' as const, textOutline: '2px white', color: '#000' } };
         const baseChart = { type: 'column' as const, height: 550, spacingTop: 30, style: { fontFamily: "'Segoe UI', Arial, sans-serif" } };
         const baseAxis = { categories: campuses, labels: { style: { fontSize: '13px', fontWeight: 'bold' as const } } };
         let expandedOpts: Highcharts.Options | null = null;
@@ -864,7 +864,7 @@ export default function Dashboard() {
             chart: baseChart, title: { text: undefined }, xAxis: baseAxis,
             yAxis: { title: { text: null }, max: 100, labels: { format: '{value}%' }, gridLineColor: '#f0f0f0' },
             legend: { align: 'center', verticalAlign: 'bottom', itemStyle: { fontSize: '13px' } },
-            plotOptions: { column: { borderRadius: 3, groupPadding: 0.2, pointPadding: 0.08, dataLabels: { ...dlStyle, format: '{y}%' } } },
+            plotOptions: { column: { borderRadius: 3, groupPadding: 0.08, pointPadding: 0.02, dataLabels: { ...dlStyle, format: '{y}%' } } },
             series: [
               { type: 'column', name: 'Met Target', data: d.map(x => ({ y: x.met ? x.pct : 0, color: '#1D9E75' })), showInLegend: true, color: '#1D9E75' },
               { type: 'column', name: 'Below Target', data: d.map(x => ({ y: !x.met && x.pct > 0 ? x.pct : 0, color: '#EA352E' })), showInLegend: true, color: '#EA352E' },
@@ -900,7 +900,7 @@ export default function Dashboard() {
             chart: baseChart, title: { text: undefined }, xAxis: baseAxis,
             yAxis: { title: { text: null }, gridLineColor: '#f0f0f0' },
             legend: { align: 'center', verticalAlign: 'bottom', itemStyle: { fontSize: '13px' } },
-            plotOptions: { column: { borderRadius: 3, groupPadding: 0.2, pointPadding: 0.08, dataLabels: dlStyle } },
+            plotOptions: { column: { borderRadius: 3, groupPadding: 0.08, pointPadding: 0.02, dataLabels: dlStyle } },
             series, credits: { enabled: false }, tooltip: { shared: true },
           };
         }
