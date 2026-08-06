@@ -55,14 +55,16 @@ export async function GET() {
   // Fetch waste segregation raw data for the waste table
   let wasteData: Record<string, any>[] = [];
   try {
-    const wasteRaw = await fetchSheet('8150747345538948', token);
-    const WASTE_COLS = ['Total Waste','General Waste','Food Waste','Paper Waste','Paper Cup/Carton','PET Bottle','Single Use Plastic'];
+    const wasteRaw = await fetchSheet('6383128615538564', token);
+    const WASTE_COLS = ['Total Waste (General/Recyclable)','General Waste','Food Waste','Paper Waste','Paper Cup/Carton','PET Bottle','Single Use Plastic','Aluminum','Tissue','Scrap Metal','E-Waste','Hazardous','Medical'];
     wasteData = wasteRaw.map(r => {
       const campus = String(r['Campus Code'] || '').trim();
       if (!campus) return null;
       const month = (() => { const v = r['Reporting Month']; if (!v) return null; const s = String(v).trim(); const MNAMES = ['January','February','March','April','May','June','July','August','September','October','November','December']; const idx = MNAMES.findIndex(m => m.toLowerCase() === s.toLowerCase()); if (idx >= 0) return MNAMES[idx]; const abbr = s.substring(0,3).toLowerCase(); const MABBR: Record<string,number> = {jan:0,feb:1,mar:2,apr:3,may:4,jun:5,jul:6,aug:7,sep:8,oct:9,nov:10,dec:11}; if (MABBR[abbr] !== undefined) return MNAMES[MABBR[abbr]]; return null; })();
       const row: Record<string, any> = { campus, month };
       WASTE_COLS.forEach(col => { row[col] = parseFloat(r[col]) || 0; });
+      // Alias new column name for backward compatibility
+      if (row['Total Waste (General/Recyclable)'] !== undefined) row['Total Waste'] = row['Total Waste (General/Recyclable)'];
       return row;
     }).filter(Boolean) as Record<string, any>[];
   } catch (e: any) { errors.push(`wasteData: ${e.message}`); }
