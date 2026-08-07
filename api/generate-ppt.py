@@ -11,7 +11,7 @@ from xml.etree import ElementTree as ET
 
 # ── Namespaces ──
 NS = {
-    'a': 'http://schemas.openxmlformats.org/drawingml/2006/main',h
+    'a': 'http://schemas.openxmlformats.org/drawingml/2006/main',
     'r': 'http://schemas.openxmlformats.org/officeDocument/2006/relationships',
     'c': 'http://schemas.openxmlformats.org/drawingml/2006/chart',
     'p': 'http://schemas.openxmlformats.org/presentationml/2006/main',
