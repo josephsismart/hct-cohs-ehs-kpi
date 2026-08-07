@@ -1,4 +1,4 @@
-"""Vercel Python serverless function — HCT-COHS KPI PPT Generator.
+"""Vercel Python serverless function â HCT-COHS KPI PPT Generator.
 Fetches live data from Smartsheet API and generates downloadable .pptx files.
 """
 
@@ -9,7 +9,7 @@ from urllib.request import Request, urlopen
 from datetime import datetime
 from xml.etree import ElementTree as ET
 
-# ── Namespaces ──
+# ââ Namespaces ââ
 NS = {
     'a': 'http://schemas.openxmlformats.org/drawingml/2006/main',
     'r': 'http://schemas.openxmlformats.org/officeDocument/2006/relationships',
@@ -23,7 +23,7 @@ ET.register_namespace('c14', 'http://schemas.microsoft.com/office/drawing/2007/8
 ET.register_namespace('c15', 'http://schemas.microsoft.com/office/drawing/2012/chart')
 ET.register_namespace('c16r2', 'http://schemas.microsoft.com/office/drawing/2015/06/chart')
 
-# ── Regions ──
+# ââ Regions ââ
 REGIONS = {
     'AD Al Ain':      {'sheets': ['AAF','AAZ'], 'short': ['Falaj Hazza','Zakhir'],       'subtitle': 'Al Ain Falaj Hazza & Al Ain Zakhir'},
     'Abu Dhabi':      {'sheets': ['ADA','ADB'], 'short': ['Baniyas A','Baniyas B'],      'subtitle': 'Abu Dhabi Baniyas A & Abu Dhabi Baniyas B'},
@@ -34,7 +34,7 @@ REGIONS = {
     'Ras Al Khaimah': {'sheets': ['RKA','RKB'], 'short': ['Campus A','Campus B'],         'subtitle': 'RAK Campus A & RAK Campus B'},
 }
 
-# ── KPI structure ──
+# ââ KPI structure ââ
 PILLAR_KPIS = [
     {'pillar': 'Leadership', 'weight': 0.20, 'rows': [2,3,4,5,6]},
     {'pillar': 'Risk Mgmt',  'weight': 0.20, 'rows': [7,8,9]},
@@ -59,16 +59,14 @@ CHART_KPI_MAP = {
     'chart10.xml': 10, 'chart11.xml': 11,                       # Slide 9: OCP
     'chart12.xml': 12, 'chart13.xml': 13,                       # Slide 10: Contractors
     'chart14.xml': 14, 'chart15.xml': 15,                       # Slide 11: Inspection
-    'chart16.xml': 16, 'chart17.xml': 17,                       # Slide 12: Incidents
+    'chart16.xml': 17, 'chart17.xml': 16,                       # Slide 12: Incidents (16=Notification, 17=Investigation)
 }
 
-SINGLE_SERIES_CHARTS = {'chart4.xml', 'chart5.xml'}
-MERGE_CAMPUS_CHARTS = {'chart4.xml', 'chart5.xml'}
 REMOVE_UNDERLINE_CHARTS = {'chart2.xml'}
 
 PIE_CHARTS = {'chart1.xml'}
 
-# ── Smartsheet source → KPI row mapping ──
+# ââ Smartsheet source â KPI row mapping ââ
 SYNC_SOURCES = [
     {'key': 'v2_hs_kpi_report', 'reportId': '4811266391494532', 'campusCol': 'Campuses', 'monthCol': 'Primary', 'valueCol': 'Submitted', 'kpi_row': 2},
     {'key': 'v2_external_compliance', 'sheetId': '1325212455882628', 'campusCol': 'Campus Code', 'monthCol': 'Primary', 'plannedCol': 'Applicable Compliance', 'actualCol': 'Actual Compliance', 'kpi_row': 4},
@@ -100,7 +98,7 @@ RECYCLABLE_COLS = ['Food Waste', 'Paper Waste', 'Aluminum', 'PET Bottle',
 MONTH_NAMES = ['January','February','March','April','May','June',
                'July','August','September','October','November','December']
 
-# ── Smartsheet API ──
+# ââ Smartsheet API ââ
 
 def _ss_fetch(endpoint, token):
     url = f'https://api.smartsheet.com/2.0/{endpoint}'
@@ -172,7 +170,7 @@ def pct_str(v):
     return f"{round(v * 100)}%"
 
 
-# ── Fetch and process KPI data from Smartsheet ──
+# ââ Fetch and process KPI data from Smartsheet ââ
 
 def fetch_kpi_data(token, month_filter):
     """Fetch all KPI sources and return {campus_code: {kpi_row: {planned, achieved, calc, weight}}}"""
@@ -202,7 +200,7 @@ def fetch_kpi_data(token, month_filter):
             if not campus: continue
 
             # Month filter
-            # Month filter — skip if month_filter is None (cumulative mode)
+            # Month filter â skip if month_filter is None (cumulative mode)
             if month_filter and month_col:
                 row_month = normalize_month(row.get(month_col))
                 if not row_month: continue
@@ -271,7 +269,7 @@ def fetch_waste_data(token, month_filter):
     return waste
 
 
-# ── KPI data processing ──
+# ââ KPI data processing ââ
 
 def read_campus_data(kpi_data, sheet_name):
     campus = kpi_data.get(sheet_name, {})
@@ -298,7 +296,7 @@ def read_region_data(kpi_data, region_cfg):
     return {'campuses': campuses, 'avg_pillar': avg_p, 'avg_overall': avg_o, 'short': region_cfg['short']}
 
 
-# ── XML chart editing (from kpi_pptx.py) ──
+# ââ XML chart editing (from kpi_pptx.py) ââ
 
 def _set_val_axis_max(xml_str, max_val):
     valax_match = re.search(r'<c:valAx>(.*?)</c:valAx>', xml_str, re.DOTALL)
@@ -323,25 +321,10 @@ def _remove_axis_underline(xml_str):
     xml_str = re.sub(r'<a:u val="[^"]*">[^<]*</a:u>', '', xml_str)
     return xml_str
 
-def update_chart_xml(xml_str, campus_names, achieved_vals, avg_val=None, is_single_series=False, remove_underline=False):
+def update_chart_xml(xml_str, campus_names, achieved_vals, avg_val=None, remove_underline=False):
+    """Update chart XML with campus values. All charts now use 3 categories (campus1, campus2, Campus Avg.)
+    with identical bar and line series values."""
     n_cats = len(campus_names)
-    if is_single_series:
-        parts = xml_str.split('<c:val>')
-        if len(parts) >= 2:
-            for pi in range(1, len(parts)):
-                val_section = parts[pi].split('</c:val>')[0]
-                rest = '</c:val>'.join(parts[pi].split('</c:val>')[1:])
-                val_section = re.sub(r'(<c:ptCount val=")\d+(")', f'\\g<1>{n_cats}\\2', val_section)
-                existing_pts = list(re.finditer(r'<c:pt idx="\d+">\s*<c:v>[^<]*</c:v>\s*</c:pt>', val_section))
-                if existing_pts:
-                    val_clean = re.sub(r'<c:pt idx="\d+">\s*<c:v>[^<]*</c:v>\s*</c:pt>', '', val_section)
-                    new_pts = ''.join(f'<c:pt idx="{i}"><c:v>{achieved_vals[i]}</c:v></c:pt>' for i in range(n_cats))
-                    val_clean = val_clean.replace('</c:numCache>', new_pts + '</c:numCache>')
-                    parts[pi] = val_clean + '</c:val>' + rest
-                    break
-        xml_str = '<c:val>'.join(parts)
-        xml_str = _set_val_axis_max(xml_str, 1.0)
-        return xml_str
 
     def _update_ser_values(ser_xml, vals):
         def _replace_num(val_match):
@@ -366,6 +349,7 @@ def update_chart_xml(xml_str, campus_names, achieved_vals, avg_val=None, is_sing
 
     xml_str = re.sub(r'<c:strCache>.*?</c:strCache>', lambda m: _update_str_cache(m.group(0)), xml_str, flags=re.DOTALL)
 
+    # Update bar chart series
     bar_match = re.search(r'<c:barChart>.*?</c:barChart>', xml_str, re.DOTALL)
     if bar_match:
         bar_xml = bar_match.group(0)
@@ -376,14 +360,14 @@ def update_chart_xml(xml_str, campus_names, achieved_vals, avg_val=None, is_sing
             bar_xml = bar_xml.replace(old_ser, new_ser, 1)
         xml_str = xml_str[:bar_match.start()] + bar_xml + xml_str[bar_match.end():]
 
+    # Update line chart series with same values (both series identical in new template)
     line_match = re.search(r'<c:lineChart>.*?</c:lineChart>', xml_str, re.DOTALL)
-    if line_match and avg_val is not None:
+    if line_match:
         line_xml = line_match.group(0)
         ser_in_line = list(re.finditer(r'<c:ser>.*?</c:ser>', line_xml, re.DOTALL))
-        avg_vals = [avg_val] * n_cats
         for sm in ser_in_line:
             old_ser = sm.group(0)
-            new_ser = _update_ser_values(old_ser, avg_vals)
+            new_ser = _update_ser_values(old_ser, achieved_vals)
             line_xml = line_xml.replace(old_ser, new_ser, 1)
         xml_str = xml_str[:line_match.start()] + line_xml + xml_str[line_match.end():]
 
@@ -393,7 +377,7 @@ def update_chart_xml(xml_str, campus_names, achieved_vals, avg_val=None, is_sing
     return xml_str
 
 
-# ── Slide 6 bar scaling ──
+# ââ Slide 6 bar scaling ââ
 
 BAR_COLOR_GREEN  = 'C0DD97'
 BAR_COLOR_BLUE   = 'B5D4F4'
@@ -438,7 +422,7 @@ def update_slide6_bars(xml_str, pct_values):
     return xml_str
 
 
-# ── Embedded Excel workbook ──
+# ââ Embedded Excel workbook ââ
 
 def create_chart_workbook(categories, bar_values, line_values=None):
     try:
@@ -498,7 +482,7 @@ def update_chart_rels_for_embedding(rels_xml, embed_target):
     )
 
 
-# ── Waste slide helpers ──
+# ââ Waste slide helpers ââ
 
 def _set_cell_text(tc_elem, text, a_ns):
     for r_elem in tc_elem.iter(f'{{{a_ns}}}r'):
@@ -609,7 +593,7 @@ def update_waste_slide(file_contents, region_cfg, short_names, waste_data):
     file_contents[slide20_path] = xml.encode('utf-8')
 
 
-# ── Main generation ──
+# ââ Main generation ââ
 
 def generate_presentation(template_bytes, region_name, period, kpi_data, waste_data=None):
     if region_name not in REGIONS:
@@ -627,29 +611,23 @@ def generate_presentation(template_bytes, region_name, period, kpi_data, waste_d
         for item in zin.infolist():
             file_contents[item.filename] = zin.read(item.filename)
 
-    # 1. Update column charts
-    merged_region_name = short_names[0].rsplit(' ', 1)[0] if short_names else region_name
+    # 1. Update column charts â all charts use 3 categories: [campus1, campus2, "Campus Avg."]
     for chart_file, kpi_idx in CHART_KPI_MAP.items():
         path = f"ppt/charts/{chart_file}"
         if path not in file_contents: continue
         xml_str = file_contents[path].decode('utf-8')
-        is_single = chart_file in SINGLE_SERIES_CHARTS
         do_remove_underline = chart_file in REMOVE_UNDERLINE_CHARTS
 
-        if chart_file in MERGE_CAMPUS_CHARTS and len(campuses) > 1:
-            avg_calc = sum(c['kpis'][kpi_idx]['calc'] for c in campuses) / len(campuses)
-            chart_names = [merged_region_name]
-            chart_achieved = [avg_calc]
-            chart_avg = avg_calc
-        else:
-            chart_names = short_names
-            chart_achieved = [c['kpis'][kpi_idx]['calc'] for c in campuses]
-            chart_avg = sum(c['kpis'][kpi_idx]['calc'] for c in campuses) / len(campuses)
+        # Build 3-category data: campus1, campus2, Campus Avg.
+        campus_codes = region_cfg['sheets']
+        chart_names = list(campus_codes) + ['Campus Avg.']
+        campus_vals = [c['kpis'][kpi_idx]['calc'] for c in campuses]
+        avg_val = sum(campus_vals) / len(campus_vals)
+        chart_achieved = campus_vals + [avg_val]
 
-        new_xml = update_chart_xml(xml_str, chart_names, chart_achieved, chart_avg, is_single, remove_underline=do_remove_underline)
+        new_xml = update_chart_xml(xml_str, chart_names, chart_achieved, avg_val, remove_underline=do_remove_underline)
         new_xml = _set_val_axis_max(new_xml, 1.0)
-        has_line = not is_single
-        new_xml = _rewrite_chart_formulas(new_xml, len(chart_names), has_line=has_line)
+        new_xml = _rewrite_chart_formulas(new_xml, len(chart_names), has_line=True)
         file_contents[path] = new_xml.encode('utf-8')
 
         # Create embedded workbook
@@ -658,8 +636,7 @@ def generate_presentation(template_bytes, region_name, period, kpi_data, waste_d
             chart_num = re.search(r'chart(\d+)', chart_file).group(1)
             embed_name = f"Microsoft_Excel_Chart{chart_num}.xlsx"
             embed_path = f"ppt/embeddings/{embed_name}"
-            line_vals = None if is_single else [chart_avg] * len(chart_names)
-            xlsx_bytes = create_chart_workbook(chart_names, chart_achieved, line_vals)
+            xlsx_bytes = create_chart_workbook(chart_names, chart_achieved, chart_achieved)
             if xlsx_bytes:
                 file_contents[embed_path] = xlsx_bytes
                 rels_xml = file_contents[rels_path].decode('utf-8')
@@ -667,7 +644,7 @@ def generate_presentation(template_bytes, region_name, period, kpi_data, waste_d
                     new_rels = update_chart_rels_for_embedding(rels_xml, f"../embeddings/{embed_name}")
                     file_contents[rels_path] = new_rels.encode('utf-8')
 
-    # 2. Update slides — replace campus name references
+    # 2. Update slides â replace campus name references
     text_replacements = [('Campus X', short_names[0] if short_names else ''), ('Baniyas Campus A', short_names[0] if short_names else ''), ('Baniyas A', short_names[0] if short_names else '')]
     if len(short_names) > 1:
         text_replacements += [('Campus Y', short_names[1]), ('Baniyas Campus B', short_names[1]), ('Baniyas B', short_names[1])]
@@ -704,6 +681,10 @@ def generate_presentation(template_bytes, region_name, period, kpi_data, waste_d
         new_sub = region_cfg['subtitle'].replace('&', '&amp;')
         xml = xml.replace('Baniyas Campus A &amp; Campus B', new_sub)
         xml = xml.replace('Baniyas Campus A & Campus B', region_cfg['subtitle'])
+        # Handle XXXX placeholders: standalone=subtitle, Date: XXXX=date
+        if 'XXXX' in xml:
+            xml = xml.replace('Date: XXXX', f'Date: {date_str}')
+            xml = xml.replace('XXXX', new_sub)
         file_contents[slide1_path] = xml.encode('utf-8')
 
     # 4. Update slide 4 percentage shapes + bars
@@ -784,7 +765,7 @@ def generate_presentation(template_bytes, region_name, period, kpi_data, waste_d
     return buf_out.getvalue(), None
 
 
-# ── HTTP Handler ──
+# ââ HTTP Handler ââ
 
 class handler(BaseHTTPRequestHandler):
     def do_GET(self):
@@ -804,7 +785,7 @@ class handler(BaseHTTPRequestHandler):
             self.wfile.write(json.dumps({'error': 'SMARTSHEET_TOKEN not set'}).encode())
             return
 
-        # Handle "All" — default to Abu Dhabi for PPT (template supports only 1 region)
+        # Handle "All" â default to Abu Dhabi for PPT (template supports only 1 region)
         if region.lower() == 'all':
             region = 'Abu Dhabi'
 
@@ -822,7 +803,7 @@ class handler(BaseHTTPRequestHandler):
             # Fetch waste data
             waste_data = fetch_waste_data(token, month)
 
-            # Load template — try multiple paths for Vercel compatibility
+            # Load template â try multiple paths for Vercel compatibility
             base = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
             template_path = os.path.join(base, 'templates', 'template.pptx')
             if not os.path.exists(template_path):
