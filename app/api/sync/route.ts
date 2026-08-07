@@ -55,7 +55,7 @@ export async function GET() {
   // Fetch waste segregation raw data for the waste table
   let wasteData: Record<string, any>[] = [];
   try {
-    const wasteRaw = await fetchSheet('6383128615538564', token);
+    const wasteRaw = await fetchSheet('8150747345538948', token);
     const WASTE_COLS = ['Total Waste (General/Recyclable)','General Waste','Food Waste','Paper Waste','Paper Cup/Carton','PET Bottle','Single Use Plastic','Aluminum','Tissue','Scrap Metal','E-Waste','Hazardous','Medical'];
     wasteData = wasteRaw.map(r => {
       const campus = String(r['Campus Code'] || '').trim();
