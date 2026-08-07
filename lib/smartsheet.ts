@@ -24,7 +24,7 @@ export const SYNC_SOURCES: SyncSource[] = [
   { key: 'findings', sheetId: '1510149721116548', tab: 'raw_findings', monthCol: 'Primary', campusCol: 'Campus Code', plannedCol: 'No. of Findings Due', actualCol: 'No. of Findings Closed', hasMonth: true },
   { key: 'notification', reportId: '8527961731846020', tab: 'raw_notification', monthCol: 'Reporting Month', campusCol: 'Campus Code', plannedCol: 'Total Incident', actualCol: 'Notification Submitted on Time', hasMonth: true },
   { key: 'risk', reportId: '5427282301636484', tab: 'raw_risk', campusCol: 'Campus Code', monthCol: 'Reporting Month', plannedCol: 'Total Assessments Register', actualCol: 'RA Validated and Signed Off', hasMonth: true },
-  { key: 'training', sheetId: '4456464805482372', tab: 'raw_training', campusCol: 'Campus Code', valueCol: 'Total Hours', monthCol: 'Reporting Month', hasMonth: true },
+  { key: 'training', sheetId: '4456464805482372', tab: 'raw_training', campusCol: 'Campus Code', valueCol: 'Training Duration (Hours)', monthCol: 'Reporting Month', hasMonth: true },
   { key: 'incidents', sheetId: '5977763159691140', tab: 'raw_incidents', campusCol: 'Campus Code', monthCol: 'Reporting Month', valueCol: 'Total Incident', hasMonth: true },
 
   // Pie chart — Incidents by Campus (no Incident Type column in new workspace)
@@ -185,7 +185,7 @@ export const SYNC_SOURCES: SyncSource[] = [
   { key: 'findings', sheetId: '1510149721116548', tab: 'raw_findings', monthCol: 'Primary', campusCol: 'Campus Code', plannedCol: 'No. of Findings Due', actualCol: 'No. of Findings Closed', hasMonth: true },
   { key: 'notification', reportId: '8527961731846020', tab: 'raw_notification', monthCol: 'Reporting Month', campusCol: 'Campus Code', plannedCol: 'Total Incident', actualCol: 'Notification Submitted on Time', hasMonth: true },
   { key: 'risk', reportId: '5427282301636484', tab: 'raw_risk', campusCol: 'Campus Code', monthCol: 'Reporting Month', plannedCol: 'Total Assessments Register', actualCol: 'RA Validated and Signed Off', hasMonth: true },
-  { key: 'training', sheetId: '4456464805482372', tab: 'raw_training', campusCol: 'Campus Code', valueCol: 'Total Hours', monthCol: 'Reporting Month', hasMonth: true },
+  { key: 'training', sheetId: '4456464805482372', tab: 'raw_training', campusCol: 'Campus Code', valueCol: 'Training Duration (Hours)', monthCol: 'Reporting Month', hasMonth: true },
   { key: 'incidents', sheetId: '5977763159691140', tab: 'raw_incidents', campusCol: 'Campus Code', monthCol: 'Reporting Month', valueCol: 'Total Incident', hasMonth: true },
 
   // Pie chart — Incidents by Campus (no Incident Type column in new workspace)
