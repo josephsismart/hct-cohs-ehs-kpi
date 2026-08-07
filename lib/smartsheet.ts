@@ -1,4 +1,4 @@
-// Smartsheet API client — mirrors SyncService.gs SYNC_SOURCES config
+// Smartsheet API client â mirrors SyncService.gs SYNC_SOURCES config
 // UPDATED: synced with GAS SyncService.gs.FIXED.txt (2026-07-19)
 
 export interface SyncSource {
@@ -18,7 +18,7 @@ export interface SyncSource {
 }
 
 export const SYNC_SOURCES: SyncSource[] = [
-  // Original 7 KPIs — matched to GAS SyncService.gs
+  // Original 7 KPIs â matched to GAS SyncService.gs
   { key: 'drills', sheetId: '7139786694283140', tab: 'raw_drills', campusCol: 'Campus Code', monthCol: 'Reporting Month', plannedCol: 'Planned Drill? (Yes/No)', actualCol: 'Are there any submission?', hasMonth: true, yesNoCount: true },
   { key: 'ehs', sheetId: '1510149721116548', tab: 'raw_ehs', monthCol: 'Primary', campusCol: 'Campus Code', plannedCol: 'No. of EHS Inspections Planned', actualCol: 'No. of EHS Inspections Completed', hasMonth: true },
   { key: 'findings', sheetId: '1510149721116548', tab: 'raw_findings', monthCol: 'Primary', campusCol: 'Campus Code', plannedCol: 'No. of Findings Due', actualCol: 'No. of Findings Closed', hasMonth: true },
@@ -27,10 +27,10 @@ export const SYNC_SOURCES: SyncSource[] = [
   { key: 'training', sheetId: '4456464805482372', tab: 'raw_training', campusCol: 'Campus Code', valueCol: 'Training Duration (Hours)', monthCol: 'Reporting Month', hasMonth: true },
   { key: 'incidents', sheetId: '5977763159691140', tab: 'raw_incidents', campusCol: 'Campus Code', monthCol: 'Reporting Month', valueCol: 'Total Incident', hasMonth: true },
 
-  // Pie chart — Incidents by Campus (no Incident Type column in new workspace)
+  // Pie chart â Incidents by Campus (no Incident Type column in new workspace)
   { key: 'v2_incident_types', reportId: '223991699558276', tab: 'raw_v2_incident_types', campusCol: 'Incident Type', valueCol: 'Total Incident', monthCol: 'Reporting Month', hasMonth: true, isolateFromCampusSet: true, realCampusCol: 'Campus Code' },
 
-  // V2 KPIs — matched to GAS SyncService.gs
+  // V2 KPIs â matched to GAS SyncService.gs
   { key: 'v2_hs_committee', sheetId: '5093607634587524', tab: 'raw_v2_hs_committee', campusCol: 'Committee', plannedCol: 'Are there any submission?', actualCol: 'Was a meeting held?', monthCol: 'Reporting Month', hasMonth: true, isolateFromCampusSet: true, yesNoCount: true },
   { key: 'v2_findings_on_time', sheetId: '1510149721116548', tab: 'raw_v2_findings_on_time', campusCol: 'Campus Code', plannedCol: 'No. of Findings Closed', actualCol: 'No. of Findings Due', monthCol: 'Primary', hasMonth: true },
   { key: 'v2_risk_closed', sheetId: '7524088825204612', tab: 'raw_v2_risk_closed', campusCol: 'Campus Code', plannedCol: 'Total Risk Assessments Registered', actualCol: 'Risk Assessment Closed', monthCol: 'Primary', hasMonth: true },
@@ -66,9 +66,9 @@ export function normalizeMonth(v: any): string | null {
 }
 
 export async function fetchSheet(sheetId: string, token: string): Promise<Record<string, any>[]> {
-  const url = \`https://api.smartsheet.com/2.0/sheets/\${sheetId}?pageSize=10000\`;
-  const res = await fetch(url, { headers: { Authorization: \`Bearer \${token}\`, Accept: 'application/json' } });
-  if (!res.ok) throw new Error(\`HTTP \${res.status}\`);
+  const url = `https://api.smartsheet.com/2.0/sheets/${sheetId}?pageSize=10000`;
+  const res = await fetch(url, { headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' } });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
   const data = await res.json();
   if (!data.rows?.length) return [];
   const colMap: Record<number, string> = {};
@@ -93,9 +93,9 @@ export async function fetchSheet(sheetId: string, token: string): Promise<Record
 }
 
 export async function fetchReport(reportId: string, token: string): Promise<Record<string, any>[]> {
-  const url = \`https://api.smartsheet.com/2.0/reports/\${reportId}?pageSize=10000&level=1\`;
-  const res = await fetch(url, { headers: { Authorization: \`Bearer \${token}\`, Accept: 'application/json' } });
-  if (!res.ok) throw new Error(\`HTTP \${res.status}\`);
+  const url = `https://api.smartsheet.com/2.0/reports/${reportId}?pageSize=10000&level=1`;
+  const res = await fetch(url, { headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' } });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
   const data = await res.json();
   if (!data.rows?.length) return [];
   const colMap: Record<number, string> = {};
