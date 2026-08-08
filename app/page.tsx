@@ -355,7 +355,7 @@ export default function Dashboard() {
       }
       if (card.unit === 'val') {
         const val = agg.value || agg.actual || agg.planned;
-        return { ...card, display: card.key === 'training' ? `${val} hrs` : String(val), sub: '' };
+        return { ...card, display: card.key === 'training' ? `${Number(val).toLocaleString(undefined, {maximumFractionDigits: 1})} hrs` : String(val), sub: '' };
       }
       const val = agg.value || agg.actual || agg.planned;
       return { ...card, display: String(val), sub: `${data.campuses.filter((c: string) => CAMPUS_CODES.has(c)).length} campuses` };
@@ -686,7 +686,7 @@ export default function Dashboard() {
               });
 
               const renderCell = (kpi: typeof EXEC_KPIS[0], d: { planned: number; actual: number; value: number }) => {
-                if (kpi.type === 'val') return <td style={{ background: '#dce6f1' }}>{d.value ? d.value.toLocaleString() + ' hrs' : '\u2014'}</td>;
+                if (kpi.type === 'val') return <td style={{ background: '#dce6f1' }}>{d.value ? d.value.toLocaleString(undefined, {maximumFractionDigits: 1}) + ' hrs' : '\u2014'}</td>;
                 if (kpi.type === 'count') return <td style={{ background: d.value > 0 ? '#ffc7ce' : '#c6efce' }}>{d.value || '\u2014'}</td>;
                 if (!d.planned) return <td style={{ background: '#f0f0f0' }}>{'\u2014'}</td>;
                 const pct = Math.min(100, Math.round((d.actual / d.planned) * 100));
@@ -707,7 +707,7 @@ export default function Dashboard() {
                         <td><strong>TOTAL / AVG</strong></td>
                         {EXEC_KPIS.map(kpi => {
                           const d = totals[kpi.key];
-                          if (kpi.type === 'val') return <td key={kpi.key} style={{ background: '#dce6f1' }}><strong>{d.value ? d.value.toLocaleString() + ' hrs' : '\u2014'}</strong></td>;
+                          if (kpi.type === 'val') return <td key={kpi.key} style={{ background: '#dce6f1' }}><strong>{d.value ? d.value.toLocaleString(undefined, {maximumFractionDigits: 1}) + ' hrs' : '\u2014'}</strong></td>;
                           if (kpi.type === 'count') return <td key={kpi.key} style={{ background: '#ffc7ce' }}><strong>{d.value}</strong></td>;
                           const pct = d.planned ? Math.min(100, Math.round((d.actual / d.planned) * 100)) : 0;
                           return <td key={kpi.key} style={{ background: pctColor(pct) }}><strong>{pct}%</strong></td>;
