@@ -128,7 +128,7 @@ export interface KpiRow {
 }
 
 export function processSource(src: SyncSource, records: Record<string, any>[]): KpiRow[] {
-  const filtered = records.filter(r => { const c = String(r[src.campusCol] || '').trim(); return c !== 'HQ' && c !== 'ADC'; });
+  const filtered = records.filter(r => { const c = String(r[src.campusCol] || '').trim(); const cc = String(r['Campus Code'] || '').trim(); return c !== 'HQ' && c !== 'ADC' && cc !== 'HQ' && cc !== 'ADC'; }); return c !== 'HQ' && c !== 'ADC'; });
     return filtered.map(r => {
     let campus = String(r[src.campusCol] || '').trim();
     if (!campus) {
