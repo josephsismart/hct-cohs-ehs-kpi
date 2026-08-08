@@ -198,6 +198,9 @@ def fetch_kpi_data(token, month_filter):
         for row in rows:
             campus = str(row.get(campus_col, '')).strip()
             if not campus: continue
+            # Filter out HQ and ADC non-campus entries
+            raw_cc = str(row.get('Campus Code', '')).strip()
+            if campus in ('HQ', 'ADC') or raw_cc in ('HQ', 'ADC'): continue
 
             # Month filter
             # Month filter â skip if month_filter is None (cumulative mode)
@@ -218,8 +221,10 @@ def fetch_kpi_data(token, month_filter):
                 campus_agg[campus] = {'planned': 0, 'actual': 0}
 
             if is_yes_no:
-                p = 1 if str(row.get(planned_col, '')).strip().lower() == 'yes' else 0
-                a = 1 if str(row.get(actual_col, '')).strip().lower() == 'yes' else 0
+                pv = str(row.get(planned_col, '')).strip().lower()
+                av = str(row.get(actual_col, '')).strip().lower()
+                p = 1 if pv in ('yes', 'true', '1') else 0
+                a = 1 if av in ('yes', 'true', '1') else 0
                 campus_agg[campus]['planned'] += p
                 campus_agg[campus]['actual'] += a
             elif planned_col and actual_col:
@@ -253,6 +258,7 @@ def fetch_waste_data(token, month_filter):
         campus = str(row.get(WASTE_SOURCE['campusCol'], '')).strip()
         month = normalize_month(row.get(WASTE_SOURCE['monthCol']))
         if not campus: continue
+        if campus in ('HQ', 'ADC'): continue
         if month_filter and month != month_filter: continue
         if campus not in waste:
             entry = {}
