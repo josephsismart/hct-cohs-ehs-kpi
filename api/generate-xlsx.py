@@ -28,7 +28,7 @@ for rname, rcfg in REGIONS.items():
     for code in rcfg['sheets']:
         CAMPUS_TO_REGION[code] = rname
 
-VALID_CAMPUSES = {'AAF','AAZ','ADA','ADB','ADH','MZY','DMC','DBN','FJF','FJH','SJA','SJB','RKA','RKB','HQ'}
+VALID_CAMPUSES = {'AAF','AAZ','ADA','ADB','ADH','MZY','DMC','DBN','FJF','FJH','SJA','SJB','RKA','RKB'}
 VALID_REGIONS = set(REGIONS.keys())
 
 # Waste data source
@@ -217,6 +217,9 @@ def process_source(src, rows, month_filter):
         campus = str(row.get(campus_col, '')).strip()
         if not campus:
             continue
+        raw_cc = str(row.get('Campus Code', '')).strip()
+        if campus in ('HQ', 'ADC') or raw_cc in ('HQ', 'ADC'):
+            continue
 
         # Filter by valid campus codes / region names
         if use_region:
@@ -243,8 +246,10 @@ def process_source(src, rows, month_filter):
             campus_agg[key] = {'planned': 0, 'actual': 0, 'value': 0}
 
         if is_yes_no:
-            p = 1 if str(row.get(planned_col, '')).strip().lower() == 'yes' else 0
-            a = 1 if str(row.get(actual_col, '')).strip().lower() == 'yes' else 0
+            pv = str(row.get(planned_col, '')).strip().lower()
+            av = str(row.get(actual_col, '')).strip().lower()
+            p = 1 if pv in ('yes', 'true', '1') else 0
+            a = 1 if av in ('yes', 'true', '1') else 0
             campus_agg[key]['planned'] += p
             campus_agg[key]['actual'] += a
         else:
@@ -268,6 +273,8 @@ def process_trend(src, rows):
     for row in rows:
         campus = str(row.get(campus_col, '')).strip()
         if not campus:
+            continue
+        if campus in ('HQ', 'ADC'):
             continue
         row_month = normalize_month(row.get(month_col))
         if not row_month:
