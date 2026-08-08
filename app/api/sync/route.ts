@@ -20,7 +20,7 @@ export async function GET() {
           : await fetchReport(src.reportId!, token);
         const processed = processSource(src, raw);
         // Debug: always capture raw info for column verification
-        debug[src.key] = { rawCount: raw.length, processedCount: processed.length, columns: raw.length > 0 ? Object.keys(raw[0]) : [], config: { campusCol: src.campusCol, monthCol: src.monthCol, plannedCol: src.plannedCol, actualCol: src.actualCol, valueCol: src.valueCol } , rawSample: src.key === 'v2_hs_committee' ? raw.slice(0,2) : undefined};
+        debug[src.key] = { rawCount: raw.length, processedCount: processed.length, columns: raw.length > 0 ? Object.keys(raw[0]) : [], config: { campusCol: src.campusCol, monthCol: src.monthCol, plannedCol: src.plannedCol, actualCol: src.actualCol, valueCol: src.valueCol } };
         if (raw.length > 0 && (processed.length === 0 || processed.length !== raw.length)) {
           debug[src.key].sample = raw[0];
           // Check for column mismatch
