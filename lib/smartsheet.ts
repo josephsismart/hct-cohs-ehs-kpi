@@ -147,8 +147,8 @@ export function processSource(src: SyncSource, records: Record<string, any>[]): 
     if (src.yesNoCount) {
       const pVal = String(r[src.plannedCol || ''] || '').trim().toLowerCase();
       const aVal = String(r[src.actualCol || ''] || '').trim().toLowerCase();
-      planned = pVal === 'yes' ? 1 : 0;
-      actual = aVal === 'yes' ? 1 : 0;
+      planned = (pVal === 'yes' || pVal === 'true') ? 1 : 0;
+      actual = (aVal === 'yes' || aVal === 'true') ? 1 : 0;
     } else {
       planned = parseFloat(r[src.plannedCol || '']) || 0;
       actual = parseFloat(r[src.actualCol || '']) || 0;
