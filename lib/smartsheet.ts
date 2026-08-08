@@ -128,7 +128,8 @@ export interface KpiRow {
 }
 
 export function processSource(src: SyncSource, records: Record<string, any>[]): KpiRow[] {
-  return records.map(r => {
+  const filtered = records.filter(r => { const c = String(r[src.campusCol] || '').trim(); return c !== 'HQ' && c !== 'ADC'; });
+    return filtered.map(r => {
     let campus = String(r[src.campusCol] || '').trim();
     if (!campus) {
       if (src.isolateFromCampusSet) campus = 'Unclassified';
