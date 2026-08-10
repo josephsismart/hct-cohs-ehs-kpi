@@ -1,4 +1,4 @@
-'use client';
+'use client'; 
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import Highcharts from 'highcharts';
 import HighchartsReact from 'highcharts-react-official';
@@ -618,7 +618,7 @@ export default function Dashboard() {
                 <div className="chart-card" style={{ overflowX: 'auto' }}>
                   <div className="chart-card-header">
                     <span>Waste Segregation by Campus (kg)</span>
-                    <a className="btn-smartsheet" href="https://app.smartsheet.com/reports/r97F4HgPH6vxFf5R3Mjqrxf8VFxpV9v7Jr4pr741" target="_blank" rel="noopener noreferrer">View in Smartsheet</a>
+                    <a className="btn-smartsheet" href="https://app.smartsheet.com/reports/FwPfmrvwgpxRMmvp8VX6m59WvpvQ5RGvFCXF8Wx1" target="_blank" rel="noopener noreferrer">View in Smartsheet</a>
                   </div>
                   <table className="waste-table">
                     <thead>
