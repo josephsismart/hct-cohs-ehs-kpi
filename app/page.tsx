@@ -595,7 +595,7 @@ export default function Dashboard() {
 
             <h3 className="section-title">WASTE SEGREGATION</h3>
             {(() => {
-              const WASTE_COLS = ['Total Waste','General Waste','Food Waste','Paper Waste','Paper Cup/Carton','PET Bottle','Single Use Plastic'];
+              const WASTE_COLS = ['Total Waste','General Waste','Food Waste','Paper Waste','Paper Cup/Carton','PET Bottle','Single Use Plastic','Aluminum','Tissue','Scrap Metal','E-Waste','Hazardous','Medical'];
               let wd = data.wasteData || [];
               if (campus !== 'ALL') wd = wd.filter((r: any) => r.campus === campus);
               if (month !== 'ALL') wd = wd.filter((r: any) => r.month === month);
