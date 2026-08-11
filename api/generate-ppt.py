@@ -7,9 +7,9 @@ from http.server import BaseHTTPRequestHandler
 from urllib.parse import urlparse, parse_qs
 from urllib.request import Request, urlopen
 from datetime import datetime
-from xml.etree import ElementTree as ET
+from xml.etree import ElementTree as ETh
 
-# ââ Namespaces ââ
+# ââ Namespaces ââh
 NS = {
     'a': 'http://schemas.openxmlformats.org/drawingml/2006/main',
     'r': 'http://schemas.openxmlformats.org/officeDocument/2006/relationships',
@@ -94,6 +94,19 @@ WASTE_TABLE_COLS = ['General Waste', 'Food Waste', 'Paper Waste', 'Aluminum',
 RECYCLABLE_COLS = ['Food Waste', 'Paper Waste', 'Aluminum', 'PET Bottle',
                    'Paper Cup/Carton', 'Single Use Plastic', 'Tissue',
                    'Scrap Metal', 'E-waste']
+
+# -- Committee name -> campus code mapping (HS Committee sheet uses region names) --
+COMMITTEE_MAP = {
+    'Al Ain': ['AAF', 'AAZ'],
+    'Abu Dhabi': ['ADA', 'ADB'],
+    'Dubai': ['DMC', 'DBN'],
+    'Fujairah': ['FJF', 'FJH'],
+    'Sharjah': ['SJA', 'SJB'],
+    'Ras Al Khaimah': ['RKA', 'RKB'],
+    'AD Remote': ['ADH', 'MZY'],
+    'Al Dhafra': ['ADH', 'MZY'],
+    'Ruwais': ['ADH', 'MZY'],
+}
 
 MONTH_NAMES = ['January','February','March','April','May','June',
                'July','August','September','October','November','December']
@@ -235,6 +248,17 @@ def fetch_kpi_data(token, month_filter):
                 campus_agg[campus]['planned'] += v
                 campus_agg[campus]['actual'] += v
 
+        # Expand committee/region names to campus codes for v2_hs_committee
+        if src['key'] == 'v2_hs_committee':
+            expanded = {}
+            for cname, agg_val in campus_agg.items():
+                if cname in COMMITTEE_MAP:
+                    for code in COMMITTEE_MAP[cname]:
+                        expanded[code] = dict(agg_val)
+                else:
+                    expanded[cname] = agg_val
+            campus_agg = expanded
+
         # Store in data structure
         weight = KPI_WEIGHTS.get(kpi_row, 0.05)
         for campus, agg in campus_agg.items():
@@ -242,7 +266,7 @@ def fetch_kpi_data(token, month_filter):
                 data[campus] = {}
             planned = agg['planned']
             achieved = agg['actual']
-            calc = min(achieved / planned, 1.0) if planned > 0 else (1.0 if achieved > 0 else 0)
+            calc = min(achieved / planned, 1.0) if planned > 0 else 0.0
             data[campus][kpi_row] = {'planned': planned, 'achieved': achieved, 'calc': calc, 'weight': weight}
 
     return data
@@ -284,7 +308,7 @@ def read_campus_data(kpi_data, sheet_name):
     for pillar in PILLAR_KPIS:
         p_kpis = []
         for row in pillar['rows']:
-            d = campus.get(row, {'planned': 0, 'achieved': 0, 'calc': 1.0, 'weight': KPI_WEIGHTS.get(row, 0.05)})
+            d = campus.get(row, {'planned': 0, 'achieved': 0, 'calc': 0.0, 'weight': KPI_WEIGHTS.get(row, 0.05)})
             p_kpis.append(d)
             kpis.append(d)
         tw = sum(k['weight'] for k in p_kpis)
