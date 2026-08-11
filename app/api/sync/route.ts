@@ -8,6 +8,46 @@ export async function GET() {
   const token = process.env.SMARTSHEET_TOKEN;
   if (!token) return NextResponse.json({ error: 'SMARTSHEET_TOKEN not set' }, { status: 500 });
 
+  // Probe endpoints for debugging
+  const url = new URL(request.url);
+  const listReports = url.searchParams.get('list_reports');
+  const probeReport = url.searchParams.get('probe_report');
+  const probeSheet = url.searchParams.get('probe_sheet');
+  if (listReports) {
+    const res = await fetch('https://api.smartsheet.com/2.0/reports?pageSize=100', { headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' } });
+    const data = await res.json();
+    return NextResponse.json({ reports: (data.data || []).map((r: any) => ({ id: r.id, name: r.name })) });
+  }
+  if (probeReport) {
+    const rows = await fetchReport(probeReport, token);
+    return NextResponse.json({ reportId: probeReport, rowCount: rows.length, columns: rows.length > 0 ? Object.keys(rows[0]) : [], sample: rows.slice(0, 3) });
+  }
+  if (probeSheet) {
+    const rows = await fetchSheet(probeSheet, token);
+    const campusCodes = [...new Set(rows.map((r: any) => r['Campus Code']).filter(Boolean))].sort();
+    return NextResponse.json({ sheetId: probeSheet, rowCount: rows.length, campusCodes, columns: rows.length > 0 ? Object.keys(rows[0]) : [], sample: rows.slice(0, 3) });
+  }
+
+  // Probe endpoints for debugging
+  const url = new URL(request.url);
+  const listReports = url.searchParams.get('list_reports');
+  const probeReport = url.searchParams.get('probe_report');
+  const probeSheet = url.searchParams.get('probe_sheet');
+  if (listReports) {
+    const res = await fetch('https://api.smartsheet.com/2.0/reports?pageSize=100', { headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' } });
+    const data = await res.json();
+    return NextResponse.json({ reports: (data.data || []).map((r: any) => ({ id: r.id, name: r.name })) });
+  }
+  if (probeReport) {
+    const rows = await fetchReport(probeReport, token);
+    return NextResponse.json({ reportId: probeReport, rowCount: rows.length, columns: rows.length > 0 ? Object.keys(rows[0]) : [], sample: rows.slice(0, 3) });
+  }
+  if (probeSheet) {
+    const rows = await fetchSheet(probeSheet, token);
+    const campusCodes = [...new Set(rows.map((r: any) => r['Campus Code']).filter(Boolean))].sort();
+    return NextResponse.json({ sheetId: probeSheet, rowCount: rows.length, campusCodes, columns: rows.length > 0 ? Object.keys(rows[0]) : [], sample: rows.slice(0, 3) });
+  }
+
   const results: Record<string, { rows: KpiRow[]; error?: string }> = {};
   const errors: string[] = [];
 
