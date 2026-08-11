@@ -7,9 +7,9 @@ from http.server import BaseHTTPRequestHandler
 from urllib.parse import urlparse, parse_qs
 from urllib.request import Request, urlopen
 from datetime import datetime
-from xml.etree import ElementTree as ETh
+from xml.etree import ElementTree as ET
 
-# ââ Namespaces ââh
+# ââ Namespaces ──
 NS = {
     'a': 'http://schemas.openxmlformats.org/drawingml/2006/main',
     'r': 'http://schemas.openxmlformats.org/officeDocument/2006/relationships',
