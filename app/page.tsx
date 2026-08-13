@@ -63,7 +63,7 @@ const KPI_CHARTS = [
   { key: 'v2_hs_committee', label: 'EHS Committee Meeting', valueLabel: 'No. of Committee Meeting', type: 'value' },
   { key: 'v2_planned_training', label: 'Planned Training Report', plannedLabel: 'Planned Training', actualLabel: 'Training Conducted \u2014 Met/Exceeded', belowLabel: 'Training Conducted \u2014 Below Target', type: 'planned_actual_below' },
   // { key: 'v2_hs_kpi_report', label: 'HS KPI Report', valueLabel: 'Submitted', type: 'value' }, // Hidden: reportId 404
-  { key: 'v2_external_compliance', label: 'External Authority Compliance', plannedLabel: 'Applicable Compliance', actualLabel: 'Actual Compliance \u2014 Met/Exceeded', belowLabel: 'Actual Compliance \u2014 Below Target', type: 'planned_actual_below' },
+  { key: 'v2_external_compliance', label: 'External Authority Compliance', plannedLabel: 'Applicable Compliance', actualLabel: 'Actual Compliance', type: 'planned_actual' },
   { key: 'v2_investigation_on_time', label: 'Investigation Completed on Time', plannedLabel: 'Total Incident', actualLabel: 'Investigation Completed on Time', type: 'planned_actual' },
   { key: 'notification', label: 'Notification on Time', plannedLabel: 'Total Incident', actualLabel: 'Notification Submitted on Time', type: 'planned_actual' },
 ];
