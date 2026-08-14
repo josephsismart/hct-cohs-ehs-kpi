@@ -267,7 +267,7 @@ export default function Dashboard() {
   }, [chartConfig]);
 
   const getReportParams = useCallback(() => {
-    const m = month !== 'ALL' ? month : MONTHS[new Date().getMonth() - 1] || 'December';
+    const m = month !== 'ALL' ? month : '';
     const y = year !== 'ALL' ? year : String(new Date().getFullYear());
     return { month: m, year: y };
   }, [month, year]);
@@ -276,14 +276,14 @@ export default function Dashboard() {
     setLoading(true);
     try {
       const { month: m, year: y } = getReportParams();
-      const url = `/api/${endpoint}?region=${encodeURIComponent(pptRegion)}&month=${encodeURIComponent(m)}&year=${y}`;
+      const url = `/api/${endpoint}?region=${encodeURIComponent(pptRegion)}${m ? `&month=${encodeURIComponent(m)}` : ''}&year=${y}`;
       const res = await fetch(url);
       if (!res.ok) { const err = await res.json(); throw new Error(err.error || `HTTP ${res.status}`); }
       const blob = await res.blob();
       const a = document.createElement('a');
       a.href = URL.createObjectURL(blob);
       const fileExt = pptRegion === 'All' ? 'zip' : ext;
-      a.download = `HCT_KPI_${pptRegion.replace(/ /g, '_')}_${m}_${y}.${fileExt}`;
+      a.download = `HCT_KPI_${pptRegion.replace(/ /g, '_')}_${m || 'YTD'}_${y}.${fileExt}`;
       a.click();
       URL.revokeObjectURL(a.href);
     } catch (e: any) { alert(`${ext.toUpperCase()} generation failed: ` + e.message); }
