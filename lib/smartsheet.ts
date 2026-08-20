@@ -1,4 +1,4 @@
-h// Smartsheet API client â mirrors SyncService.gs SYNC_SOURCES config 
+// Smartsheet API client â mirrors SyncService.gs SYNC_SOURCES config 
 // UPDATED: synced with GAS SyncService.gs.FIXED.txt (2026-07-19)
 
 export interface SyncSource {
