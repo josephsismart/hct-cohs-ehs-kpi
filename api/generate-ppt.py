@@ -30,7 +30,7 @@ REGIONS = {
     'AD Remote':      {'sheets': ['ADH','MZY'], 'short': ['Al Dhanna','Madinat Zayed'],  'subtitle': 'Al Dhanna Ruwais & Al Dhafra Madinat Zayed City'},
     'Dubai':          {'sheets': ['DMC','DBN'], 'short': ['Academic City','Al Nahda'],    'subtitle': 'Dubai Academic City & Dubai Al Nahda'},
     'Fujairah':       {'sheets': ['FJF','FJH'], 'short': ['Faseel','Hulaifat'],           'subtitle': 'Fujairah Faseel & Fujairah Hulaifat'},
-    'Sharjah':        {'sheets': ['SJA','SJB'], 'short': ['Campus A','Campus B'],         'subtitle': 'Sharjah Campus A & Sharjah Campus B'},
+    'Sharjah':        {'sheets': ['SHJA','SHJB'], 'short': ['Campus A','Campus B'],         'subtitle': 'Sharjah Campus A & Sharjah Campus B'},
     'Ras Al Khaimah': {'sheets': ['RKA','RKB'], 'short': ['Campus A','Campus B'],         'subtitle': 'RAK Campus A & RAK Campus B'},
 }
 
@@ -48,7 +48,7 @@ KPI_WEIGHTS = {
     7: 0.30, 8: 0.50, 9: 0.20,
     10: 0.50, 11: 0.50,
     12: 0.40, 13: 0.40, 14: 0.10, 15: 0.10,
-    16: 0.30, 17: 0.30, 18: 0.20, 19: 0.20,
+    16: 0.25, 17: 0.25, 18: 0.25, 19: 0.25,
 }
 
 CHART_KPI_MAP = {
@@ -101,7 +101,7 @@ COMMITTEE_MAP = {
     'Abu Dhabi': ['ADA', 'ADB'],
     'Dubai': ['DMC', 'DBN'],
     'Fujairah': ['FJF', 'FJH'],
-    'Sharjah': ['SJA', 'SJB'],
+    'Sharjah': ['SHJA', 'SHJB'],
     'Ras Al Khaimah': ['RKA', 'RKB'],
     'AD Remote': ['ADH', 'MZY'],
     'Al Dhafra': ['ADH', 'MZY'],
@@ -308,7 +308,11 @@ def read_campus_data(kpi_data, sheet_name):
     for pillar in PILLAR_KPIS:
         p_kpis = []
         for row in pillar['rows']:
-            d = campus.get(row, {'planned': 0, 'achieved': 0, 'calc': 0.0, 'weight': KPI_WEIGHTS.get(row, 0.05)})
+            d = campus.get(row)
+            if d is None:
+                kpis.append({'planned': 0, 'achieved': 0, 'calc': 0.0, 'weight': KPI_WEIGHTS.get(row, 0.05)})
+                continue
+            d.setdefault('weight', KPI_WEIGHTS.get(row, 0.05))
             p_kpis.append(d)
             kpis.append(d)
         tw = sum(k['weight'] for k in p_kpis)
