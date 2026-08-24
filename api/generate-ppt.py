@@ -623,6 +623,39 @@ def update_waste_slide(file_contents, region_cfg, short_names, waste_data):
     file_contents[slide20_path] = xml.encode('utf-8')
 
 
+# -- Content slide data population --
+
+CONTENT_SLIDES = {
+    14: [(19, 'Incidents', 'Notified On Time'), (18, 'Investigated', 'Completed On Time')],
+    15: [(7, 'Controls Sampled', 'Implemented'), (8, 'Risk Assessments', 'Closed'), (9, 'Risk Assessments', 'Validated')],
+    16: [(4, 'Compliance Requirements', 'Compliant')],
+    18: [(10, 'Training Sessions', 'Completed')],
+    19: [(13, 'Drills Planned', 'Conducted')],
+    21: [(4, 'Compliance Requirements', 'Met')],
+}
+
+def _populate_content_slides(file_contents, kpi_data, region_cfg, short_names):
+    campus_codes = region_cfg['sheets']
+    for slide_num, kpi_defs in CONTENT_SLIDES.items():
+        path = f'ppt/slides/slide{slide_num}.xml'
+        if path not in file_contents: continue
+        xml = file_contents[path].decode('utf-8')
+        parts = []
+        for i, cc in enumerate(campus_codes):
+            metrics = []
+            for kpi_row, p_label, a_label in kpi_defs:
+                d = kpi_data.get(cc, {}).get(kpi_row, {'planned': 0, 'achieved': 0, 'calc': 0.0})
+                metrics.append(f"{a_label}: {int(d['achieved'])}/{int(d['planned'])} ({pct_str(d['calc'])})")
+            parts.append(f"{short_names[i]} - {'; '.join(metrics)}")
+        summary = ' | '.join(parts) if parts else 'No data available for this period.'
+        xml = xml.replace('Show data for emergency preparedness and drills for the upcoming month', '')
+        for ph in ['Explanation by Campus EHS Specialists', 'By Campus EHS Specialists']:
+            if ph in xml:
+                xml = xml.replace(ph, summary, 1)
+                break
+        file_contents[path] = xml.encode('utf-8')
+
+
 # ââ Main generation ââ
 
 def generate_presentation(template_bytes, region_name, period, kpi_data, waste_data=None):
@@ -766,6 +799,9 @@ def generate_presentation(template_bytes, region_name, period, kpi_data, waste_d
         update_waste_slide(file_contents, region_cfg, short_names, waste_data)
     else:
         _blank_waste_slide(file_contents, short_names)
+
+        # 6. Populate content slides with KPI summaries
+    _populate_content_slides(file_contents, kpi_data, region_cfg, short_names)
 
     # Final pass: force Y-axis max on all charts
     for fname in list(file_contents.keys()):
