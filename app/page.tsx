@@ -618,7 +618,7 @@ export default function Dashboard() {
                 <div className="chart-card" style={{ overflowX: 'auto' }}>
                   <div className="chart-card-header">
                     <span>Waste Segregation by Campus (kg)</span>
-                    <a className="btn-smartsheet" href="https://app.smartsheet.com/browse/workspaces/QCgMQGcHqqCvG3Jf2RgW4wvHfRvXFXQhHpmqXJC1" target="_blank" rel="noopener noreferrer">View in Smartsheet</a>
+                    <a className="btn-smartsheet" href="https://app.smartsheet.com/sheets/7xQW36mQVrm6Jrv2g9ph37M3hF3V5Wc9xPc5pp91" target="_blank" rel="noopener noreferrer">View in Smartsheet</a>
                   </div>
                   <table className="waste-table">
                     <thead>
