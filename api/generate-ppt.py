@@ -627,8 +627,6 @@ def update_waste_slide(file_contents, region_cfg, short_names, waste_data):
     file_contents[slide20_path] = xml.encode('utf-8')
 
 
-# -- Content slide data population --
-
 CONTENT_SLIDES = {
     14: [(19, 'Incidents', 'Notified On Time'), (18, 'Investigated', 'Completed On Time')],
     15: [(7, 'Controls Sampled', 'Implemented'), (8, 'Risk Assessments', 'Closed'), (9, 'Risk Assessments', 'Validated')],
@@ -638,11 +636,22 @@ CONTENT_SLIDES = {
     21: [(4, 'Compliance Requirements', 'Met')],
 }
 
+CONTENT_SLIDE_TITLES = {
+    14: 'Incident & Near Miss Review',
+    15: 'Risk Assessment Summary',
+    16: 'External Compliance Summary',
+    18: 'Training Completion Summary',
+    19: 'Emergency Drills Summary',
+    21: 'Legal Compliance Summary',
+}
+
 def _populate_content_slides(file_contents, kpi_data, region_cfg, short_names):
+    """Replace placeholder text in content slides with per-campus KPI summaries."""
     campus_codes = region_cfg['sheets']
     for slide_num, kpi_defs in CONTENT_SLIDES.items():
         path = f'ppt/slides/slide{slide_num}.xml'
-        if path not in file_contents: continue
+        if path not in file_contents:
+            continue
         xml = file_contents[path].decode('utf-8')
         parts = []
         for i, cc in enumerate(campus_codes):
@@ -658,6 +667,100 @@ def _populate_content_slides(file_contents, kpi_data, region_cfg, short_names):
                 xml = xml.replace(ph, summary, 1)
                 break
         file_contents[path] = xml.encode('utf-8')
+
+
+def _data_shape_xml(lines, x=457200, y=1371600, cx=8229600, cy=3200000):
+    """Generate XML for a text box shape with formatted data lines."""
+    paras = []
+    for line in lines:
+        escaped = line.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
+        if not line:
+            paras.append('<a:p><a:endParaRPr lang="en-US" sz="600" dirty="0"/></a:p>')
+        elif line.startswith('**') and line.endswith('**'):
+            text = escaped[2:-2]
+            paras.append(f'<a:p><a:r><a:rPr lang="en-US" sz="1200" b="1" dirty="0"><a:solidFill><a:srgbClr val="002060"/></a:solidFill></a:rPr><a:t>{text}</a:t></a:r></a:p>')
+        elif line.startswith('  '):
+            paras.append(f'<a:p><a:pPr marL="228600"/><a:r><a:rPr lang="en-US" sz="1000" dirty="0"/><a:t>{escaped.strip()}</a:t></a:r></a:p>')
+        else:
+            paras.append(f'<a:p><a:r><a:rPr lang="en-US" sz="1100" dirty="0"/><a:t>{escaped}</a:t></a:r></a:p>')
+    p_xml = ''.join(paras)
+    return (f'<p:sp><p:nvSpPr><p:cNvPr id="9999" name="DataBox"/>'
+            f'<p:cNvSpPr txBox="1"/><p:nvPr/></p:nvSpPr>'
+            f'<p:spPr><a:xfrm><a:off x="{x}" y="{y}"/>'
+            f'<a:ext cx="{cx}" cy="{cy}"/></a:xfrm>'
+            f'<a:prstGeom prst="rect"><a:avLst/></a:prstGeom>'
+            f'<a:noFill/></p:spPr>'
+            f'<p:txBody><a:bodyPr wrap="square" anchor="t"/>'
+            f'<a:lstStyle/>{p_xml}</p:txBody></p:sp>')
+
+
+def _add_content_data_shapes(file_contents, kpi_data, region_cfg, short_names, region_data):
+    """Add detailed data text shapes to content slides."""
+    campus_codes = region_cfg['sheets']
+    campuses = region_data['campuses']
+    for slide_num, kpi_defs in CONTENT_SLIDES.items():
+        path = f'ppt/slides/slide{slide_num}.xml'
+        if path not in file_contents:
+            continue
+        xml = file_contents[path].decode('utf-8')
+        title = CONTENT_SLIDE_TITLES.get(slide_num, 'Data Summary')
+        lines = [f'**{title}**', '']
+        for i, cc in enumerate(campus_codes):
+            lines.append(f'**{short_names[i]}**')
+            for kpi_row, p_label, a_label in kpi_defs:
+                d = kpi_data.get(cc, {}).get(kpi_row, {'planned': 0, 'achieved': 0, 'calc': 0.0})
+                planned = int(d['planned'])
+                achieved = int(d['achieved'])
+                pct = pct_str(d['calc'])
+                lines.append(f'  {p_label} - {a_label}: {achieved}/{planned} ({pct})')
+            lines.append('')
+        shape_xml = _data_shape_xml(lines)
+        xml = xml.replace('</p:spTree>', shape_xml + '</p:spTree>')
+        file_contents[path] = xml.encode('utf-8')
+
+
+def _populate_summary_table(file_contents, region_data, short_names):
+    """Fill slide 13 summary table with KPI pillar performance data."""
+    path = 'ppt/slides/slide13.xml'
+    if path not in file_contents:
+        return
+    xml = file_contents[path].decode('utf-8')
+    a_ns = NS['a']
+    try:
+        root = ET.fromstring(xml)
+    except Exception:
+        return
+
+    pillar_names = [
+        'Leadership, Accountability & Engagement',
+        'Risk Management & Planning',
+        'Training & Awareness',
+        'Operational Control & Emergency Preparedness',
+        'Performance Evaluation & Continuous Improvement',
+    ]
+
+    for tbl_elem in root.iter(f'{{{a_ns}}}tbl'):
+        rows = list(tbl_elem.iter(f'{{{a_ns}}}tr'))
+        if len(rows) < 2:
+            continue
+        for pi in range(min(5, len(rows) - 1)):
+            data_row = rows[pi + 1]
+            cells = list(data_row.iter(f'{{{a_ns}}}tc'))
+            if len(cells) < 7:
+                continue
+            scores = [region_data['campuses'][ci]['pillar_scores'][pi] for ci in range(len(short_names))]
+            avg = region_data['avg_pillar'][pi]
+            status = 'On Track' if avg >= 0.80 else ('Monitor' if avg >= 0.60 else 'Action Needed')
+            score_parts = [f'{short_names[ci]}: {pct_str(scores[ci])}' for ci in range(len(scores))]
+            discussion = f'{pillar_names[pi]} - {", ".join(score_parts)}, Avg: {pct_str(avg)}'
+            action = 'Maintain current practices' if avg >= 0.80 else ('Review and improve' if avg >= 0.60 else 'Corrective action required')
+            vals = [str(pi + 1), 'KPI Pillar Review', status, discussion, action, 'Ongoing', 'EHS Team']
+            for j, v in enumerate(vals):
+                if j < len(cells):
+                    _set_cell_text(cells[j], v, a_ns)
+        break
+
+    file_contents[path] = ET.tostring(root, encoding='unicode').encode('utf-8')
 
 
 # ââ Main generation ââ
@@ -804,8 +907,14 @@ def generate_presentation(template_bytes, region_name, period, kpi_data, waste_d
     else:
         _blank_waste_slide(file_contents, short_names)
 
-        # 6. Populate content slides with KPI summaries
+    # 6. Populate content slides (14, 15, 16, 18, 19, 21) with KPI data
     _populate_content_slides(file_contents, kpi_data, region_cfg, short_names)
+    _add_content_data_shapes(file_contents, kpi_data, region_cfg, short_names, region_data)
+
+    # 7. Populate slide 13 summary table
+    _populate_summary_table(file_contents, region_data, short_names)
+
+
 
     # Final pass: force Y-axis max on all charts
     for fname in list(file_contents.keys()):
