@@ -111,6 +111,45 @@ COMMITTEE_MAP = {
 MONTH_NAMES = ['January','February','March','April','May','June',
                'July','August','September','October','November','December']
 
+# -- Template-resilient slide lookup --
+
+def build_slide_map(file_contents):
+    """Scan all slides and extract title text. Returns {slide_path: title_text}."""
+    slide_titles = {}
+    p_ns = NS['p']; a_ns = NS['a']
+    for fname in sorted(file_contents.keys()):
+        if not (fname.startswith('ppt/slides/slide') and fname.endswith('.xml')):
+            continue
+        try:
+            root = ET.fromstring(file_contents[fname])
+            for sp in root.iter(f'{{{p_ns}}}sp'):
+                nvSpPr = sp.find(f'{{{p_ns}}}nvSpPr')
+                if nvSpPr is None: continue
+                nvPr = nvSpPr.find(f'{{{p_ns}}}nvPr')
+                if nvPr is None: continue
+                ph = nvPr.find(f'{{{p_ns}}}ph')
+                if ph is None: continue
+                if ph.get('type', '') in ('title', 'ctrTitle'):
+                    txBody = sp.find(f'{{{p_ns}}}txBody')
+                    if txBody is None: continue
+                    texts = [t.text for t in txBody.iter(f'{{{a_ns}}}t') if t.text]
+                    title = ' '.join(texts).strip()
+                    if title:
+                        slide_titles[fname] = title
+                    break
+        except Exception:
+            pass
+    return slide_titles
+
+
+def find_slide(slide_map, *keywords):
+    """Find slide path where title contains ALL keywords (case-insensitive)."""
+    for path, title in slide_map.items():
+        t = title.lower()
+        if all(kw.lower() in t for kw in keywords):
+            return path
+    return None
+
 # ââ Smartsheet API ââ
 
 def _ss_fetch(endpoint, token):
@@ -534,8 +573,8 @@ def fmt_waste(v):
     if v == int(v): return str(int(v))
     return f'{v:.1f}'.rstrip('0').rstrip('.')
 
-def _blank_waste_slide(file_contents, short_names):
-    slide20_path = 'ppt/slides/slide20.xml'
+def _blank_waste_slide(file_contents, short_names, waste_path='ppt/slides/slide20.xml'):
+    slide20_path = waste_path
     if slide20_path not in file_contents: return
     xml = file_contents[slide20_path].decode('utf-8')
     tree = ET.ElementTree(ET.fromstring(xml))
@@ -556,8 +595,8 @@ def _blank_waste_slide(file_contents, short_names):
     xml = re.sub(r'\d+(?:\.\d+)?%', '0.0%', xml)
     file_contents[slide20_path] = xml.encode('utf-8')
 
-def update_waste_slide(file_contents, region_cfg, short_names, waste_data):
-    slide20_path = 'ppt/slides/slide20.xml'
+def update_waste_slide(file_contents, region_cfg, short_names, waste_data, waste_path='ppt/slides/slide20.xml'):
+    slide20_path = waste_path
     if slide20_path not in file_contents: return
     campus_sheets = region_cfg['sheets']
     campus_waste = []
@@ -645,11 +684,11 @@ CONTENT_SLIDE_TITLES = {
     21: 'Legal Compliance Summary',
 }
 
-def _populate_content_slides(file_contents, kpi_data, region_cfg, short_names):
+def _populate_content_slides(file_contents, kpi_data, region_cfg, short_names, content_paths=None):
     """Replace placeholder text in content slides with per-campus KPI summaries."""
     campus_codes = region_cfg['sheets']
-    for slide_num, kpi_defs in CONTENT_SLIDES.items():
-        path = f'ppt/slides/slide{slide_num}.xml'
+    slide_items = content_paths.items() if content_paths else [(f'ppt/slides/slide{n}.xml', defs) for n, defs in CONTENT_SLIDES.items()]
+    for path, kpi_defs in slide_items:
         if path not in file_contents:
             continue
         xml = file_contents[path].decode('utf-8')
@@ -694,16 +733,17 @@ def _data_shape_xml(lines, x=457200, y=1371600, cx=8229600, cy=3200000):
             f'<a:lstStyle/>{p_xml}</p:txBody></p:sp>')
 
 
-def _add_content_data_shapes(file_contents, kpi_data, region_cfg, short_names, region_data):
+def _add_content_data_shapes(file_contents, kpi_data, region_cfg, short_names, region_data, content_paths=None, content_titles=None):
     """Add detailed data text shapes to content slides."""
     campus_codes = region_cfg['sheets']
     campuses = region_data['campuses']
-    for slide_num, kpi_defs in CONTENT_SLIDES.items():
-        path = f'ppt/slides/slide{slide_num}.xml'
+    slide_items = content_paths.items() if content_paths else [(f'ppt/slides/slide{n}.xml', defs) for n, defs in CONTENT_SLIDES.items()]
+    _titles = content_titles or {f'ppt/slides/slide{n}.xml': t for n, t in CONTENT_SLIDE_TITLES.items()}
+    for path, kpi_defs in slide_items:
         if path not in file_contents:
             continue
         xml = file_contents[path].decode('utf-8')
-        title = CONTENT_SLIDE_TITLES.get(slide_num, 'Data Summary')
+        title = _titles.get(path, 'Data Summary')
         lines = [f'**{title}**', '']
         for i, cc in enumerate(campus_codes):
             lines.append(f'**{short_names[i]}**')
@@ -719,9 +759,9 @@ def _add_content_data_shapes(file_contents, kpi_data, region_cfg, short_names, r
         file_contents[path] = xml.encode('utf-8')
 
 
-def _populate_summary_table(file_contents, region_data, short_names):
+def _populate_summary_table(file_contents, region_data, short_names, summary_path='ppt/slides/slide13.xml'):
     """Fill slide 13 summary table with KPI pillar performance data."""
-    path = 'ppt/slides/slide13.xml'
+    path = summary_path
     if path not in file_contents:
         return
     xml = file_contents[path].decode('utf-8')
@@ -781,7 +821,33 @@ def generate_presentation(template_bytes, region_name, period, kpi_data, waste_d
         for item in zin.infolist():
             file_contents[item.filename] = zin.read(item.filename)
 
-    # 1. Update column charts â all charts use 3 categories: [campus1, campus2, "Campus Avg."]
+    # Build title-based slide map for template resilience
+    slide_map = build_slide_map(file_contents)
+    cover_path = find_slide(slide_map, 'committee') or find_slide(slide_map, 'ehs', 'meeting') or 'ppt/slides/slide1.xml'
+    scoring_path = find_slide(slide_map, 'scoring') or find_slide(slide_map, 'pillar') or 'ppt/slides/slide4.xml'
+    waste_path = find_slide(slide_map, 'waste') or 'ppt/slides/slide20.xml'
+    summary_path = find_slide(slide_map, 'action') or find_slide(slide_map, 'summary') or 'ppt/slides/slide13.xml'
+    # Resolve content slides by title keywords
+    content_paths = {}
+    content_titles = {}
+    _CKW = {
+        'incident': ([(19, 'Incidents', 'Notified On Time'), (18, 'Investigated', 'Completed On Time')], 'Incident & Near Miss Review'),
+        'risk assessment': ([(7, 'Controls Sampled', 'Implemented'), (8, 'Risk Assessments', 'Closed'), (9, 'Risk Assessments', 'Validated')], 'Risk Assessment Summary'),
+        'external compliance': ([(4, 'Compliance Requirements', 'Compliant')], 'External Compliance Summary'),
+        'training': ([(10, 'Training Sessions', 'Completed')], 'Training Completion Summary'),
+        'drill': ([(13, 'Drills Planned', 'Conducted')], 'Emergency Drills Summary'),
+        'legal': ([(4, 'Compliance Requirements', 'Met')], 'Legal Compliance Summary'),
+    }
+    for kw, (kpi_defs, title) in _CKW.items():
+        p = find_slide(slide_map, kw)
+        if p:
+            content_paths[p] = kpi_defs
+            content_titles[p] = title
+    if not content_paths:
+        content_paths = {f'ppt/slides/slide{n}.xml': defs for n, defs in CONTENT_SLIDES.items()}
+        content_titles = {f'ppt/slides/slide{n}.xml': t for n, t in CONTENT_SLIDE_TITLES.items()}
+
+        # 1. Update column charts â all charts use 3 categories: [campus1, campus2, "Campus Avg."]
     for chart_file, kpi_idx in CHART_KPI_MAP.items():
         path = f"ppt/charts/{chart_file}"
         if path not in file_contents: continue
@@ -841,7 +907,7 @@ def generate_presentation(template_bytes, region_name, period, kpi_data, waste_d
                 file_contents[fname] = xml.encode('utf-8')
 
     # 3. Update slide 1 (cover)
-    slide1_path = 'ppt/slides/slide1.xml'
+    slide1_path = cover_path
     if slide1_path in file_contents:
         xml = file_contents[slide1_path].decode('utf-8')
         date_str = datetime.now().strftime('%A, %B %d, %Y')
@@ -858,7 +924,7 @@ def generate_presentation(template_bytes, region_name, period, kpi_data, waste_d
         file_contents[slide1_path] = xml.encode('utf-8')
 
     # 4. Update slide 4 percentage shapes + bars
-    slide4_path = 'ppt/slides/slide4.xml'
+    slide4_path = scoring_path
     if slide4_path in file_contents:
         xml = file_contents[slide4_path].decode('utf-8')
         pct_values = []
@@ -903,16 +969,16 @@ def generate_presentation(template_bytes, region_name, period, kpi_data, waste_d
 
     # 5. Waste slide
     if waste_data and any(waste_data.values()):
-        update_waste_slide(file_contents, region_cfg, short_names, waste_data)
+        update_waste_slide(file_contents, region_cfg, short_names, waste_data, waste_path)
     else:
-        _blank_waste_slide(file_contents, short_names)
+        _blank_waste_slide(file_contents, short_names, waste_path)
 
     # 6. Populate content slides (14, 15, 16, 18, 19, 21) with KPI data
-    _populate_content_slides(file_contents, kpi_data, region_cfg, short_names)
-    _add_content_data_shapes(file_contents, kpi_data, region_cfg, short_names, region_data)
+    _populate_content_slides(file_contents, kpi_data, region_cfg, short_names, content_paths)
+    _add_content_data_shapes(file_contents, kpi_data, region_cfg, short_names, region_data, content_paths, content_titles)
 
     # 7. Populate slide 13 summary table
-    _populate_summary_table(file_contents, region_data, short_names)
+    _populate_summary_table(file_contents, region_data, short_names, summary_path)
 
 
 
