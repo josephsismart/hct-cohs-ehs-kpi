@@ -21,9 +21,9 @@ export const SYNC_SOURCES: SyncSource[] = [
   // Original 7 KPIs â matched to GAS SyncService.gs
   { key: 'drills', sheetId: '7139786694283140', tab: 'raw_drills', campusCol: 'Campus Code', monthCol: 'Reporting Month', plannedCol: 'Planned Drill? (Yes/No)', actualCol: 'Are there any submission?', hasMonth: true, yesNoCount: true },
   { key: 'ehs', sheetId: '1510149721116548', tab: 'raw_ehs', monthCol: 'Primary', campusCol: 'Campus Code', plannedCol: 'No. of EHS Inspections Planned', actualCol: 'No. of EHS Inspections Completed', hasMonth: true },
-  { key: 'findings', sheetId: '1510149721116548', tab: 'raw_findings', monthCol: 'Primary', campusCol: 'Campus Code', plannedCol: 'No. of Findings in Reporting Month', actualCol: 'No. of Findings Closed', hasMonth: true },
-  { key: 'notification', reportId: '8527961731846020', tab: 'raw_notification', monthCol: 'Reporting Month', campusCol: 'Campus Code', plannedCol: 'Total Incident', actualCol: 'Notification Submitted on Time', hasMonth: true },
-  { key: 'risk', reportId: '5427282301636484', tab: 'raw_risk', campusCol: 'Campus Code', monthCol: 'Reporting Month', plannedCol: 'Total Assessments Register', actualCol: 'RA Validated and Signed Off', hasMonth: true },
+  { key: 'findings', sheetId: '1510149721116548', tab: 'raw_findings', monthCol: 'Primary', campusCol: 'Campus Code', plannedCol: 'No. of Total Findings', actualCol: 'No. of Findings Closed', hasMonth: true },
+  { key: 'notification', reportId: '8527961731846020', tab: 'raw_notification', monthCol: 'Reporting Month', campusCol: 'Campus Code', plannedCol: 'Total Incident', actualCol: 'Incident Notification Submitted on Time', hasMonth: true },
+  { key: 'risk', reportId: '5427282301636484', tab: 'raw_risk', campusCol: 'Campus Code', monthCol: 'Reporting Month', plannedCol: 'Total Risk Assessments Registered', actualCol: 'Monthly Risk Assessment Validated and Signed off', hasMonth: true },
   { key: 'training', sheetId: '4456464805482372', tab: 'raw_training', campusCol: 'Campus Code', valueCol: 'Total Hours', monthCol: 'Reporting Month', hasMonth: true },
   { key: 'incidents', sheetId: '5977763159691140', tab: 'raw_incidents', campusCol: 'Campus Code', monthCol: 'Reporting Month', valueCol: 'Total Incident', hasMonth: true },
 
