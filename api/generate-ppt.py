@@ -48,8 +48,34 @@ KPI_WEIGHTS = {
     7: 0.30, 8: 0.50, 9: 0.20,
     10: 0.50, 11: 0.50,
     12: 0.40, 13: 0.40, 14: 0.10, 15: 0.10,
-    16: 0.25, 17: 0.25, 18: 0.25, 19: 0.25,
+    16: 0.30, 17: 0.30, 18: 0.20, 19: 0.20,
 }
+
+# Two-level classification structure matching Excel calc model
+PILLAR_CLASSIFICATION = [
+    {'pillar': 'Leadership', 'weight': 0.20, 'groups': [
+        {'class_weight': 0.5, 'kpis': [(2, 0.6), (3, 0.2), (4, 0.2)]},
+        {'class_weight': 0.5, 'kpis': [(5, 0.5), (6, 0.5)]},
+    ]},
+    {'pillar': 'Risk Mgmt', 'weight': 0.20, 'groups': [
+        {'class_weight': 0.3, 'kpis': [(7, 1.0)]},
+        {'class_weight': 0.5, 'kpis': [(8, 1.0)]},
+        {'class_weight': 0.2, 'kpis': [(9, 1.0)]},
+    ]},
+    {'pillar': 'Training', 'weight': 0.10, 'groups': [
+        {'class_weight': 0.5, 'kpis': [(10, 1.0)]},
+        {'class_weight': 0.5, 'kpis': [(11, 1.0)]},
+    ]},
+    {'pillar': 'OCP & Emerg', 'weight': 0.25, 'groups': [
+        {'class_weight': 0.4, 'kpis': [(12, 1.0)]},
+        {'class_weight': 0.4, 'kpis': [(13, 1.0)]},
+        {'class_weight': 0.2, 'kpis': [(14, 0.5), (15, 0.5)]},
+    ]},
+    {'pillar': 'Perf Eval', 'weight': 0.25, 'groups': [
+        {'class_weight': 0.6, 'kpis': [(16, 0.5), (17, 0.5)]},
+        {'class_weight': 0.4, 'kpis': [(18, 0.5), (19, 0.5)]},
+    ]},
+]
 
 CHART_KPI_MAP = {
     'chart2.xml': 0,   'chart3.xml': 2,                        # Slide 5: Accountability
@@ -341,23 +367,35 @@ def fetch_waste_data(token, month_filter):
 # ââ KPI data processing ââ
 
 def read_campus_data(kpi_data, sheet_name):
+    """Score a campus using two-level classification (matches Excel calc model).
+    Within each pillar, KPIs are grouped into classification sub-groups.
+    NA KPIs are excluded and weights redistributed at both levels."""
     campus = kpi_data.get(sheet_name, {})
     kpis = []
     pillar_scores = []
-    for pillar in PILLAR_KPIS:
-        p_kpis = []
-        for row in pillar['rows']:
-            d = campus.get(row)
-            if d is None:
-                kpis.append({'planned': 0, 'achieved': 0, 'calc': 0.0, 'weight': KPI_WEIGHTS.get(row, 0.05)})
-                continue
-            d.setdefault('weight', KPI_WEIGHTS.get(row, 0.05))
-            p_kpis.append(d)
-            kpis.append(d)
-        tw = sum(k['weight'] for k in p_kpis)
-        score = sum(k['calc'] * k['weight'] for k in p_kpis) / tw if tw > 0 else 0
-        pillar_scores.append(score)
-    weights = [p['weight'] for p in PILLAR_KPIS]
+    for pillar in PILLAR_CLASSIFICATION:
+        group_scores = []
+        group_weights = []
+        for grp in pillar['groups']:
+            available = []
+            for kpi_row, sub_weight in grp['kpis']:
+                d = campus.get(kpi_row)
+                if d is None:
+                    kpis.append({'planned': 0, 'achieved': 0, 'calc': 0.0, 'weight': KPI_WEIGHTS.get(kpi_row, 0.05), 'na': True})
+                    continue
+                d.setdefault('weight', KPI_WEIGHTS.get(kpi_row, 0.05))
+                kpis.append(d)
+                available.append((d['calc'], sub_weight))
+            if available:
+                tw = sum(w for _, w in available)
+                grp_score = sum(c * w for c, w in available) / tw if tw > 0 else 0
+                group_scores.append(grp_score)
+                group_weights.append(grp['class_weight'])
+        # Redistribute classification weights among groups that have data
+        tcw = sum(group_weights)
+        p_score = sum(s * w for s, w in zip(group_scores, group_weights)) / tcw if tcw > 0 else 0
+        pillar_scores.append(p_score)
+    weights = [p['weight'] for p in PILLAR_CLASSIFICATION]
     overall = sum(s * w for s, w in zip(pillar_scores, weights))
     return {'sheet': sheet_name, 'kpis': kpis, 'pillar_scores': pillar_scores, 'overall': overall}
 
