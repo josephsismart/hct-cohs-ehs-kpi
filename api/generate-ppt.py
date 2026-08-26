@@ -69,7 +69,7 @@ PIE_CHARTS = {'chart1.xml'}
 # ââ Smartsheet source â KPI row mapping ââ
 SYNC_SOURCES = [
     {'key': 'v2_hs_kpi_report', 'reportId': '5852576405737348', 'campusCol': 'Campuses', 'monthCol': 'Primary', 'valueCol': 'Submitted', 'kpi_row': 2},
-    {'key': 'v2_external_compliance', 'sheetId': '1325212455882628', 'campusCol': 'Campus Code', 'monthCol': 'Primary', 'plannedCol': 'Applicable Compliance', 'actualCol': 'Actual Compliance', 'kpi_row': 4},
+    {'key': 'v2_external_compliance', 'sheetId': '1325212455882628', 'campusCol': 'Campus Code', 'monthCol': 'Primary', 'plannedCol': 'Applicable Legal Compliance', 'actualCol': 'Legal Requirements Complied', 'kpi_row': 4},
     {'key': 'v2_hs_committee', 'sheetId': '5093607634587524', 'campusCol': 'Committee', 'monthCol': 'Reporting Month', 'plannedCol': 'Meeting Planned', 'actualCol': 'Meeting Conducted', 'kpi_row': 5},
     {'key': 'v2_hazard_id', 'sheetId': '7524088825204612', 'campusCol': 'Campus Code', 'monthCol': 'Reporting Month', 'plannedCol': 'Total Controls Sampled', 'actualCol': 'Implemented Controls', 'kpi_row': 7},
     {'key': 'v2_risk_closed', 'sheetId': '7524088825204612', 'campusCol': 'Campus Code', 'monthCol': 'Primary', 'plannedCol': 'Total Risk Assessments Registered', 'actualCol': 'Risk Assessment Closed', 'kpi_row': 8},
@@ -82,7 +82,7 @@ SYNC_SOURCES = [
     {'key': 'v2_ehs_inspection', 'sheetId': '1510149721116548', 'campusCol': 'Campus Code', 'monthCol': 'Primary', 'plannedCol': 'No. of EHS Inspections Planned', 'actualCol': 'No. of EHS Inspections Completed', 'kpi_row': 16},
     {'key': 'v2_findings_on_time', 'sheetId': '1510149721116548', 'campusCol': 'Campus Code', 'monthCol': 'Primary', 'plannedCol': 'No. of Findings Closed', 'actualCol': 'No. of Findings Due', 'kpi_row': 17},
     {'key': 'v2_investigation_on_time', 'reportId': '5432865759121284', 'campusCol': 'Campus Code', 'monthCol': 'Reporting Month', 'plannedCol': 'Total Incident Investigated', 'actualCol': 'Investigation Completed on Time', 'kpi_row': 18},
-    {'key': 'notification', 'reportId': '8527961731846020', 'campusCol': 'Campus Code', 'monthCol': 'Reporting Month', 'plannedCol': 'Total Incident', 'actualCol': 'Notification Submitted on Time', 'kpi_row': 19},
+    {'key': 'notification', 'reportId': '8527961731846020', 'campusCol': 'Campus Code', 'monthCol': 'Reporting Month', 'plannedCol': 'Total Incident', 'actualCol': 'Incident Notification Submitted on Time', 'kpi_row': 19},
 ]
 
 # Waste data source
