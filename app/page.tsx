@@ -146,7 +146,7 @@ function KpiBarChart({ chartDef, rows }: { chartDef: typeof KPI_CHARTS[0]; rows:
     yAxis: { title: { text: null }, gridLineColor: '#f0f0f0' },
     legend: { align: 'center', verticalAlign: 'bottom', margin: 2, padding: 0, itemMarginTop: 0, itemMarginBottom: 0, itemStyle: { fontSize: '8px' } },
     plotOptions: {
-      column: { borderRadius: 2, groupPadding: 0.15, pointPadding: 0.05, dataLabels: { enabled: true, style: { fontSize: '9px', fontWeight: 'normal' } } },
+      column: { borderRadius: 2, groupPadding: 0.15, pointPadding: 0.05, dataLabels: { enabled: true, formatter: function() { var v = this.y; return v.toLocaleString('en-US', {maximumFractionDigits: 2}); }, style: { fontSize: '9px', fontWeight: 'normal' } } },
     },
     series,
     credits: { enabled: false },
@@ -209,7 +209,7 @@ function KpiValueHoursChart({ rows }: { rows: KpiRow[] }) {
     xAxis: { categories: campuses, labels: { style: { fontSize: '10px' } } },
     yAxis: { title: { text: null }, gridLineColor: '#f0f0f0' },
     legend: { enabled: false },
-    plotOptions: { column: { borderRadius: 2, dataLabels: { enabled: true, format: '{y}h', style: { fontSize: '9px', fontWeight: 'normal' } } } },
+    plotOptions: { column: { borderRadius: 2, dataLabels: { enabled: true, formatter: function() { var v = this.y; return v.toLocaleString('en-US', {maximumFractionDigits: 2}) + 'h'; }, style: { fontSize: '9px', fontWeight: 'normal' } } } },
     series: [{ type: 'column', name: 'Hours', data: campuses.map(c => byCampus[c].value || byCampus[c].actual), color: '#4A90D9' }],
     credits: { enabled: false },
   };
@@ -876,7 +876,7 @@ export default function Dashboard() {
             chart: baseChart, title: { text: undefined }, xAxis: baseAxis,
             yAxis: { title: { text: null }, gridLineColor: '#f0f0f0' },
             legend: { enabled: false },
-            plotOptions: { column: { borderRadius: 3, dataLabels: { ...dlStyle, format: '{y}h' } } },
+            plotOptions: { column: { borderRadius: 3, dataLabels: { ...dlStyle, formatter: function() { var v = this.y; return v.toLocaleString('en-US', {maximumFractionDigits: 2}) + 'h'; } } } },
             series: [{ type: 'column', name: 'Hours', data: campuses.map(c => byCampus[c].value || byCampus[c].actual), color: '#4A90D9' }],
             credits: { enabled: false },
           };
