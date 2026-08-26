@@ -27,6 +27,12 @@ export async function GET(request: Request) {
     const campusCodes = [...new Set(rows.map((r: any) => r['Campus Code']).filter(Boolean))].sort();
     return NextResponse.json({ sheetId: probeSheet, rowCount: rows.length, campusCodes, columns: rows.length > 0 ? Object.keys(rows[0]) : [], sample: rows.slice(0, 3) });
   }
+  const listSheets = url.searchParams.get('list_sheets');
+  if (listSheets) {
+    const res = await fetch('https://api.smartsheet.com/2.0/sheets?pageSize=200', { headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' } });
+    const data = await res.json();
+    return NextResponse.json({ sheets: (data.data || []).map((s: any) => ({ id: s.id, name: s.name })) });
+  }
 
   const results: Record<string, { rows: KpiRow[]; error?: string }> = {};
   const errors: string[] = [];
