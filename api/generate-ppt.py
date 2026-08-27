@@ -1,5 +1,6 @@
-"""Vercel Python serverless function â HCT-COHS KPI PPT Generator.
-Fetches live data from Smartsheet API and generates downloadable .pptx files.
+"""Vercel Python serverless function - HCT-COHS KPI PPT Generator.
+Generates quarterly (Q1+Q2) KPI reports using client's reference template.
+Fetches live data from Smartsheet API.
 """
 
 import os, re, io, json, zipfile, tempfile
@@ -9,7 +10,7 @@ from urllib.request import Request, urlopen
 from datetime import datetime
 from xml.etree import ElementTree as ET
 
-# ââ Namespaces ──
+# -- Namespaces --
 NS = {
     'a': 'http://schemas.openxmlformats.org/drawingml/2006/main',
     'r': 'http://schemas.openxmlformats.org/officeDocument/2006/relationships',
@@ -23,26 +24,18 @@ ET.register_namespace('c14', 'http://schemas.microsoft.com/office/drawing/2007/8
 ET.register_namespace('c15', 'http://schemas.microsoft.com/office/drawing/2012/chart')
 ET.register_namespace('c16r2', 'http://schemas.microsoft.com/office/drawing/2015/06/chart')
 
-# ââ Regions ââ
+# -- Regions --
 REGIONS = {
-    'AD Al Ain':      {'sheets': ['AAF','AAZ'], 'short': ['Falaj Hazza','Zakhir'],       'subtitle': 'Al Ain Falaj Hazza & Al Ain Zakhir'},
-    'Abu Dhabi':      {'sheets': ['ADA','ADB'], 'short': ['Baniyas A','Baniyas B'],      'subtitle': 'Abu Dhabi Baniyas A & Abu Dhabi Baniyas B'},
-    'AD Remote':      {'sheets': ['ADH','MZY'], 'short': ['Al Dhanna','Madinat Zayed'],  'subtitle': 'Al Dhanna Ruwais & Al Dhafra Madinat Zayed City'},
-    'Dubai':          {'sheets': ['DMC','DBN'], 'short': ['Academic City','Al Nahda'],    'subtitle': 'Dubai Academic City & Dubai Al Nahda'},
-    'Fujairah':       {'sheets': ['FJF','FJH'], 'short': ['Faseel','Hulaifat'],           'subtitle': 'Fujairah Faseel & Fujairah Hulaifat'},
-    'Sharjah':        {'sheets': ['SHJA','SHJB'], 'short': ['Campus A','Campus B'],         'subtitle': 'Sharjah Campus A & Sharjah Campus B'},
-    'Ras Al Khaimah': {'sheets': ['RKA','RKB'], 'short': ['Campus A','Campus B'],         'subtitle': 'RAK Campus A & RAK Campus B'},
+    'AD Al Ain': {'sheets': ['AAF','AAZ'], 'short': ['Falaj Hazza','Zakhir'], 'subtitle': 'Al Ain Falaj Hazza & Al Ain Zakhir'},
+    'Abu Dhabi': {'sheets': ['ADA','ADB'], 'short': ['Baniyas A','Baniyas B'], 'subtitle': 'Abu Dhabi Baniyas A & Abu Dhabi Baniyas B'},
+    'AD Remote': {'sheets': ['ADH','MZY'], 'short': ['Al Dhanna','Madinat Zayed'], 'subtitle': 'Al Dhanna Ruwais & Al Dhafra Madinat Zayed City'},
+    'Dubai': {'sheets': ['DMC','DBN'], 'short': ['Academic City','Al Nahda'], 'subtitle': 'Dubai Academic City & Dubai Al Nahda'},
+    'Fujairah': {'sheets': ['FJF','FJH'], 'short': ['Faseel','Hulaifat'], 'subtitle': 'Fujairah Faseel & Fujairah Hulaifat'},
+    'Sharjah': {'sheets': ['SHJA','SHJB'], 'short': ['Campus A','Campus B'], 'subtitle': 'Sharjah Campus A & Sharjah Campus B'},
+    'Ras Al Khaimah': {'sheets': ['RKA','RKB'], 'short': ['Campus A','Campus B'], 'subtitle': 'RAK Campus A & RAK Campus B'},
 }
 
-# ââ KPI structure ââ
-PILLAR_KPIS = [
-    {'pillar': 'Leadership', 'weight': 0.20, 'rows': [2,3,4,5,6]},
-    {'pillar': 'Risk Mgmt',  'weight': 0.20, 'rows': [7,8,9]},
-    {'pillar': 'Training',   'weight': 0.10, 'rows': [10,11]},
-    {'pillar': 'OCP & Emerg','weight': 0.25, 'rows': [12,13,14,15]},
-    {'pillar': 'Perf Eval',  'weight': 0.25, 'rows': [16,17,18,19]},
-]
-
+# -- KPI structure --
 KPI_WEIGHTS = {
     2: 0.30, 3: 0.10, 4: 0.10, 5: 0.25, 6: 0.25,
     7: 0.30, 8: 0.50, 9: 0.20,
@@ -51,7 +44,6 @@ KPI_WEIGHTS = {
     16: 0.30, 17: 0.30, 18: 0.20, 19: 0.20,
 }
 
-# Two-level classification structure matching Excel calc model
 PILLAR_CLASSIFICATION = [
     {'pillar': 'Leadership', 'weight': 0.20, 'groups': [
         {'class_weight': 0.5, 'kpis': [(2, 0.6), (3, 0.2), (4, 0.2)]},
@@ -77,22 +69,43 @@ PILLAR_CLASSIFICATION = [
     ]},
 ]
 
-CHART_KPI_MAP = {
-    'chart2.xml': 0,   'chart3.xml': 2,                        # Slide 5: Accountability
-    'chart4.xml': 3,   'chart5.xml': 4,                        # Slide 6: Engagement
-    'chart6.xml': 5,   'chart7.xml': 6,   'chart8.xml': 7,     # Slide 7: Risk
-    'chart9.xml': 8,                                            # Slide 8: Training
-    'chart10.xml': 10, 'chart11.xml': 11,                       # Slide 9: OCP
-    'chart12.xml': 12, 'chart13.xml': 13,                       # Slide 10: Contractors
-    'chart14.xml': 14, 'chart15.xml': 15,                       # Slide 11: Inspection
-    'chart16.xml': 17, 'chart17.xml': 16,                       # Slide 12: Incidents (16=Notification, 17=Investigation)
+# Chart file -> kpi_row mapping (kpi_row = KPI_display_number + 1)
+# Q1 charts (slides 4-11)
+Q1_CHART_MAP = {
+    'chart2.xml': 4,    # KPI 3
+    'chart3.xml': 5,    # KPI 4
+    'chart4.xml': 6,    # KPI 5
+    'chart5.xml': 7,    # KPI 6
+    'chart6.xml': 10,   # KPI 9
+    'chart7.xml': 12,   # KPI 11
+    'chart8.xml': 13,   # KPI 12
+    'chart9.xml': 14,   # KPI 13
+    'chart10.xml': 15,  # KPI 14
+    'chart11.xml': 16,  # KPI 15
+    'chart12.xml': 17,  # KPI 16
+    'chart13.xml': 18,  # KPI 17
+    'chart14.xml': 19,  # KPI 18
+}
+# Q2 charts (slides 14-21)
+Q2_CHART_MAP = {
+    'chart16.xml': 4,   # KPI 3
+    'chart17.xml': 5,   # KPI 4
+    'chart18.xml': 6,   # KPI 5
+    'chart19.xml': 7,   # KPI 6
+    'chart20.xml': 10,  # KPI 9
+    'chart21.xml': 12,  # KPI 11
+    'chart22.xml': 13,  # KPI 12
+    'chart23.xml': 14,  # KPI 13
+    'chart24.xml': 15,  # KPI 14
+    'chart25.xml': 16,  # KPI 15
+    'chart26.xml': 17,  # KPI 16
+    'chart27.xml': 18,  # KPI 17
+    'chart28.xml': 19,  # KPI 18
 }
 
-REMOVE_UNDERLINE_CHARTS = {'chart2.xml'}
+PIE_CHARTS = {'chart1.xml', 'chart15.xml'}
 
-PIE_CHARTS = {'chart1.xml'}
-
-# ââ Smartsheet source â KPI row mapping ââ
+# -- Smartsheet sources --
 SYNC_SOURCES = [
     {'key': 'v2_hs_kpi_report', 'reportId': '5852576405737348', 'campusCol': 'Campuses', 'monthCol': 'Primary', 'valueCol': 'Submitted', 'kpi_row': 2},
     {'key': 'v2_external_compliance', 'sheetId': '1325212455882628', 'campusCol': 'Campus Code', 'monthCol': 'Primary', 'plannedCol': 'Applicable Legal Compliance', 'actualCol': 'Legal Requirements Complied', 'kpi_row': 4},
@@ -111,72 +124,42 @@ SYNC_SOURCES = [
     {'key': 'notification', 'reportId': '8527961731846020', 'campusCol': 'Campus Code', 'monthCol': 'Reporting Month', 'plannedCol': 'Total Incident', 'actualCol': 'Incident Notification Submitted on Time', 'kpi_row': 19},
 ]
 
-# Waste data source
-WASTE_SOURCE = {'sheetId': '6383128615538564', 'campusCol': 'Campus Code', 'monthCol': 'Reporting Month'}
-
-WASTE_TABLE_COLS = ['General Waste', 'Food Waste', 'Paper Waste', 'Aluminum',
-                    'PET Bottle', 'Paper Cup/Carton', 'Single Use Plastic',
-                    'Tissue', 'Scrap Metal', 'E-waste', 'Hazardous']
-RECYCLABLE_COLS = ['Food Waste', 'Paper Waste', 'Aluminum', 'PET Bottle',
-                   'Paper Cup/Carton', 'Single Use Plastic', 'Tissue',
-                   'Scrap Metal', 'E-waste']
-
-# -- Committee name -> campus code mapping (HS Committee sheet uses region names) --
 COMMITTEE_MAP = {
-    'Al Ain': ['AAF', 'AAZ'],
-    'Abu Dhabi': ['ADA', 'ADB'],
-    'Dubai': ['DMC', 'DBN'],
-    'Fujairah': ['FJF', 'FJH'],
-    'Sharjah': ['SHJA', 'SHJB'],
-    'Ras Al Khaimah': ['RKA', 'RKB'],
-    'AD Remote': ['ADH', 'MZY'],
-    'Al Dhafra': ['ADH', 'MZY'],
+    'Al Ain': ['AAF', 'AAZ'], 'Abu Dhabi': ['ADA', 'ADB'],
+    'Dubai': ['DMC', 'DBN'], 'Fujairah': ['FJF', 'FJH'],
+    'Sharjah': ['SHJA', 'SHJB'], 'Ras Al Khaimah': ['RKA', 'RKB'],
+    'AD Remote': ['ADH', 'MZY'], 'Al Dhafra': ['ADH', 'MZY'],
     'Ruwais': ['ADH', 'MZY'],
 }
 
 MONTH_NAMES = ['January','February','March','April','May','June',
                'July','August','September','October','November','December']
+Q1_MONTHS = ['January', 'February', 'March']
+Q2_MONTHS = ['April', 'May', 'June']
 
-# -- Template-resilient slide lookup --
+# KPI display names for NA boxes and text placeholders
+KPI_NAMES = {
+    2: 'Health and Safety Quarterly KPI Reports Submitted & Presented',
+    3: 'External Audit Findings Closed',
+    4: 'Legal Requirements Complied',
+    5: 'H&S Committee Meetings Conducted',
+    6: 'Action Items Closed',
+    7: 'Hazard Identification Controls Implemented',
+    8: 'Risk Assessments Closed',
+    9: 'Risk Assessments and Validation',
+    10: 'H&S Training Sessions Completed',
+    11: 'H&S Awareness Campaigns Conducted',
+    12: 'Safe Working Procedures Compliance',
+    13: 'Emergency Drills Conducted',
+    14: 'Permit to Work Compliance',
+    15: 'Contractor Induction Compliance',
+    16: 'EHS Inspections Completed',
+    17: 'Inspection Findings Closed on Time',
+    18: 'Incident Investigation Completed on Time',
+    19: 'Incident Notification Submitted on Time',
+}
 
-def build_slide_map(file_contents):
-    """Scan all slides and extract title text. Returns {slide_path: title_text}."""
-    slide_titles = {}
-    p_ns = NS['p']; a_ns = NS['a']
-    for fname in sorted(file_contents.keys()):
-        if not (fname.startswith('ppt/slides/slide') and fname.endswith('.xml')):
-            continue
-        try:
-            root = ET.fromstring(file_contents[fname])
-            for sp in root.iter(f'{{{p_ns}}}sp'):
-                nvSpPr = sp.find(f'{{{p_ns}}}nvSpPr')
-                if nvSpPr is None: continue
-                nvPr = nvSpPr.find(f'{{{p_ns}}}nvPr')
-                if nvPr is None: continue
-                ph = nvPr.find(f'{{{p_ns}}}ph')
-                if ph is None: continue
-                if ph.get('type', '') in ('title', 'ctrTitle'):
-                    txBody = sp.find(f'{{{p_ns}}}txBody')
-                    if txBody is None: continue
-                    texts = [t.text for t in txBody.iter(f'{{{a_ns}}}t') if t.text]
-                    title = ' '.join(texts).strip()
-                    if title:
-                        slide_titles[fname] = title
-                    break
-        except Exception:
-            pass
-    return slide_titles
-
-
-def find_slide(slide_map, *keywords):
-    """Find slide path where title contains ALL keywords (case-insensitive)."""
-    for path, title in slide_map.items():
-        t = title.lower()
-        if all(kw.lower() in t for kw in keywords):
-            return path
-    return None
-
-# ââ Smartsheet API ââ
+# -- Smartsheet API --
 
 def _ss_fetch(endpoint, token):
     url = f'https://api.smartsheet.com/2.0/{endpoint}'
@@ -195,8 +178,7 @@ def fetch_sheet_rows(sheet_id, token):
             title = col_map.get(cell.get('columnId'))
             if title:
                 rec[title] = cell.get('displayValue') or cell.get('value') or ''
-        if rec:
-            rows.append(rec)
+        if rec: rows.append(rec)
     return rows
 
 def fetch_report_rows(report_id, token):
@@ -214,8 +196,7 @@ def fetch_report_rows(report_id, token):
             title = col_map.get(col_id)
             if title:
                 rec[title] = cell.get('displayValue') or cell.get('value') or ''
-        if rec:
-            rows.append(rec)
+        if rec: rows.append(rec)
     return rows
 
 def normalize_month(v):
@@ -228,13 +209,11 @@ def normalize_month(v):
     abbr_map = {m[:3].lower(): m for m in MONTH_NAMES}
     if abbr in abbr_map: return abbr_map[abbr]
     try:
-        from datetime import datetime as dt
-        d = dt.strptime(s, '%Y-%m-%d')
+        d = datetime.strptime(s, '%Y-%m-%d')
         return MONTH_NAMES[d.month - 1]
     except: pass
     try:
-        from datetime import datetime as dt
-        d = dt.strptime(s, '%m/%d/%Y')
+        d = datetime.strptime(s, '%m/%d/%Y')
         return MONTH_NAMES[d.month - 1]
     except: pass
     return None
@@ -247,11 +226,10 @@ def safe_float(v, default=0.0):
 def pct_str(v):
     return f"{round(v * 100)}%"
 
+# -- Fetch KPI data --
 
-# ââ Fetch and process KPI data from Smartsheet ââ
-
-def fetch_kpi_data(token, month_filter):
-    """Fetch all KPI sources and return {campus_code: {kpi_row: {planned, achieved, calc, weight}}}"""
+def fetch_kpi_data(token, month_list=None):
+    """Fetch all KPI sources. month_list: list of month names to include, or None for all."""
     data = {}
     for src in SYNC_SOURCES:
         try:
@@ -271,29 +249,22 @@ def fetch_kpi_data(token, month_filter):
         value_col = src.get('valueCol')
         is_yes_no = src.get('yesNoCount', False)
 
-        # Group by campus, filter by month
-        campus_agg = {}  # {campus: {planned: float, actual: float}}
+        campus_agg = {}
         for row in rows:
             campus = str(row.get(campus_col, '')).strip()
             if not campus: continue
-            # Filter out HQ and ADC non-campus entries
-            raw_cc = str(row.get('Campus Code', '')).strip()
-            if campus in ('ADC',) or raw_cc in ('ADC',): continue
+            if campus in ('ADC',) or str(row.get('Campus Code', '')).strip() in ('ADC',): continue
 
-            # Month filter
-            # Month filter â skip if month_filter is None (cumulative mode)
-            if month_filter and month_col:
+            if month_list and month_col:
                 row_month = normalize_month(row.get(month_col))
-                if not row_month: continue
-                # Also try fallback month columns
-                if row_month != month_filter:
+                if not row_month:
                     row_month = normalize_month(row.get('Reporting Month'))
-                    if row_month != month_filter:
-                        row_month = normalize_month(row.get('Date Reported'))
-                        if row_month != month_filter:
-                            row_month = normalize_month(row.get('Primary'))
-                            if row_month != month_filter:
-                                continue
+                if not row_month:
+                    row_month = normalize_month(row.get('Date Reported'))
+                if not row_month:
+                    row_month = normalize_month(row.get('Primary'))
+                if row_month not in month_list:
+                    continue
 
             if campus not in campus_agg:
                 campus_agg[campus] = {'planned': 0, 'actual': 0}
@@ -301,10 +272,8 @@ def fetch_kpi_data(token, month_filter):
             if is_yes_no:
                 pv = str(row.get(planned_col, '')).strip().lower()
                 av = str(row.get(actual_col, '')).strip().lower()
-                p = 1 if pv in ('yes', 'true', '1') else 0
-                a = 1 if av in ('yes', 'true', '1') else 0
-                campus_agg[campus]['planned'] += p
-                campus_agg[campus]['actual'] += a
+                campus_agg[campus]['planned'] += 1 if pv in ('yes','true','1') else 0
+                campus_agg[campus]['actual'] += 1 if av in ('yes','true','1') else 0
             elif planned_col and actual_col:
                 campus_agg[campus]['planned'] += safe_float(row.get(planned_col))
                 campus_agg[campus]['actual'] += safe_float(row.get(actual_col))
@@ -313,7 +282,6 @@ def fetch_kpi_data(token, month_filter):
                 campus_agg[campus]['planned'] += v
                 campus_agg[campus]['actual'] += v
 
-        # Expand committee/region names to campus codes for v2_hs_committee
         if src['key'] == 'v2_hs_committee':
             expanded = {}
             for cname, agg_val in campus_agg.items():
@@ -324,7 +292,6 @@ def fetch_kpi_data(token, month_filter):
                     expanded[cname] = agg_val
             campus_agg = expanded
 
-        # Store in data structure
         weight = KPI_WEIGHTS.get(kpi_row, 0.05)
         for campus, agg in campus_agg.items():
             if campus not in data:
@@ -333,43 +300,12 @@ def fetch_kpi_data(token, month_filter):
             achieved = agg['actual']
             calc = min(achieved / planned, 1.0) if planned > 0 else 0.0
             data[campus][kpi_row] = {'planned': planned, 'achieved': achieved, 'calc': calc, 'weight': weight}
-
     return data
 
-def fetch_waste_data(token, month_filter):
-    """Fetch waste segregation data from Smartsheet."""
-    try:
-        rows = fetch_sheet_rows(WASTE_SOURCE['sheetId'], token)
-    except:
-        return {}
-    waste = {}
-    for row in rows:
-        campus = str(row.get(WASTE_SOURCE['campusCol'], '')).strip()
-        month = normalize_month(row.get(WASTE_SOURCE['monthCol']))
-        if not campus: continue
-        if campus == 'ADC': continue
-        if month_filter and month != month_filter: continue
-        if campus not in waste:
-            entry = {}
-            for col in WASTE_TABLE_COLS:
-                entry[col] = 0.0
-            entry['Total Waste'] = 0.0
-            waste[campus] = entry
-        for col in WASTE_TABLE_COLS:
-            waste[campus][col] += safe_float(row.get(col))
-        row_total = safe_float(row.get('Total Waste'))
-        if row_total == 0:
-            row_total = sum(safe_float(row.get(c)) for c in WASTE_TABLE_COLS)
-        waste[campus]['Total Waste'] += row_total
-    return waste
-
-
-# ââ KPI data processing ââ
+# -- Scoring --
 
 def read_campus_data(kpi_data, sheet_name):
-    """Score a campus using two-level classification (matches Excel calc model).
-    Within each pillar, KPIs are grouped into classification sub-groups.
-    NA KPIs are excluded and weights redistributed at both levels."""
+    """Two-level classification scoring matching Excel calc model."""
     campus = kpi_data.get(sheet_name, {})
     kpis = []
     pillar_scores = []
@@ -391,7 +327,6 @@ def read_campus_data(kpi_data, sheet_name):
                 grp_score = sum(c * w for c, w in available) / tw if tw > 0 else 0
                 group_scores.append(grp_score)
                 group_weights.append(grp['class_weight'])
-        # Redistribute classification weights among groups that have data
         tcw = sum(group_weights)
         p_score = sum(s * w for s, w in zip(group_scores, group_weights)) / tcw if tcw > 0 else 0
         pillar_scores.append(p_score)
@@ -406,8 +341,48 @@ def read_region_data(kpi_data, region_cfg):
     avg_o = sum(c['overall'] for c in campuses)/n
     return {'campuses': campuses, 'avg_pillar': avg_p, 'avg_overall': avg_o, 'short': region_cfg['short']}
 
+# -- Chart XML update --
 
-# ââ XML chart editing (from kpi_pptx.py) ââ
+def update_chart_xml(xml_str, c1_val, c2_val):
+    """Update a 2-category clustered column chart: bar series = [c1, c2], line series = [avg, avg]."""
+    avg_val = (c1_val + c2_val) / 2
+    vals_bar = [c1_val, c2_val]
+    vals_line = [avg_val, avg_val]
+
+    def _update_num_vals(ser_xml, vals):
+        def _replace_num(m):
+            vx = m.group(0)
+            vx = re.sub(r'<c:pt idx="\d+">\s*<c:v>[^<]*</c:v>\s*</c:pt>', '', vx)
+            new_pts = ''.join(f'<c:pt idx="{i}"><c:v>{vals[i]}</c:v></c:pt>' for i in range(len(vals)))
+            vx = vx.replace('</c:numCache>', new_pts + '</c:numCache>')
+            return vx
+        return re.sub(r'<c:val>.*?</c:val>', _replace_num, ser_xml, flags=re.DOTALL)
+
+    # Update bar chart series (series 0 = bar values)
+    bar_match = re.search(r'<c:barChart>.*?</c:barChart>', xml_str, re.DOTALL)
+    if bar_match:
+        bar_xml = bar_match.group(0)
+        sers = list(re.finditer(r'<c:ser>.*?</c:ser>', bar_xml, re.DOTALL))
+        for si, sm in enumerate(sers):
+            old = sm.group(0)
+            new = _update_num_vals(old, vals_bar if si == 0 else vals_line)
+            bar_xml = bar_xml.replace(old, new, 1)
+        xml_str = xml_str[:bar_match.start()] + bar_xml + xml_str[bar_match.end():]
+
+    # Update line chart series (avg line)
+    line_match = re.search(r'<c:lineChart>.*?</c:lineChart>', xml_str, re.DOTALL)
+    if line_match:
+        line_xml = line_match.group(0)
+        sers = list(re.finditer(r'<c:ser>.*?</c:ser>', line_xml, re.DOTALL))
+        for sm in sers:
+            old = sm.group(0)
+            new = _update_num_vals(old, vals_line)
+            line_xml = line_xml.replace(old, new, 1)
+        xml_str = xml_str[:line_match.start()] + line_xml + xml_str[line_match.end():]
+
+    # Force Y-axis max to 1.0
+    xml_str = _set_val_axis_max(xml_str, 1.0)
+    return xml_str
 
 def _set_val_axis_max(xml_str, max_val):
     valax_match = re.search(r'<c:valAx>(.*?)</c:valAx>', xml_str, re.DOTALL)
@@ -427,617 +402,215 @@ def _set_val_axis_max(xml_str, max_val):
         new_valax = valax.replace('<c:valAx>', f'<c:valAx><c:scaling><c:max val="{max_val}"/></c:scaling>')
     return xml_str.replace(valax, new_valax)
 
-def _remove_axis_underline(xml_str):
-    xml_str = re.sub(r'<a:u val="[^"]*"/>', '', xml_str)
-    xml_str = re.sub(r'<a:u val="[^"]*">[^<]*</a:u>', '', xml_str)
-    return xml_str
+# -- Scoring summary slide update --
 
-def update_chart_xml(xml_str, campus_names, achieved_vals, avg_val=None, remove_underline=False):
-    """Update chart XML with campus values. All charts now use 3 categories (campus1, campus2, Campus Avg.)
-    with identical bar and line series values."""
-    n_cats = len(campus_names)
-
-    def _update_ser_values(ser_xml, vals):
-        def _replace_num(val_match):
-            vx = val_match.group(0)
-            vx = re.sub(r'(<c:ptCount val=")\d+(")', f'\\g<1>{n_cats}\\2', vx)
-            vx = re.sub(r'<c:pt idx="\d+">\s*<c:v>[^<]*</c:v>\s*</c:pt>', '', vx)
-            new_pts = ''.join(f'<c:pt idx="{i}"><c:v>{vals[i]}</c:v></c:pt>' for i in range(n_cats))
-            vx = vx.replace('</c:numCache>', new_pts + '</c:numCache>')
-            return vx
-        return re.sub(r'<c:val>.*?</c:val>', _replace_num, ser_xml, flags=re.DOTALL)
-
-    def _update_str_cache(match_str):
-        pt_count_m = re.search(r'<c:ptCount val="(\d+)"/>', match_str)
-        if pt_count_m:
-            existing_count = int(pt_count_m.group(1))
-            if existing_count == 1 and n_cats > 1:
-                return match_str
-        new_cache = f'<c:ptCount val="{n_cats}"/>'
-        for i, name in enumerate(campus_names):
-            new_cache += f'<c:pt idx="{i}"><c:v>{name}</c:v></c:pt>'
-        return re.sub(r'<c:ptCount val="\d+"/>.*?(?=</c:strCache>)', new_cache, match_str, flags=re.DOTALL)
-
-    xml_str = re.sub(r'<c:strCache>.*?</c:strCache>', lambda m: _update_str_cache(m.group(0)), xml_str, flags=re.DOTALL)
-
-    # Update bar chart series
-    bar_match = re.search(r'<c:barChart>.*?</c:barChart>', xml_str, re.DOTALL)
-    if bar_match:
-        bar_xml = bar_match.group(0)
-        ser_in_bar = list(re.finditer(r'<c:ser>.*?</c:ser>', bar_xml, re.DOTALL))
-        for sm in ser_in_bar:
-            old_ser = sm.group(0)
-            new_ser = _update_ser_values(old_ser, achieved_vals)
-            bar_xml = bar_xml.replace(old_ser, new_ser, 1)
-        xml_str = xml_str[:bar_match.start()] + bar_xml + xml_str[bar_match.end():]
-
-    # Update line chart series with same values (both series identical in new template)
-    line_match = re.search(r'<c:lineChart>.*?</c:lineChart>', xml_str, re.DOTALL)
-    if line_match:
-        line_xml = line_match.group(0)
-        ser_in_line = list(re.finditer(r'<c:ser>.*?</c:ser>', line_xml, re.DOTALL))
-        for sm in ser_in_line:
-            old_ser = sm.group(0)
-            new_ser = _update_ser_values(old_ser, achieved_vals)
-            line_xml = line_xml.replace(old_ser, new_ser, 1)
-        xml_str = xml_str[:line_match.start()] + line_xml + xml_str[line_match.end():]
-
-    xml_str = _set_val_axis_max(xml_str, 1.0)
-    if remove_underline:
-        xml_str = _remove_axis_underline(xml_str)
-    return xml_str
-
-
-# ââ Slide 6 bar scaling ââ
-
-BAR_COLOR_GREEN  = 'C0DD97'
-BAR_COLOR_BLUE   = 'B5D4F4'
-BAR_COLOR_ORANGE = 'FAC775'
-BAR_COLOR_RED    = 'F7C1C1'
-
-def _bar_color(pct):
-    p = round(pct * 100)
-    if p >= 91: return BAR_COLOR_GREEN
-    if p >= 81: return BAR_COLOR_BLUE
-    if p >= 71: return BAR_COLOR_ORANGE
-    return BAR_COLOR_RED
-
-SLIDE6_BAR_MAP = [
-    [(2, 1), (5, 4)],
-    [(9, 8), (12, 11)],
-    [(16, 15), (19, 18)],
-    [(23, 22), (26, 25)],
-    [(30, 29), (33, 32)],
-]
-
-def update_slide6_bars(xml_str, pct_values):
-    shapes = list(re.finditer(r'<p:sp>.*?</p:sp>', xml_str, re.DOTALL))
-    if len(shapes) < 36: return xml_str
-    replacements = []
-    for pi, bar_pairs in enumerate(SLIDE6_BAR_MAP):
-        for ci, (fill_idx, bg_idx) in enumerate(bar_pairs):
-            if pi >= len(pct_values) or ci >= len(pct_values[pi]): continue
-            pct = pct_values[pi][ci]
-            bg_shape = shapes[bg_idx].group(0)
-            fill_shape = shapes[fill_idx].group(0)
-            bg_cx_m = re.search(r'<a:ext cx="(\d+)"', bg_shape)
-            if not bg_cx_m: continue
-            bg_cx = int(bg_cx_m.group(1))
-            new_cx = max(int(bg_cx * max(pct, 0.05)), 1)
-            new_fill = re.sub(r'(<a:ext cx=")\d+(")', f'\\g<1>{new_cx}\\2', fill_shape, count=1)
-            new_color = _bar_color(pct)
-            new_fill = re.sub(r'(<a:srgbClr val=")[A-Fa-f0-9]{6}(")', f'\\g<1>{new_color}\\2', new_fill, count=1)
-            replacements.append((shapes[fill_idx].start(), shapes[fill_idx].end(), new_fill))
-    for start, end, new_text in sorted(replacements, key=lambda x: x[0], reverse=True):
-        xml_str = xml_str[:start] + new_text + xml_str[end:]
-    return xml_str
-
-
-# ââ Embedded Excel workbook ââ
-
-def create_chart_workbook(categories, bar_values, line_values=None):
-    try:
-        import openpyxl
-        wb = openpyxl.Workbook()
-        ws = wb.active
-        ws.title = 'Sheet1'
-        ws['A1'] = 'Category'
-        ws['B1'] = 'Value'
-        if line_values is not None:
-            ws['C1'] = 'Average'
-        for i, cat in enumerate(categories):
-            ws.cell(row=i+2, column=1, value=cat)
-            ws.cell(row=i+2, column=2, value=bar_values[i])
-            if line_values is not None:
-                ws.cell(row=i+2, column=3, value=line_values[i] if isinstance(line_values, list) else line_values)
-        buf = io.BytesIO()
-        wb.save(buf)
-        return buf.getvalue()
-    except ImportError:
-        return None
-
-def _rewrite_chart_formulas(xml_str, n_cats, has_line=True):
-    last_row = n_cats + 1
-    cat_range = f"Sheet1!$A$2:$A${last_row}" if n_cats > 1 else "Sheet1!$A$2"
-    bar_range = f"Sheet1!$B$2:$B${last_row}" if n_cats > 1 else "Sheet1!$B$2"
-    line_range = f"Sheet1!$C$2:$C${last_row}" if n_cats > 1 else "Sheet1!$C$2"
-    ser_idx = [0]
-    def replace_ser(ser_match):
-        ser_xml = ser_match.group(0)
-        idx = ser_idx[0]
-        ser_idx[0] += 1
-        val_col = 'B' if idx == 0 else 'C'
-        ser_xml = re.sub(r'(<c:tx>\s*<c:strRef>\s*<c:f>)[^<]*(</c:f>)', f'\\1Sheet1!${val_col}$1\\2', ser_xml, flags=re.DOTALL)
-        ser_xml = re.sub(r'(<c:cat>\s*<c:strRef>\s*<c:f>)[^<]*(</c:f>)', f'\\1{cat_range}\\2', ser_xml, flags=re.DOTALL)
-        ser_xml = re.sub(r'(<c:cat>\s*<c:numRef>\s*<c:f>)[^<]*(</c:f>)', f'\\1{cat_range}\\2', ser_xml, flags=re.DOTALL)
-        v_range = bar_range if idx == 0 else line_range
-        ser_xml = re.sub(r'(<c:val>\s*<c:numRef>\s*<c:f>)[^<]*(</c:f>)', f'\\1{v_range}\\2', ser_xml, flags=re.DOTALL)
-        return ser_xml
-    def replace_bar(bar_match):
-        bar_xml = bar_match.group(0)
-        ser_idx[0] = 0
-        return re.sub(r'<c:ser>.*?</c:ser>', replace_ser, bar_xml, flags=re.DOTALL)
-    xml_str = re.sub(r'<c:barChart>.*?</c:barChart>', replace_bar, xml_str, flags=re.DOTALL)
-    def replace_line(line_match):
-        line_xml = line_match.group(0)
-        return re.sub(r'<c:ser>.*?</c:ser>', replace_ser, line_xml, flags=re.DOTALL)
-    if has_line:
-        xml_str = re.sub(r'<c:lineChart>.*?</c:lineChart>', replace_line, xml_str, flags=re.DOTALL)
-    return xml_str
-
-def update_chart_rels_for_embedding(rels_xml, embed_target):
-    return re.sub(
-        r'<Relationship\s+Id="rId3"\s+Type="[^"]*oleObject[^"]*"\s+Target="[^"]*"\s+TargetMode="External"\s*/>',
-        f'<Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/package" Target="{embed_target}"/>',
-        rels_xml
-    )
-
-
-# ââ Waste slide helpers ââ
-
-def _set_cell_text(tc_elem, text, a_ns):
-    for r_elem in tc_elem.iter(f'{{{a_ns}}}r'):
-        t_elem = r_elem.find(f'{{{a_ns}}}t')
-        if t_elem is not None:
-            t_elem.text = text
-            break
-    else:
-        for t_elem in tc_elem.iter(f'{{{a_ns}}}t'):
-            t_elem.text = text
-            break
-
-def fmt_waste(v):
-    if v is None or v == 0: return '-'
-    if v == int(v): return str(int(v))
-    return f'{v:.1f}'.rstrip('0').rstrip('.')
-
-def _blank_waste_slide(file_contents, short_names, waste_path='ppt/slides/slide20.xml'):
-    slide20_path = waste_path
-    if slide20_path not in file_contents: return
-    xml = file_contents[slide20_path].decode('utf-8')
-    tree = ET.ElementTree(ET.fromstring(xml))
-    root = tree.getroot()
-    a_ns = NS['a']
-    for tbl_elem in root.iter(f'{{{a_ns}}}tbl'):
-        rows = list(tbl_elem.iter(f'{{{a_ns}}}tr'))
-        for ci in range(min(len(short_names), 2)):
-            if ci + 2 >= len(rows): break
-            data_row = rows[ci + 2]
-            cells = list(data_row.iter(f'{{{a_ns}}}tc'))
-            _set_cell_text(cells[0], short_names[ci], a_ns)
-            for c in cells[1:]:
-                _set_cell_text(c, '0', a_ns)
-    xml = ET.tostring(root, encoding='unicode')
-    xml = re.sub(r'\d+(?:,\d+)*(?:\.\d+)?\s*kg', '0 kg', xml)
-    xml = re.sub(r'Recyclable:\s*\d+(?:,\d+)*(?:\.\d+)?\s*kg', 'Recyclable: 0 kg', xml)
-    xml = re.sub(r'\d+(?:\.\d+)?%', '0.0%', xml)
-    file_contents[slide20_path] = xml.encode('utf-8')
-
-def update_waste_slide(file_contents, region_cfg, short_names, waste_data, waste_path='ppt/slides/slide20.xml'):
-    slide20_path = waste_path
-    if slide20_path not in file_contents: return
-    campus_sheets = region_cfg['sheets']
-    campus_waste = []
-    for cs in campus_sheets:
-        w = waste_data.get(cs, {})
-        entry = {col: w.get(col, 0) for col in WASTE_TABLE_COLS}
-        total = w.get('Total Waste', sum(entry.values()))
-        recyclable = sum(entry.get(c, 0) for c in RECYCLABLE_COLS)
-        recycle_pct = (recyclable / total * 100) if total > 0 else 0.0
-        entry['_total'] = total
-        entry['_recyclable'] = recyclable
-        entry['_recycle_pct'] = recycle_pct
-        campus_waste.append(entry)
-
-    xml = file_contents[slide20_path].decode('utf-8')
-    tree = ET.ElementTree(ET.fromstring(xml))
-    root = tree.getroot()
-    a_ns = NS['a']
-    col_keys = WASTE_TABLE_COLS
-
-    for tbl_elem in root.iter(f'{{{a_ns}}}tbl'):
-        rows_el = list(tbl_elem.iter(f'{{{a_ns}}}tr'))
-        for ci in range(min(len(campus_sheets), 2)):
-            if ci + 2 >= len(rows_el): break
-            w = campus_waste[ci]
-            data_row = rows_el[ci + 2]
-            cells = list(data_row.iter(f'{{{a_ns}}}tc'))
-            _set_cell_text(cells[0], short_names[ci], a_ns)
-            for j, key in enumerate(col_keys):
-                if j + 1 < len(cells):
-                    _set_cell_text(cells[j + 1], fmt_waste(w.get(key, 0)), a_ns)
-
-    xml = ET.tostring(root, encoding='unicode')
-
-    total_replacements = []
-    recycle_replacements = []
-    pct_replacements = []
-    for ci in range(min(len(campus_sheets), 2)):
-        w = campus_waste[ci]
-        tv = w['_total']
-        total_replacements.append(f'{tv:.2f} kg' if tv != int(tv) else f'{int(tv)} kg')
-        rv = w['_recyclable']
-        recycle_replacements.append(f'Recyclable: {rv:.1f} kg' if rv != int(rv) else f'Recyclable: {int(rv)} kg')
-        pct_replacements.append(f'{w["_recycle_pct"]:.1f}%')
-
-    ti = [0]
-    def _rt(m):
-        if ti[0] < len(total_replacements):
-            r = total_replacements[ti[0]]; ti[0] += 1; return r
-        return m.group(0)
-    xml = re.sub(r'\d+(?:\.\d+)?\s*kg', _rt, xml)
-
-    ri = [0]
-    def _rr(m):
-        if ri[0] < len(recycle_replacements):
-            r = recycle_replacements[ri[0]]; ri[0] += 1; return r
-        return m.group(0)
-    xml = re.sub(r'Recyclable:\s*\d+(?:\.\d+)?\s*kg', _rr, xml)
-
-    pi = [0]
-    def _rp(m):
-        if pi[0] < len(pct_replacements):
-            r = pct_replacements[pi[0]]; pi[0] += 1; return r
-        return m.group(0)
-    xml = re.sub(r'\d+(?:\.\d+)?%', _rp, xml)
-
-    file_contents[slide20_path] = xml.encode('utf-8')
-
-
-CONTENT_SLIDES = {
-    14: [(19, 'Incidents', 'Notified On Time'), (18, 'Investigated', 'Completed On Time')],
-    15: [(7, 'Controls Sampled', 'Implemented'), (8, 'Risk Assessments', 'Closed'), (9, 'Risk Assessments', 'Validated')],
-    16: [(4, 'Compliance Requirements', 'Compliant')],
-    18: [(10, 'Training Sessions', 'Completed')],
-    19: [(13, 'Drills Planned', 'Conducted')],
-    21: [(4, 'Compliance Requirements', 'Met')],
-}
-
-CONTENT_SLIDE_TITLES = {
-    14: 'Incident & Near Miss Review',
-    15: 'Risk Assessment Summary',
-    16: 'External Compliance Summary',
-    18: 'Training Completion Summary',
-    19: 'Emergency Drills Summary',
-    21: 'Legal Compliance Summary',
-}
-
-def _populate_content_slides(file_contents, kpi_data, region_cfg, short_names, content_paths=None):
-    """Replace placeholder text in content slides with per-campus KPI summaries."""
-    campus_codes = region_cfg['sheets']
-    slide_items = content_paths.items() if content_paths else [(f'ppt/slides/slide{n}.xml', defs) for n, defs in CONTENT_SLIDES.items()]
-    for path, kpi_defs in slide_items:
-        if path not in file_contents:
-            continue
-        xml = file_contents[path].decode('utf-8')
-        parts = []
-        for i, cc in enumerate(campus_codes):
-            metrics = []
-            for kpi_row, p_label, a_label in kpi_defs:
-                d = kpi_data.get(cc, {}).get(kpi_row, {'planned': 0, 'achieved': 0, 'calc': 0.0})
-                metrics.append(f"{a_label}: {int(d['achieved'])}/{int(d['planned'])} ({pct_str(d['calc'])})")
-            parts.append(f"{short_names[i]} - {'; '.join(metrics)}")
-        summary = ' | '.join(parts) if parts else 'No data available for this period.'
-        xml = xml.replace('Show data for emergency preparedness and drills for the upcoming month', '')
-        for ph in ['Explanation by Campus EHS Specialists', 'By Campus EHS Specialists']:
-            if ph in xml:
-                xml = xml.replace(ph, summary, 1)
-                break
-        file_contents[path] = xml.encode('utf-8')
-
-
-def _data_shape_xml(lines, x=457200, y=1371600, cx=8229600, cy=3200000):
-    """Generate XML for a text box shape with formatted data lines."""
-    paras = []
-    for line in lines:
-        escaped = line.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
-        if not line:
-            paras.append('<a:p><a:endParaRPr lang="en-US" sz="600" dirty="0"/></a:p>')
-        elif line.startswith('**') and line.endswith('**'):
-            text = escaped[2:-2]
-            paras.append(f'<a:p><a:r><a:rPr lang="en-US" sz="1200" b="1" dirty="0"><a:solidFill><a:srgbClr val="002060"/></a:solidFill></a:rPr><a:t>{text}</a:t></a:r></a:p>')
-        elif line.startswith('  '):
-            paras.append(f'<a:p><a:pPr marL="228600"/><a:r><a:rPr lang="en-US" sz="1000" dirty="0"/><a:t>{escaped.strip()}</a:t></a:r></a:p>')
-        else:
-            paras.append(f'<a:p><a:r><a:rPr lang="en-US" sz="1100" dirty="0"/><a:t>{escaped}</a:t></a:r></a:p>')
-    p_xml = ''.join(paras)
-    return (f'<p:sp><p:nvSpPr><p:cNvPr id="9999" name="DataBox"/>'
-            f'<p:cNvSpPr txBox="1"/><p:nvPr/></p:nvSpPr>'
-            f'<p:spPr><a:xfrm><a:off x="{x}" y="{y}"/>'
-            f'<a:ext cx="{cx}" cy="{cy}"/></a:xfrm>'
-            f'<a:prstGeom prst="rect"><a:avLst/></a:prstGeom>'
-            f'<a:noFill/></p:spPr>'
-            f'<p:txBody><a:bodyPr wrap="square" anchor="t"/>'
-            f'<a:lstStyle/>{p_xml}</p:txBody></p:sp>')
-
-
-def _add_content_data_shapes(file_contents, kpi_data, region_cfg, short_names, region_data, content_paths=None, content_titles=None):
-    """Add detailed data text shapes to content slides."""
-    campus_codes = region_cfg['sheets']
+def update_scoring_slide(xml_str, region_data, short_names):
+    """Update scoring summary slide: percentages, bar widths, campus names, totals."""
     campuses = region_data['campuses']
-    slide_items = content_paths.items() if content_paths else [(f'ppt/slides/slide{n}.xml', defs) for n, defs in CONTENT_SLIDES.items()]
-    _titles = content_titles or {f'ppt/slides/slide{n}.xml': t for n, t in CONTENT_SLIDE_TITLES.items()}
-    for path, kpi_defs in slide_items:
-        if path not in file_contents:
-            continue
-        xml = file_contents[path].decode('utf-8')
-        title = _titles.get(path, 'Data Summary')
-        lines = [f'**{title}**', '']
-        for i, cc in enumerate(campus_codes):
-            lines.append(f'**{short_names[i]}**')
-            for kpi_row, p_label, a_label in kpi_defs:
-                d = kpi_data.get(cc, {}).get(kpi_row, {'planned': 0, 'achieved': 0, 'calc': 0.0})
-                planned = int(d['planned'])
-                achieved = int(d['achieved'])
-                pct = pct_str(d['calc'])
-                lines.append(f'  {p_label} - {a_label}: {achieved}/{planned} ({pct})')
-            lines.append('')
-        shape_xml = _data_shape_xml(lines)
-        xml = xml.replace('</p:spTree>', shape_xml + '</p:spTree>')
-        file_contents[path] = xml.encode('utf-8')
+    c1 = campuses[0]
+    c2 = campuses[1] if len(campuses) > 1 else campuses[0]
 
+    # Replace campus name headers: DMC -> short_names[0], DBN -> short_names[1]
+    xml_str = xml_str.replace('>DMC<', f'>{short_names[0]}<')
+    xml_str = xml_str.replace('>DBN<', f'>{short_names[1]}<')
 
-def _populate_summary_table(file_contents, region_data, short_names, summary_path='ppt/slides/slide13.xml'):
-    """Fill slide 13 summary table with KPI pillar performance data."""
-    path = summary_path
-    if path not in file_contents:
-        return
-    xml = file_contents[path].decode('utf-8')
-    a_ns = NS['a']
-    try:
-        root = ET.fromstring(xml)
-    except Exception:
-        return
+    # Replace total score labels
+    xml_str = xml_str.replace('>DMC Total Score<', f'>{short_names[0]} Total Score<')
+    xml_str = xml_str.replace('>DBN Total Score<', f'>{short_names[1]} Total Score<')
 
-    pillar_names = [
-        'Leadership, Accountability & Engagement',
-        'Risk Management & Planning',
-        'Training & Awareness',
-        'Operational Control & Emergency Preparedness',
-        'Performance Evaluation & Continuous Improvement',
-    ]
+    # Build ordered list of percentage values to replace:
+    # For each of 5 pillars: C1%, C2%, Avg%
+    # Then totals: C1 total%, C2 total%, Avg total%
+    new_pcts = []
+    for pi in range(5):
+        new_pcts.append(pct_str(c1['pillar_scores'][pi]))
+        new_pcts.append(pct_str(c2['pillar_scores'][pi]))
+        new_pcts.append(pct_str(region_data['avg_pillar'][pi]))
+    new_pcts.append(pct_str(c1['overall']))
+    new_pcts.append(pct_str(c2['overall']))
+    new_pcts.append(pct_str(region_data['avg_overall']))
 
-    for tbl_elem in root.iter(f'{{{a_ns}}}tbl'):
-        rows = list(tbl_elem.iter(f'{{{a_ns}}}tr'))
-        if len(rows) < 2:
-            continue
-        for pi in range(min(5, len(rows) - 1)):
-            data_row = rows[pi + 1]
-            cells = list(data_row.iter(f'{{{a_ns}}}tc'))
-            if len(cells) < 7:
-                continue
-            scores = [region_data['campuses'][ci]['pillar_scores'][pi] for ci in range(len(short_names))]
-            avg = region_data['avg_pillar'][pi]
-            status = 'On Track' if avg >= 0.80 else ('Monitor' if avg >= 0.60 else 'Action Needed')
-            score_parts = [f'{short_names[ci]}: {pct_str(scores[ci])}' for ci in range(len(scores))]
-            discussion = f'{pillar_names[pi]} - {", ".join(score_parts)}, Avg: {pct_str(avg)}'
-            action = 'Maintain current practices' if avg >= 0.80 else ('Review and improve' if avg >= 0.60 else 'Corrective action required')
-            vals = [str(pi + 1), 'KPI Pillar Review', status, discussion, action, 'Ongoing', 'EHS Team']
-            for j, v in enumerate(vals):
-                if j < len(cells):
-                    _set_cell_text(cells[j], v, a_ns)
-        break
+    # Find and replace all percentage text values
+    pct_pattern = r'(<a:t>)(\d+%|N/A)(</a:t>)'
+    matches = list(re.finditer(pct_pattern, xml_str))
+    offset = 0
+    pct_idx = 0
+    for match in matches:
+        if pct_idx >= len(new_pcts): break
+        old_val = match.group(2)
+        new_val = new_pcts[pct_idx]
+        start = match.start(2) + offset
+        end = match.end(2) + offset
+        xml_str = xml_str[:start] + new_val + xml_str[end:]
+        offset += len(new_val) - len(old_val)
+        pct_idx += 1
 
-    file_contents[path] = ET.tostring(root, encoding='unicode').encode('utf-8')
+    # Update progress bar widths
+    # Pattern: pairs of shapes (bg bar + fill bar) for each pillar row per campus
+    # Fill bar width = bg bar width * score percentage
+    shapes = list(re.finditer(r'<p:sp>.*?</p:sp>', xml_str, re.DOTALL))
 
+    # Identify fill bars by their position pattern:
+    # For each pillar row (5 rows), there are 2 fill bars (C1, C2)
+    # Fill bars are the ones with smaller cx values at the same position as bg bars
+    bar_updates = []
+    for pi in range(5):
+        c1_score = c1['pillar_scores'][pi]
+        c2_score = c2['pillar_scores'][pi]
+        # Each pillar row has 7 shapes: C1_bg, C1_fill, C1_pct, C2_bg, C2_fill, C2_pct, Avg
+        # Base index = pi * 7 + 1 (skip pillar label at index 0 for first row)
+        # But pillar labels are at the end (indices 36-39), not interleaved
+        # Actual order: shapes 0-35 are bar/pct data, 36-39 are labels, 40+ are headers/totals
+        base = pi * 7
+        c1_bg_idx = base + 1
+        c1_fill_idx = base + 2
+        c2_bg_idx = base + 4
+        c2_fill_idx = base + 5
 
-# ââ Main generation ââ
+        if c1_fill_idx < len(shapes) and c1_bg_idx < len(shapes):
+            bg_shape = shapes[c1_bg_idx].group(0)
+            fill_shape = shapes[c1_fill_idx].group(0)
+            bg_cx_m = re.search(r'<a:ext cx="(\d+)"', bg_shape)
+            if bg_cx_m:
+                bg_cx = int(bg_cx_m.group(1))
+                new_cx = max(int(bg_cx * max(c1_score, 0.02)), 1) if c1_score > 0 else 1
+                new_fill = re.sub(r'(<a:ext cx=")\d+(")', f'\\g<1>{new_cx}\\2', fill_shape, count=1)
+                bar_updates.append((shapes[c1_fill_idx].start(), shapes[c1_fill_idx].end(), new_fill))
 
-def generate_presentation(template_bytes, region_name, period, kpi_data, waste_data=None):
+        if c2_fill_idx < len(shapes) and c2_bg_idx < len(shapes):
+            bg_shape = shapes[c2_bg_idx].group(0)
+            fill_shape = shapes[c2_fill_idx].group(0)
+            bg_cx_m = re.search(r'<a:ext cx="(\d+)"', bg_shape)
+            if bg_cx_m:
+                bg_cx = int(bg_cx_m.group(1))
+                new_cx = max(int(bg_cx * max(c2_score, 0.02)), 1) if c2_score > 0 else 1
+                new_fill = re.sub(r'(<a:ext cx=")\d+(")', f'\\g<1>{new_cx}\\2', fill_shape, count=1)
+                bar_updates.append((shapes[c2_fill_idx].start(), shapes[c2_fill_idx].end(), new_fill))
+
+    # Apply bar width updates in reverse order
+    for start, end, new_text in sorted(bar_updates, key=lambda x: x[0], reverse=True):
+        xml_str = xml_str[:start] + new_text + xml_str[end:]
+
+    return xml_str
+
+# -- Main generation --
+
+def generate_presentation(template_bytes, region_name, year, q1_data, q2_data):
     if region_name not in REGIONS:
         return None, f"Unknown region: {region_name}"
 
     region_cfg = REGIONS[region_name]
-    region_data = read_region_data(kpi_data, region_cfg)
-    campuses = region_data['campuses']
-    short_names = region_data['short']
+    short_names = region_cfg['short']
+    campus_codes = region_cfg['sheets']
 
-    # Read template ZIP into memory
+    q1_region = read_region_data(q1_data, region_cfg)
+    q2_region = read_region_data(q2_data, region_cfg)
+
+    # Read template ZIP
     buf_in = io.BytesIO(template_bytes)
     file_contents = {}
     with zipfile.ZipFile(buf_in, 'r') as zin:
         for item in zin.infolist():
             file_contents[item.filename] = zin.read(item.filename)
 
-    # Build title-based slide map for template resilience
-    slide_map = build_slide_map(file_contents)
-    cover_path = find_slide(slide_map, 'committee') or find_slide(slide_map, 'ehs', 'meeting') or 'ppt/slides/slide1.xml'
-    scoring_path = find_slide(slide_map, 'scoring') or find_slide(slide_map, 'pillar') or 'ppt/slides/slide4.xml'
-    waste_path = find_slide(slide_map, 'waste') or 'ppt/slides/slide20.xml'
-    summary_path = find_slide(slide_map, 'action') or find_slide(slide_map, 'summary') or 'ppt/slides/slide13.xml'
-    # Resolve content slides by title keywords
-    content_paths = {}
-    content_titles = {}
-    _CKW = {
-        'incident': ([(19, 'Incidents', 'Notified On Time'), (18, 'Investigated', 'Completed On Time')], 'Incident & Near Miss Review'),
-        'risk assessment': ([(7, 'Controls Sampled', 'Implemented'), (8, 'Risk Assessments', 'Closed'), (9, 'Risk Assessments', 'Validated')], 'Risk Assessment Summary'),
-        'external compliance': ([(4, 'Compliance Requirements', 'Compliant')], 'External Compliance Summary'),
-        'training': ([(10, 'Training Sessions', 'Completed')], 'Training Completion Summary'),
-        'drill': ([(13, 'Drills Planned', 'Conducted')], 'Emergency Drills Summary'),
-        'legal': ([(4, 'Compliance Requirements', 'Met')], 'Legal Compliance Summary'),
-    }
-    for kw, (kpi_defs, title) in _CKW.items():
-        p = find_slide(slide_map, kw)
-        if p:
-            content_paths[p] = kpi_defs
-            content_titles[p] = title
-    if not content_paths:
-        content_paths = {f'ppt/slides/slide{n}.xml': defs for n, defs in CONTENT_SLIDES.items()}
-        content_titles = {f'ppt/slides/slide{n}.xml': t for n, t in CONTENT_SLIDE_TITLES.items()}
+    # 1. Update cover slide (slide 1)
+    slide1_path = 'ppt/slides/slide1.xml'
+    if slide1_path in file_contents:
+        xml = file_contents[slide1_path].decode('utf-8')
+        date_str = datetime.now().strftime('%A, %B %d, %Y')
+        # Replace date patterns
+        xml = re.sub(r'(?:Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday),\s+\w+\s+\d+,\s+\d{4}', date_str, xml)
+        # Replace campus names in subtitle
+        new_sub = f"{short_names[0]} &amp; {short_names[1]}"
+        xml = re.sub(r'DMC[^<]*DBN', f'{short_names[0]} &amp; {short_names[1]}', xml)
+        xml = xml.replace('>DMC<', f'>{short_names[0]}<')
+        xml = xml.replace('>DBN<', f'>{short_names[1]}<')
+        # Replace region in title
+        xml = re.sub(r'KPI PERFORMANCE', f'KPI PERFORMANCE', xml)
+        file_contents[slide1_path] = xml.encode('utf-8')
 
-        # 1. Update column charts â all charts use 3 categories: [campus1, campus2, "Campus Avg."]
-    for chart_file, kpi_idx in CHART_KPI_MAP.items():
+    # 2. Update Q1 charts (slides 4-11)
+    for chart_file, kpi_row in Q1_CHART_MAP.items():
         path = f"ppt/charts/{chart_file}"
         if path not in file_contents: continue
         xml_str = file_contents[path].decode('utf-8')
-        do_remove_underline = chart_file in REMOVE_UNDERLINE_CHARTS
-
-        # Build 3-category data: campus1, campus2, Campus Avg.
-        campus_codes = region_cfg['sheets']
-        chart_names = list(campus_codes) + ['Campus Avg.']
-        campus_vals = [c['kpis'][kpi_idx]['calc'] for c in campuses]
-        avg_val = sum(campus_vals) / len(campus_vals)
-        chart_achieved = campus_vals + [avg_val]
-
-        new_xml = update_chart_xml(xml_str, chart_names, chart_achieved, avg_val, remove_underline=do_remove_underline)
-        new_xml = _set_val_axis_max(new_xml, 1.0)
-        new_xml = _rewrite_chart_formulas(new_xml, len(chart_names), has_line=True)
+        c1_val = q1_data.get(campus_codes[0], {}).get(kpi_row, {}).get('calc', 0.0)
+        c2_val = q1_data.get(campus_codes[1], {}).get(kpi_row, {}).get('calc', 0.0) if len(campus_codes) > 1 else 0.0
+        new_xml = update_chart_xml(xml_str, c1_val, c2_val)
         file_contents[path] = new_xml.encode('utf-8')
 
-        # Create embedded workbook
-        rels_path = f"ppt/charts/_rels/{chart_file}.rels"
-        if rels_path in file_contents:
-            chart_num = re.search(r'chart(\d+)', chart_file).group(1)
-            embed_name = f"Microsoft_Excel_Chart{chart_num}.xlsx"
-            embed_path = f"ppt/embeddings/{embed_name}"
-            xlsx_bytes = create_chart_workbook(chart_names, chart_achieved, chart_achieved)
-            if xlsx_bytes:
-                file_contents[embed_path] = xlsx_bytes
-                rels_xml = file_contents[rels_path].decode('utf-8')
-                if 'oleObject' in rels_xml and 'TargetMode="External"' in rels_xml:
-                    new_rels = update_chart_rels_for_embedding(rels_xml, f"../embeddings/{embed_name}")
-                    file_contents[rels_path] = new_rels.encode('utf-8')
+    # 3. Update Q2 charts (slides 14-21)
+    for chart_file, kpi_row in Q2_CHART_MAP.items():
+        path = f"ppt/charts/{chart_file}"
+        if path not in file_contents: continue
+        xml_str = file_contents[path].decode('utf-8')
+        c1_val = q2_data.get(campus_codes[0], {}).get(kpi_row, {}).get('calc', 0.0)
+        c2_val = q2_data.get(campus_codes[1], {}).get(kpi_row, {}).get('calc', 0.0) if len(campus_codes) > 1 else 0.0
+        new_xml = update_chart_xml(xml_str, c1_val, c2_val)
+        file_contents[path] = new_xml.encode('utf-8')
 
-    # 2. Update slides â replace campus name references
-    text_replacements = [('Campus X', short_names[0] if short_names else ''), ('Baniyas Campus A', short_names[0] if short_names else ''), ('Baniyas A', short_names[0] if short_names else '')]
-    if len(short_names) > 1:
-        text_replacements += [('Campus Y', short_names[1]), ('Baniyas Campus B', short_names[1]), ('Baniyas B', short_names[1])]
-    else:
-        text_replacements += [('Campus Y', ''), ('Baniyas Campus B', ''), ('Baniyas B', '')]
-    # Also replace generic Campus A/B if short names differ
-    if short_names and short_names[0] != 'Campus A':
-        text_replacements.append(('Campus A', short_names[0]))
-    if len(short_names) > 1 and short_names[1] != 'Campus B':
-        text_replacements.append(('Campus B', short_names[1]))
+    # 4. Update Q1 scoring summary (slide 3)
+    slide3_path = 'ppt/slides/slide3.xml'
+    if slide3_path in file_contents:
+        xml = file_contents[slide3_path].decode('utf-8')
+        xml = update_scoring_slide(xml, q1_region, short_names)
+        # Update quarter label in title
+        xml = xml.replace('>Q1<', f'>Q1<')
+        file_contents[slide3_path] = xml.encode('utf-8')
 
-    for fname in file_contents:
-        if fname.startswith('ppt/slides/slide') and fname.endswith('.xml') and fname != 'ppt/slides/slide1.xml':
+    # 5. Update Q2 scoring summary (slide 13)
+    slide13_path = 'ppt/slides/slide13.xml'
+    if slide13_path in file_contents:
+        xml = file_contents[slide13_path].decode('utf-8')
+        xml = update_scoring_slide(xml, q2_region, short_names)
+        file_contents[slide13_path] = xml.encode('utf-8')
+
+    # 6. Replace campus codes in ALL slides (DMC->short[0], DBN->short[1])
+    for fname in list(file_contents.keys()):
+        if fname.startswith('ppt/slides/slide') and fname.endswith('.xml'):
             xml = file_contents[fname].decode('utf-8')
             changed = False
-            for old, new in text_replacements:
-                if old in xml:
-                    xml = xml.replace(old, new)
-                    changed = True
-            if 'Q1 Baseline' in xml:
-                xml = xml.replace('Q1 Baseline', period)
+            # Replace in chart category labels and text shapes
+            if '>DMC<' in xml:
+                xml = xml.replace('>DMC<', f'>{short_names[0]}<')
+                changed = True
+            if '>DBN<' in xml:
+                xml = xml.replace('>DBN<', f'>{short_names[1]}<')
                 changed = True
             if changed:
                 file_contents[fname] = xml.encode('utf-8')
 
-    # 3. Update slide 1 (cover)
-    slide1_path = cover_path
-    if slide1_path in file_contents:
-        xml = file_contents[slide1_path].decode('utf-8')
-        date_str = datetime.now().strftime('%A, %B %d, %Y')
-        xml = re.sub(r'(Wednesday, May 13, 2026|Monday, \w+ \d+, \d{4})', date_str, xml)
-        # Update meeting title with period
-        xml = re.sub(r'EHS Committee Meeting \w+ \d{4}', f'EHS Committee Meeting {period}', xml)
-        new_sub = region_cfg['subtitle'].replace('&', '&amp;')
-        xml = xml.replace('Baniyas Campus A &amp; Campus B', new_sub)
-        xml = xml.replace('Baniyas Campus A & Campus B', region_cfg['subtitle'])
-        # Handle XXXX placeholders: standalone=subtitle, Date: XXXX=date
-        if 'XXXX' in xml:
-            xml = xml.replace('Date: XXXX', f'Date: {date_str}')
-            xml = xml.replace('XXXX', new_sub)
-        file_contents[slide1_path] = xml.encode('utf-8')
+    # Also replace campus names in chart category caches
+    for fname in list(file_contents.keys()):
+        if fname.startswith('ppt/charts/chart') and fname.endswith('.xml') and fname.split('/')[-1] not in PIE_CHARTS:
+            xml = file_contents[fname].decode('utf-8')
+            changed = False
+            if '>DMC<' in xml:
+                xml = xml.replace('>DMC<', f'>{campus_codes[0]}<')
+                changed = True
+            if '>DBN<' in xml:
+                xml = xml.replace('>DBN<', f'>{campus_codes[1]}<')
+                changed = True
+            if changed:
+                file_contents[fname] = xml.encode('utf-8')
 
-    # 4. Update slide 4 percentage shapes + bars
-    slide4_path = scoring_path
-    if slide4_path in file_contents:
-        xml = file_contents[slide4_path].decode('utf-8')
-        pct_values = []
-        for pi_idx in range(5):
-            row_vals = [c['pillar_scores'][pi_idx] for c in campuses]
-            row_vals.append(region_data['avg_pillar'][pi_idx])
-            pct_values.append(row_vals)
-        total_vals = [c['overall'] for c in campuses]
-        total_vals.append(region_data['avg_overall'])
+    # 7. Update NA box text with correct KPI names (keep "No scoring" text)
+    for fname in list(file_contents.keys()):
+        if not (fname.startswith('ppt/slides/slide') and fname.endswith('.xml')): continue
+        xml = file_contents[fname].decode('utf-8')
+        if 'No scoring' not in xml: continue
+        # NA boxes contain "KPI X - Name\nNo scoring for this quarter"
+        # Just ensure they display correctly - no data changes needed
+        file_contents[fname] = xml.encode('utf-8')
 
-        pct_pattern = r'(<a:t>)(\d+%)(</a:t>)'
-        matches = list(re.finditer(pct_pattern, xml))
-        new_pcts = []
-        for pi_idx in range(5):
-            for ci in range(min(len(campuses), 2) + 1):
-                idx = ci if ci < len(campuses) else len(campuses)
-                if idx < len(pct_values[pi_idx]):
-                    new_pcts.append(pct_str(pct_values[pi_idx][idx]))
-        for ci in range(min(len(campuses), 2) + 1):
-            idx = ci if ci < len(campuses) else len(campuses)
-            if idx < len(total_vals):
-                new_pcts.append(pct_str(total_vals[idx]))
-
-        offset = 0
-        pct_idx = 0
-        for match in matches:
-            if pct_idx >= len(new_pcts): break
-            old_val = match.group(2)
-            new_val = new_pcts[pct_idx]
-            start = match.start(2) + offset
-            end = match.end(2) + offset
-            xml = xml[:start] + new_val + xml[end:]
-            offset += len(new_val) - len(old_val)
-            pct_idx += 1
-
-        bar_pcts = []
-        for pi_idx in range(5):
-            row = [campuses[ci]['pillar_scores'][pi_idx] for ci in range(min(len(campuses), 2))]
-            bar_pcts.append(row)
-        xml = update_slide6_bars(xml, bar_pcts)
-        file_contents[slide4_path] = xml.encode('utf-8')
-
-    # 5. Waste slide
-    if waste_data and any(waste_data.values()):
-        update_waste_slide(file_contents, region_cfg, short_names, waste_data, waste_path)
-    else:
-        _blank_waste_slide(file_contents, short_names, waste_path)
-
-    # 6. Populate content slides (14, 15, 16, 18, 19, 21) with KPI data
-    _populate_content_slides(file_contents, kpi_data, region_cfg, short_names, content_paths)
-    _add_content_data_shapes(file_contents, kpi_data, region_cfg, short_names, region_data, content_paths, content_titles)
-
-    # 7. Populate slide 13 summary table
-    _populate_summary_table(file_contents, region_data, short_names, summary_path)
-
-
-
-    # Final pass: force Y-axis max on all charts
+    # 8. Force Y-axis max on all bar charts
     for fname in list(file_contents.keys()):
         if fname.startswith('ppt/charts/chart') and fname.endswith('.xml'):
+            cname = fname.split('/')[-1]
+            if cname in PIE_CHARTS: continue
             xml = file_contents[fname].decode('utf-8') if isinstance(file_contents[fname], bytes) else file_contents[fname]
-            valax_m = re.search(r'<c:valAx>(.*?)</c:valAx>', xml, re.DOTALL)
-            if valax_m:
-                valax = valax_m.group(0)
-                sc_m = re.search(r'<c:scaling>(.*?)</c:scaling>', valax, re.DOTALL)
-                if sc_m:
-                    inner = sc_m.group(1)
-                    if '<c:max' in inner:
-                        inner = re.sub(r'<c:max val="[^"]*"/>', '<c:max val="1.0"/>', inner)
-                    else:
-                        inner += '<c:max val="1.0"/>'
-                    inner = re.sub(r'<c:min val="[^"]*"/>', '', inner)
-                    new_valax = valax.replace(sc_m.group(0), f'<c:scaling>{inner}</c:scaling>')
-                    xml = xml.replace(valax, new_valax)
-                    file_contents[fname] = xml.encode('utf-8')
+            xml = _set_val_axis_max(xml, 1.0)
+            file_contents[fname] = xml.encode('utf-8')
 
     # Write output ZIP
     buf_out = io.BytesIO()
@@ -1047,8 +620,7 @@ def generate_presentation(template_bytes, region_name, period, kpi_data, waste_d
 
     return buf_out.getvalue(), None
 
-
-# ââ HTTP Handler ââ
+# -- HTTP Handler --
 
 class handler(BaseHTTPRequestHandler):
     def do_GET(self):
@@ -1056,8 +628,6 @@ class handler(BaseHTTPRequestHandler):
         params = parse_qs(parsed.query)
 
         region = params.get('region', ['Abu Dhabi'])[0]
-        month_param = params.get('month', [None])[0]
-        month = month_param  # None means cumulative (all months)
         year = params.get('year', [str(datetime.now().year)])[0]
 
         token = os.environ.get('SMARTSHEET_TOKEN')
@@ -1068,7 +638,6 @@ class handler(BaseHTTPRequestHandler):
             self.wfile.write(json.dumps({'error': 'SMARTSHEET_TOKEN not set'}).encode())
             return
 
-        # Handle "All" â default to Abu Dhabi for PPT (template supports only 1 region)
         if region.lower() == 'all':
             region = 'Abu Dhabi'
 
@@ -1080,26 +649,21 @@ class handler(BaseHTTPRequestHandler):
             return
 
         try:
-            # Fetch KPI data
-            kpi_data = fetch_kpi_data(token, month)
+            # Fetch KPI data for Q1 and Q2
+            q1_data = fetch_kpi_data(token, Q1_MONTHS)
+            q2_data = fetch_kpi_data(token, Q2_MONTHS)
 
-            # Fetch waste data
-            waste_data = fetch_waste_data(token, month)
-
-            # Load template â try multiple paths for Vercel compatibility
+            # Load template
             base = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
             template_path = os.path.join(base, 'templates', 'template.pptx')
             if not os.path.exists(template_path):
-                # Vercel may place files relative to CWD
                 template_path = os.path.join(os.getcwd(), 'templates', 'template.pptx')
             if not os.path.exists(template_path):
-                # Try relative to the api file itself
                 template_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'templates', 'template.pptx')
             with open(template_path, 'rb') as f:
                 template_bytes = f.read()
 
-            period = f"{month} {year}" if month else f"YTD {year}"
-            pptx_bytes, error = generate_presentation(template_bytes, region, period, kpi_data, waste_data)
+            pptx_bytes, error = generate_presentation(template_bytes, region, year, q1_data, q2_data)
 
             if error:
                 self.send_response(500)
@@ -1109,7 +673,7 @@ class handler(BaseHTTPRequestHandler):
                 return
 
             safe_name = region.replace(' ', '_')
-            filename = f"HCT_KPI_Committee_{safe_name}_{month}_{year}.pptx"
+            filename = f"HCT_KPI_{safe_name}_Q1_Q2_{year}.pptx"
 
             self.send_response(200)
             self.send_header('Content-Type', 'application/vnd.openxmlformats-officedocument.presentationml.presentation')
