@@ -159,6 +159,29 @@ KPI_NAMES = {
     19: 'Incident Notification Submitted on Time',
 }
 
+# KPI chart titles matching client's KPI NAMES.xlsx
+# Format: "KPI {display_num} - {name}" where display_num = kpi_row - 1
+KPI_CHART_TITLES = {
+    2: 'KPI 1 - % of Health and Safety KPI Reports Submitted vs Planned',
+    3: 'KPI 2 - % of Audit Findings Closed',
+    4: 'KPI 3 - % Authority Compliance Rate',
+    5: 'KPI 4 - % of HS Committee Meetings Conducted as per TORs',
+    6: 'KPI 5 - % of Committee Meetings & Management Review & Committee Meeting Actions Closed',
+    7: 'KPI 6 - % of Implemented Control Measures',
+    8: 'KPI 7 - % of Risk Assessments Closed',
+    9: 'KPI 8 - % Risk Assessments and Validation',
+    10: 'KPI 9 - % of Planned H&S Training Hours Delivered',
+    11: 'KPI 10 - % of H&S Awareness Campaigns Conducted',
+    12: 'KPI 11 - % of Compliance to Activities as per Set Health & Safety Procedures',
+    13: 'KPI 12 - % of Emergency Drills Conducted on Schedule',
+    14: 'KPI 13 - % Compliance to PTW (Permit-to-Work)',
+    15: 'KPI 14 - % Compliance to Onsite Safety Induction',
+    16: 'KPI 15 - % of Findings Closed On Time',
+    17: 'KPI 16 - % of Inspections Completed',
+    18: 'KPI 17 - % of Incident Notifications Reported On Time',
+    19: 'KPI 18 - % of Investigations Completed On Time',
+}
+
 # -- Smartsheet API --
 
 def _ss_fetch(endpoint, token):
@@ -342,6 +365,19 @@ def read_region_data(kpi_data, region_cfg):
     return {'campuses': campuses, 'avg_pillar': avg_p, 'avg_overall': avg_o, 'short': region_cfg['short']}
 
 # -- Chart XML update --
+
+def update_chart_title(xml_str, kpi_row):
+    """Update chart title to match client's KPI naming convention."""
+    title = KPI_CHART_TITLES.get(kpi_row)
+    if not title:
+        return xml_str
+    safe_title = title.replace('&', '&amp;')
+    title_match = re.search(r'<c:title>.*?</c:title>', xml_str, re.DOTALL)
+    if not title_match:
+        return xml_str
+    title_block = title_match.group(0)
+    new_title_block = re.sub(r'(<a:t>)[^<]*(</a:t>)', lambda m: m.group(1) + safe_title + m.group(2), title_block, count=1)
+    return xml_str[:title_match.start()] + new_title_block + xml_str[title_match.end():]
 
 def update_chart_xml(xml_str, c1_val, c2_val):
     """Update a 2-category clustered column chart: bar series = [c1, c2], line series = [avg, avg]."""
@@ -537,6 +573,7 @@ def generate_presentation(template_bytes, region_name, year, q1_data, q2_data):
         c1_val = q1_data.get(campus_codes[0], {}).get(kpi_row, {}).get('calc', 0.0)
         c2_val = q1_data.get(campus_codes[1], {}).get(kpi_row, {}).get('calc', 0.0) if len(campus_codes) > 1 else 0.0
         new_xml = update_chart_xml(xml_str, c1_val, c2_val)
+        new_xml = update_chart_title(new_xml, kpi_row)
         file_contents[path] = new_xml.encode('utf-8')
 
     # 3. Update Q2 charts (slides 14-21)
@@ -547,6 +584,7 @@ def generate_presentation(template_bytes, region_name, year, q1_data, q2_data):
         c1_val = q2_data.get(campus_codes[0], {}).get(kpi_row, {}).get('calc', 0.0)
         c2_val = q2_data.get(campus_codes[1], {}).get(kpi_row, {}).get('calc', 0.0) if len(campus_codes) > 1 else 0.0
         new_xml = update_chart_xml(xml_str, c1_val, c2_val)
+        new_xml = update_chart_title(new_xml, kpi_row)
         file_contents[path] = new_xml.encode('utf-8')
 
     # 4. Update Q1 scoring summary (slide 3)
@@ -629,6 +667,8 @@ class handler(BaseHTTPRequestHandler):
 
         region = params.get('region', ['Abu Dhabi'])[0]
         year = params.get('year', [str(datetime.now().year)])[0]
+        period = params.get('period', ['quarter'])[0]  # month, quarter, annual
+        month = params.get('month', [None])[0]  # specific month name for monthly reports
 
         token = os.environ.get('SMARTSHEET_TOKEN')
         if not token:
@@ -649,9 +689,20 @@ class handler(BaseHTTPRequestHandler):
             return
 
         try:
-            # Fetch KPI data for Q1 and Q2
-            q1_data = fetch_kpi_data(token, Q1_MONTHS)
-            q2_data = fetch_kpi_data(token, Q2_MONTHS)
+            # Determine month lists based on period
+            if period == 'annual':
+                q1_months = ['January', 'February', 'March', 'April', 'May', 'June']
+                q2_months = ['July', 'August', 'September', 'October', 'November', 'December']
+            elif period == 'month' and month:
+                q1_months = [month]
+                q2_months = []
+            else:
+                q1_months = Q1_MONTHS
+                q2_months = Q2_MONTHS
+
+            # Fetch KPI data
+            q1_data = fetch_kpi_data(token, q1_months)
+            q2_data = fetch_kpi_data(token, q2_months) if q2_months else {}
 
             # Load template
             base = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
