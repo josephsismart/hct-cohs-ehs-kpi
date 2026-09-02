@@ -11,6 +11,8 @@ from datetime import datetime
 
 MONTH_NAMES = ['January','February','March','April','May','June',
                'July','August','September','October','November','December']
+Q1_MONTHS = ['January','February','March','April','May','June']
+Q2_MONTHS = ['July','August','September','October','November','December']
 
 # ── Region mapping (for HS Committee which uses region names) ──
 REGIONS = {
@@ -202,7 +204,7 @@ def detect_latest_month():
     return MONTH_NAMES[datetime.now().month - 1]
 
 
-def process_source(src, rows, month_filter):
+def process_source(src, rows, months_filter):
     """Aggregate rows by campus, filtered by month. Returns {campus: {planned, actual, value}}"""
     campus_agg = {}
     campus_col = src['campusCol']
@@ -227,13 +229,13 @@ def process_source(src, rows, month_filter):
                 continue
 
         # Month filter
-        if month_col and month_filter:
+        if month_col and months_filter:
             row_month = normalize_month(row.get(month_col))
             if not row_month:
                 row_month = normalize_month(row.get('Reporting Month'))
             if not row_month:
                 row_month = normalize_month(row.get('Primary'))
-            if row_month != month_filter:
+            if row_month not in months_filter:
                 continue
 
         # Map campus to region if needed
@@ -294,7 +296,7 @@ def process_trend(src, rows):
     return month_agg
 
 
-def build_xlsx(token, month_filter, year):
+def build_xlsx(token, month_filter, year, period='quarter'):
     """Build the Excel workbook and return bytes."""
     try:
         import openpyxl
@@ -337,9 +339,21 @@ def build_xlsx(token, month_filter, year):
         bottom=Side(style='thin')
     )
 
-    period_label = month_filter + ' ' + str(year) if month_filter else detect_latest_month() + ' ' + str(year)
+    # Determine months to aggregate based on period
     if not month_filter:
         month_filter = detect_latest_month()
+    if period == 'annual':
+        months_filter = None  # all months
+        period_label = 'Annual ' + str(year)
+    elif period == 'month':
+        months_filter = [month_filter]
+        period_label = month_filter + ' ' + str(year)
+    else:  # quarter
+        if month_filter in Q2_MONTHS:
+            months_filter = Q2_MONTHS
+        else:
+            months_filter = Q1_MONTHS
+        period_label = month_filter + ' ' + str(year)
 
     # ── Process each KPI source ──
     for src in SYNC_SOURCES:
@@ -350,7 +364,7 @@ def build_xlsx(token, month_filter, year):
             print('  WARNING: Failed to fetch ' + src['key'] + ': ' + str(e))
             rows = []
 
-        campus_data = process_source(src, rows, month_filter)
+        campus_data = process_source(src, rows, months_filter)
 
         # Create sheet
         ws = wb.create_sheet(title=src['xlSheet'][:31])  # Excel 31-char limit
@@ -446,7 +460,7 @@ def build_xlsx(token, month_filter, year):
         if not campus or campus not in VALID_CAMPUSES:
             continue
         row_month = normalize_month(row.get(WASTE_SOURCE['monthCol']))
-        if row_month != month_filter:
+        if months_filter and row_month not in months_filter:
             continue
         entry = {col: safe_float(row.get(col)) for col in WASTE_TABLE_COLS}
         entry['Total Waste'] = safe_float(row.get('Total Waste')) or sum(entry.values())
@@ -535,12 +549,13 @@ class handler(BaseHTTPRequestHandler):
         month = params.get('month', [''])[0]
         year = params.get('year', [str(datetime.now().year)])[0]
         report_name = params.get('reportName', ['HCT-COHS KPI Report'])[0]
+        period = params.get('period', ['quarter'])[0]
 
         if not month:
             month = detect_latest_month()
 
         try:
-            xlsx_bytes = build_xlsx(token, month, year)
+            xlsx_bytes = build_xlsx(token, month, year, period)
 
             filename = report_name + ' - ' + month + ' ' + year + '.xlsx'
             self.send_response(200)

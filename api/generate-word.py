@@ -41,6 +41,8 @@ KPI_WEIGHTS = {
 
 MONTH_NAMES = ['January','February','March','April','May','June',
 'July','August','September','October','November','December']
+Q1_MONTHS = ['January','February','March','April','May','June']
+Q2_MONTHS = ['July','August','September','October','November','December']
 
 SYNC_SOURCES = [
 {'key': 'v2_hs_kpi_report', 'reportId': '810227329879940', 'campusCol': 'Campus', 'monthCol': 'Reporting Month', 'valueCol': 'Submitted', 'kpi_row': 2},
@@ -130,7 +132,7 @@ def safe_float(v, default=0.0):
 
 # ÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂ Fetch KPI data ÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂ
 
-def fetch_kpi_data(token, month_filter):
+def fetch_kpi_data(token, months_filter):
     data = {}
     for src in SYNC_SOURCES:
         try:
@@ -156,15 +158,15 @@ def fetch_kpi_data(token, month_filter):
             if not campus: continue
             raw_cc = str(row.get('Campus Code', '')).strip()
             if campus in ('HQ', 'ADC') or raw_cc in ('HQ', 'ADC'): continue
-            if month_col and month_filter:
+            if month_col and months_filter:
                 row_month = normalize_month(row.get(month_col))
-                if row_month != month_filter:
+                if row_month not in months_filter:
                     row_month = normalize_month(row.get('Reporting Month'))
-                    if row_month != month_filter:
+                    if row_month not in months_filter:
                         row_month = normalize_month(row.get('Date Reported'))
-                        if row_month != month_filter:
+                        if row_month not in months_filter:
                             row_month = normalize_month(row.get('Primary'))
-                            if row_month != month_filter:
+                            if row_month not in months_filter:
                                 continue
 
             if campus not in campus_agg:
@@ -195,7 +197,7 @@ def fetch_kpi_data(token, month_filter):
 
     return data
 
-def fetch_training_hours(token, month_filter):
+def fetch_training_hours(token, months_filter):
     try:
         rows = fetch_sheet_rows(TRAINING_SOURCE['sheetId'], token)
     except:
@@ -206,12 +208,12 @@ def fetch_training_hours(token, month_filter):
         month = normalize_month(row.get(TRAINING_SOURCE['monthCol']))
         if not campus: continue
         if campus in ('HQ', 'ADC'): continue
-        if month_filter and month != month_filter: continue
+        if months_filter and month not in months_filter: continue
         hours = safe_float(row.get(TRAINING_SOURCE['hoursCol']))
         result[campus] = result.get(campus, 0) + hours
     return result
 
-def fetch_incident_types(token, month_filter):
+def fetch_incident_types(token, months_filter):
     """Fetch incident type breakdown from incidents sheet."""
     try:
         rows = fetch_sheet_rows('7165378768621444', token)
@@ -219,9 +221,9 @@ def fetch_incident_types(token, month_filter):
         return {}
     type_counts = {}
     for row in rows:
-        if month_filter:
+        if months_filter:
             rm = normalize_month(row.get('Reporting Month'))
-            if rm != month_filter: continue
+            if rm not in months_filter: continue
         itype = str(row.get('Incident Type', '')).strip()
         if not itype: itype = 'Unclassified'
         count = 1
@@ -688,20 +690,33 @@ def detect_latest_month(token):
     return MONTH_NAMES[datetime.now().month - 1]
 
 
-def generate_report(month_name, year, token):
+def generate_report(month_name, year, token, period='quarter'):
     if not month_name:
         month_name = None
-    if month_name:
+
+    # Determine months to aggregate based on period
+    if period == 'annual':
+        months_filter = None  # all months
+        period_label = f'Annual {year}'
+    elif period == 'month' and month_name:
+        months_filter = [month_name]
         period_label = f'{month_name} {year}'
-    else:
-        latest = detect_latest_month(token)
-        period_label = f'{latest} {year}'
-    print(f'Generating Word report (overall) for {period_label}')
+    else:  # quarter
+        if month_name and month_name in Q2_MONTHS:
+            months_filter = Q2_MONTHS
+            period_label = f'Q2 {year}'
+        else:
+            months_filter = Q1_MONTHS
+            period_label = f'Q1 {year}'
+        if month_name:
+            period_label = f'{month_name} {year}'
+
+    print(f'Generating Word report (overall) for {period_label} [period={period}]')
 
     # Fetch data
-    kpi_data = fetch_kpi_data(token, month_name)
-    training_hours = fetch_training_hours(token, month_name)
-    incident_types = fetch_incident_types(token, month_name)
+    kpi_data = fetch_kpi_data(token, months_filter)
+    training_hours = fetch_training_hours(token, months_filter)
+    incident_types = fetch_incident_types(token, months_filter)
     print(f'  KPI data: {len(kpi_data)} campuses')
     print(f'  Training hours: {len(training_hours)} campuses')
     print(f'  Incident types: {len(incident_types)} types')
@@ -869,6 +884,7 @@ class handler(BaseHTTPRequestHandler):
         month = month if month else None
         year = qs.get('year', ['2026'])[0]
         report_name = qs.get('reportName', ['KPI_Report'])[0]
+        period = qs.get('period', ['quarter'])[0]
 
         token = os.environ.get('SMARTSHEET_TOKEN', '')
         if not token:
@@ -879,7 +895,7 @@ class handler(BaseHTTPRequestHandler):
             return
 
         try:
-            docx_bytes = generate_report(month, year, token)
+            docx_bytes = generate_report(month, year, token, period)
             filename = f'{report_name.replace(" ", "_")}_{month}_{year}.docx' if month else f'{report_name.replace(" ", "_")}_Overall_{year}.docx'
             self.send_response(200)
             self.send_header('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document')
