@@ -7,7 +7,7 @@ import os, re, io, json, zipfile, tempfile
 from http.server import BaseHTTPRequestHandler
 from urllib.parse import urlparse, parse_qs
 from urllib.request import Request, urlopen
-from datetime import datetime
+from datetime import datetimeh
 from xml.etree import ElementTree as ET
 
 # -- Namespaces --
@@ -376,7 +376,9 @@ def update_chart_title(xml_str, kpi_row):
     if not title_match:
         return xml_str
     title_block = title_match.group(0)
-    new_title_block = re.sub(r'(<a:t>)[^<]*(</a:t>)', lambda m: m.group(1) + safe_title + m.group(2), title_block, count=1)
+    # Clear all <a:t> content first, then set correct title in first run
+    new_title_block = re.sub(r'(<a:t>)[^<]*(</a:t>)', r'\1\2', title_block)
+    new_title_block = re.sub(r'(<a:t>)(</a:t>)', lambda m: m.group(1) + safe_title + m.group(2), new_title_block, count=1)
     return xml_str[:title_match.start()] + new_title_block + xml_str[title_match.end():]
 
 def update_chart_xml(xml_str, c1_val, c2_val):
