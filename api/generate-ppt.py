@@ -616,10 +616,10 @@ def generate_presentation(template_bytes, region_name, year, q1_data, q2_data):
 
     # 5. Q2 scoring summary REMOVED per client request
     # slide13_path = 'ppt/slides/slide13.xml'
-    if slide13_path in file_contents:
-        # xml = file_contents[slide13_path].decode('utf-8')
-        # xml = update_scoring_slide(xml, q2_region, short_names)
-        # file_contents[slide13_path] = xml.encode('utf-8')
+    # if slide13_path in file_contents:
+    #     xml = file_contents[slide13_path].decode('utf-8')
+    #     xml = update_scoring_slide(xml, q2_region, short_names)
+    #     file_contents[slide13_path] = xml.encode('utf-8')
 
     # 6. Replace campus codes in ALL slides (DMC->short[0], DBN->short[1])
     for fname in list(file_contents.keys()):
