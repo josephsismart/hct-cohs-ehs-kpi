@@ -47,25 +47,27 @@ const SMARTSHEET_LINKS: Record<string, string> = {
   drills: 'https://app.smartsheet.com/sheets/JhV8P6MwPJ228fcqcR6qR7RGGjvj2J2JQ64mqmQ1',
   v2_mgmt_review_actions: 'https://app.smartsheet.com/sheets/Jq2p2qwhGMVqHpJXPhWpcgmQJXHHjvPhh6MvC8j1',
   v2_waste_segregation: 'https://app.smartsheet.com/sheets/7xQW36mQVrm6Jrv2g9ph37M3hF3V5Wc9xPc5pp91',
+  v2_drills: 'https://app.smartsheet.com/sheets/5053158949605252',
 };
 
 const REPORT_REGIONS = ['AD Al Ain','Abu Dhabi','AD Remote','Dubai','Fujairah','Sharjah','Ras Al Khaimah'];
 
 const KPI_CHARTS = [
-  { key: 'v2_onsite_induction', label: 'KPI 14 - % Compliance to Onsite Safety Induction', plannedLabel: 'No. of New Contractors (Individuals)', actualLabel: 'Contractors Inducted in the Reporting Month \u2014 Met/Exceeded', belowLabel: 'Contractors Inducted in the Reporting Month \u2014 Below Target', type: 'planned_actual_below' },
-  { key: 'v2_permit_to_work', label: 'KPI 13 - % Compliance to PTW (Permit-to-Work)', plannedLabel: 'No. of PTWs Issued', actualLabel: 'Total Work Registered', type: 'planned_actual' },
-  { key: 'v2_hazard_id', label: 'KPI 6 - % of Implemented Control Measures', plannedLabel: 'Total Control Sampled', actualLabel: 'Implemented Controls \u2014 Met/Exceeded', belowLabel: 'Implemented Controls \u2014 Below Target', type: 'planned_actual_below' },
-  { key: 'v2_risk_closed', label: 'KPI 7 - % of Risk Assessments Closed', plannedLabel: 'Total Risk Assessments Registered', actualLabel: 'Risk Assessment Closed \u2014 Met/Exceeded', belowLabel: 'Risk Assessment Closed \u2014 Below Target', type: 'planned_actual_below' },
-  { key: 'v2_risk_validated', label: 'KPI 8 - % Risk Assessments and Validation', plannedLabel: 'Total Assessments Register', actualLabel: 'RA Validated and Signed Off \u2014 Met/Exceeded', belowLabel: 'RA Validated and Signed Off \u2014 Below Target', type: 'planned_actual_below' },
-  { key: 'v2_safe_working', label: 'KPI 11 - % of Compliance to Activities as per Set Health & Safety Procedures', plannedLabel: 'No. of SOPs Verified', actualLabel: 'No. of SOPs Implemented \u2014 Met/Exceeded', belowLabel: 'No. of SOPs Implemented \u2014 Below Target', type: 'planned_actual_below' },
-  { key: 'v2_findings_on_time', label: 'KPI 15 - % of Findings Closed On Time', plannedLabel: 'No. of Findings in Reporting Month', actualLabel: 'No. of Findings Closed \u2014 Met/Exceeded', belowLabel: 'No. of Findings Closed \u2014 Below Target', type: 'planned_actual_below' },
-  { key: 'v2_ehs_inspection', label: 'KPI 16 - % of Inspections Completed', plannedLabel: 'No. of EHS Inspections Planned', actualLabel: 'No. of EHS Inspections Completed \u2014 Met/Exceeded', belowLabel: 'No. of EHS Inspections Completed \u2014 Below Target', type: 'planned_actual_below' },
-  { key: 'v2_hs_committee', label: 'KPI 4 - % of HS Committee Meetings Conducted as per TORs', valueLabel: 'No. of Committee Meeting', type: 'value' },
-  { key: 'v2_planned_training', label: 'KPI 9 - % of Planned H&S Training Hours Delivered', plannedLabel: 'Planned Training', actualLabel: 'Training Conducted \u2014 Met/Exceeded', belowLabel: 'Training Conducted \u2014 Below Target', type: 'planned_actual_below' },
-  // { key: 'v2_hs_kpi_report', label: 'HS KPI Report', valueLabel: 'Submitted', type: 'value' }, // Hidden: reportId 404
-  { key: 'v2_external_compliance', label: 'KPI 3 - % Authority Compliance Rate', plannedLabel: 'Applicable Compliance', actualLabel: 'Actual Compliance', type: 'planned_actual' },
-  { key: 'v2_investigation_on_time', label: 'KPI 18 - % of Investigations Completed On Time', plannedLabel: 'Total Incident', actualLabel: 'Investigation Completed on Time', type: 'planned_actual' },
-  { key: 'notification', label: 'KPI 17 - % of Incident Notifications Reported On Time', plannedLabel: 'Total Incident', actualLabel: 'Notification Submitted on Time', type: 'planned_actual' },
+  { key: 'v2_hs_kpi_report', label: 'KPI 1: HS KPI Reports Submitted vs Planned', valueLabel: 'Submitted', type: 'value' },
+  { key: 'v2_external_compliance', label: 'KPI 3: Authority Compliance Rate', plannedLabel: 'Applicable Compliance', actualLabel: 'Actual Compliance \u2014 Met/Exceeded', belowLabel: 'Actual Compliance \u2014 Below Target', type: 'planned_actual_below' },
+  { key: 'v2_hs_committee', label: 'KPI 4: HS Committee Meetings Conducted', valueLabel: 'No. of Committee Meeting', type: 'value' },
+  { key: 'v2_hazard_id', label: 'KPI 6: Implemented Control Measures', plannedLabel: 'Total Control Sampled', actualLabel: 'Implemented Controls \u2014 Met/Exceeded', belowLabel: 'Implemented Controls \u2014 Below Target', type: 'planned_actual_below' },
+  { key: 'v2_risk_closed', label: 'KPI 7: Risk Assessments Closed', plannedLabel: 'Total Risk Assessments Registered', actualLabel: 'Risk Assessment Closed \u2014 Met/Exceeded', belowLabel: 'Risk Assessment Closed \u2014 Below Target', type: 'planned_actual_below' },
+  { key: 'v2_risk_validated', label: 'KPI 8: Risk Assessments Validated & Signed Off', plannedLabel: 'Total Assessments Register', actualLabel: 'RA Validated and Signed Off \u2014 Met/Exceeded', belowLabel: 'RA Validated and Signed Off \u2014 Below Target', type: 'planned_actual_below' },
+  { key: 'v2_planned_training', label: 'KPI 9: Planned Training Report', plannedLabel: 'Planned Training', actualLabel: 'Training Conducted \u2014 Met/Exceeded', belowLabel: 'Training Conducted \u2014 Below Target', type: 'planned_actual_below' },
+  { key: 'v2_safe_working', label: 'KPI 11: Safe Working Procedure', plannedLabel: 'No. of SOPs Verified', actualLabel: 'No. of SOPs Implemented \u2014 Met/Exceeded', belowLabel: 'No. of SOPs Implemented \u2014 Below Target', type: 'planned_actual_below' },
+  { key: 'v2_drills', label: 'KPI 12: Emergency Drills Conducted on Schedule', plannedLabel: 'Planned Drills', actualLabel: 'Drills Conducted', type: 'planned_actual' },
+  { key: 'v2_permit_to_work', label: 'KPI 13: Compliance to PTW', plannedLabel: 'No. of PTWs Issued', actualLabel: 'Total Work Registered', type: 'planned_actual' },
+  { key: 'v2_onsite_induction', label: 'KPI 14: Onsite Safety Induction', plannedLabel: 'No. of New Contractors (Individuals)', actualLabel: 'Contractors Inducted \u2014 Met/Exceeded', belowLabel: 'Contractors Inducted \u2014 Below Target', type: 'planned_actual_below' },
+  { key: 'v2_findings_on_time', label: 'KPI 15: Findings Closed On Time', plannedLabel: 'No. of Findings in Reporting Month', actualLabel: 'No. of Findings Closed \u2014 Met/Exceeded', belowLabel: 'No. of Findings Closed \u2014 Below Target', type: 'planned_actual_below' },
+  { key: 'v2_ehs_inspection', label: 'KPI 16: Scheduled EHS Inspection', plannedLabel: 'No. of EHS Inspections Planned', actualLabel: 'No. of EHS Inspections Completed \u2014 Met/Exceeded', belowLabel: 'No. of EHS Inspections Completed \u2014 Below Target', type: 'planned_actual_below' },
+  { key: 'notification', label: 'KPI 17: Incident Notifications Reported On Time', plannedLabel: 'Total Incident', actualLabel: 'Notification Submitted on Time', type: 'planned_actual' },
+  { key: 'v2_investigation_on_time', label: 'KPI 18: Investigations Completed On Time', plannedLabel: 'Total Incident', actualLabel: 'Investigation Completed on Time', type: 'planned_actual' },
 ];
 
 const EXTRA_CHARTS = [
