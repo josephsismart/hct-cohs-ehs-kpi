@@ -119,7 +119,7 @@ SYNC_SOURCES = [
     {'key': 'v2_permit_to_work', 'sheetId': '3519179394076548', 'campusCol': 'Campus Code', 'monthCol': 'Reporting Month', 'plannedCol': 'No. of PTWs Issued', 'actualCol': 'Total Work Registered', 'kpi_row': 14},
     {'key': 'v2_onsite_induction', 'sheetId': '3519179394076548', 'campusCol': 'Campus Code', 'monthCol': 'Reporting Month', 'plannedCol': "No. of New Contractors (Individuals)", 'actualCol': 'No. of Contractors Inducted', 'kpi_row': 15},
     {'key': 'v2_ehs_inspection', 'sheetId': '1510149721116548', 'campusCol': 'Campus Code', 'monthCol': 'Primary', 'plannedCol': 'No. of EHS Inspections Planned', 'actualCol': 'No. of EHS Inspections Completed', 'kpi_row': 17},
-    {'key': 'v2_findings_on_time', 'sheetId': '1510149721116548', 'campusCol': 'Campus Code', 'monthCol': 'Primary', 'plannedCol': 'No. of Findings Closed', 'actualCol': 'No. of Findings Due', 'kpi_row': 16},
+    {'key': 'v2_findings_on_time', 'sheetId': '1510149721116548', 'campusCol': 'Campus Code', 'monthCol': 'Primary', 'plannedCol': 'No. of Findings Due', 'actualCol': 'No. of Findings Closed', 'kpi_row': 16},
     {'key': 'v2_investigation_on_time', 'reportId': '5432865759121284', 'campusCol': 'Campus Code', 'monthCol': 'Reporting Month', 'plannedCol': 'Total Incident Investigated', 'actualCol': 'Investigation Completed on Time', 'kpi_row': 19},
     {'key': 'notification', 'reportId': '8527961731846020', 'campusCol': 'Campus Code', 'monthCol': 'Reporting Month', 'plannedCol': 'Total Incident', 'actualCol': 'Incident Notification Submitted on Time', 'kpi_row': 18},
 ]
@@ -322,7 +322,7 @@ def fetch_kpi_data(token, month_list=None):
             planned = agg['planned']
             achieved = agg['actual']
             calc = min(achieved / planned, 1.0) if planned > 0 else 0.0
-            data[campus][kpi_row] = {'planned': planned, 'achieved': achieved, 'calc': calc, 'weight': weight}
+            data[campus][kpi_row] = {'planned': planned, 'achieved': achieved, 'calc': calc, 'weight': weight, 'na': planned == 0 and achieved == 0}
     return data
 
 # -- Scoring --
@@ -344,7 +344,8 @@ def read_campus_data(kpi_data, sheet_name):
                     continue
                 d.setdefault('weight', KPI_WEIGHTS.get(kpi_row, 0.05))
                 kpis.append(d)
-                available.append((d['calc'], sub_weight))
+                if not d.get('na'):
+                    available.append((d['calc'], sub_weight))
             if available:
                 tw = sum(w for _, w in available)
                 grp_score = sum(c * w for c, w in available) / tw if tw > 0 else 0
@@ -439,6 +440,22 @@ def _set_val_axis_max(xml_str, max_val):
     else:
         new_valax = valax.replace('<c:valAx>', f'<c:valAx><c:scaling><c:max val="{max_val}"/></c:scaling>')
     return xml_str.replace(valax, new_valax)
+
+def remove_analysis_text(xml_str):
+    """Remove Key Observations and analysis text shapes from slide content."""
+    patterns_to_remove = ['Key Observations', 'Rectification', 'Key Observation',
+                          'Corrective Actions']
+    shapes = list(re.finditer(r'<p:sp\b[^>]*>.*?</p:sp>', xml_str, re.DOTALL))
+    removals = []
+    for m in shapes:
+        shape_text = m.group(0)
+        for pat in patterns_to_remove:
+            if pat in shape_text:
+                removals.append((m.start(), m.end()))
+                break
+    for start, end in sorted(removals, reverse=True):
+        xml_str = xml_str[:start] + xml_str[end:]
+    return xml_str
 
 # -- Scoring summary slide update --
 
@@ -555,16 +572,15 @@ def generate_presentation(template_bytes, region_name, year, q1_data, q2_data):
     slide1_path = 'ppt/slides/slide1.xml'
     if slide1_path in file_contents:
         xml = file_contents[slide1_path].decode('utf-8')
-        date_str = datetime.now().strftime('%A, %B %d, %Y')
-        # Replace date patterns
+        date_str = datetime.now().strftime('%d-%m-%Y')
+        # Replace date patterns (long format and DD-MM-YYYY)
         xml = re.sub(r'(?:Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday),\s+\w+\s+\d+,\s+\d{4}', date_str, xml)
-        # Replace campus names in subtitle
-        new_sub = f"{short_names[0]} &amp; {short_names[1]}"
-        xml = re.sub(r'DMC[^<]*DBN', f'{short_names[0]} &amp; {short_names[1]}', xml)
+        xml = re.sub(r'\d{2}-\d{2}-\d{4}', date_str, xml)
+        # Replace subtitle with correct region
+        subtitle_safe = region_cfg['subtitle'].replace('&', '&amp;')
+        xml = re.sub(r'>Dubai Academic City[^<]*Al Nahda<', f'>{subtitle_safe}<', xml)
         xml = xml.replace('>DMC<', f'>{short_names[0]}<')
         xml = xml.replace('>DBN<', f'>{short_names[1]}<')
-        # Replace region in title
-        xml = re.sub(r'KPI PERFORMANCE', f'KPI PERFORMANCE', xml)
         file_contents[slide1_path] = xml.encode('utf-8')
 
     # 2. Update Q1 charts (slides 4-11)
@@ -578,16 +594,16 @@ def generate_presentation(template_bytes, region_name, year, q1_data, q2_data):
         new_xml = update_chart_title(new_xml, kpi_row)
         file_contents[path] = new_xml.encode('utf-8')
 
-    # 3. Update Q2 charts (slides 14-21)
-    for chart_file, kpi_row in Q2_CHART_MAP.items():
-        path = f"ppt/charts/{chart_file}"
-        if path not in file_contents: continue
-        xml_str = file_contents[path].decode('utf-8')
-        c1_val = q2_data.get(campus_codes[0], {}).get(kpi_row, {}).get('calc', 0.0)
-        c2_val = q2_data.get(campus_codes[1], {}).get(kpi_row, {}).get('calc', 0.0) if len(campus_codes) > 1 else 0.0
-        new_xml = update_chart_xml(xml_str, c1_val, c2_val)
-        new_xml = update_chart_title(new_xml, kpi_row)
-        file_contents[path] = new_xml.encode('utf-8')
+    # 3. Q2 charts REMOVED per client request (slides 12-21 deleted)
+    # for chart_file, kpi_row in Q2_CHART_MAP.items():
+        # path = f"ppt/charts/{chart_file}"
+        # if path not in file_contents: continue
+        # xml_str = file_contents[path].decode('utf-8')
+        # c1_val = q2_data.get(campus_codes[0], {}).get(kpi_row, {}).get('calc', 0.0)
+        # c2_val = q2_data.get(campus_codes[1], {}).get(kpi_row, {}).get('calc', 0.0) if len(campus_codes) > 1 else 0.0
+        # new_xml = update_chart_xml(xml_str, c1_val, c2_val)
+        # new_xml = update_chart_title(new_xml, kpi_row)
+        # file_contents[path] = new_xml.encode('utf-8')
 
     # 4. Update Q1 scoring summary (slide 3)
     slide3_path = 'ppt/slides/slide3.xml'
@@ -598,12 +614,12 @@ def generate_presentation(template_bytes, region_name, year, q1_data, q2_data):
         xml = xml.replace('>Q1<', f'>Q1<')
         file_contents[slide3_path] = xml.encode('utf-8')
 
-    # 5. Update Q2 scoring summary (slide 13)
-    slide13_path = 'ppt/slides/slide13.xml'
+    # 5. Q2 scoring summary REMOVED per client request
+    # slide13_path = 'ppt/slides/slide13.xml'
     if slide13_path in file_contents:
-        xml = file_contents[slide13_path].decode('utf-8')
-        xml = update_scoring_slide(xml, q2_region, short_names)
-        file_contents[slide13_path] = xml.encode('utf-8')
+        # xml = file_contents[slide13_path].decode('utf-8')
+        # xml = update_scoring_slide(xml, q2_region, short_names)
+        # file_contents[slide13_path] = xml.encode('utf-8')
 
     # 6. Replace campus codes in ALL slides (DMC->short[0], DBN->short[1])
     for fname in list(file_contents.keys()):
@@ -652,7 +668,46 @@ def generate_presentation(template_bytes, region_name, year, q1_data, q2_data):
             xml = _set_val_axis_max(xml, 1.0)
             file_contents[fname] = xml.encode('utf-8')
 
-    # Write output ZIP
+    # 9. Remove analysis text from content slides (per client: keep titles only)
+    for slide_num in range(4, 12):
+        slide_path = f'ppt/slides/slide{slide_num}.xml'
+        if slide_path in file_contents:
+            xml = file_contents[slide_path].decode('utf-8')
+            xml = remove_analysis_text(xml)
+            file_contents[slide_path] = xml.encode('utf-8')
+
+    # 10. Remove Q2 duplicate slides (12-21) per client request
+    pres_path = 'ppt/presentation.xml'
+    rels_path_pres = 'ppt/_rels/presentation.xml.rels'
+    if pres_path in file_contents and rels_path_pres in file_contents:
+        pres_xml = file_contents[pres_path].decode('utf-8')
+        rels_xml = file_contents[rels_path_pres].decode('utf-8')
+        for slide_num in range(12, 22):
+            # Find rId for this slide
+            rid_match = re.search(rf'Id="(rId\d+)"[^>]*slides/slide{slide_num}\.xml', rels_xml)
+            if rid_match:
+                rid = rid_match.group(1)
+                pres_xml = re.sub(rf'<p:sldId[^>]*{rid}[^/]*/>', '', pres_xml)
+                rels_xml = re.sub(rf'<Relationship[^>]*{rid}[^>]*slides/slide{slide_num}\.xml[^/]*/>', '', rels_xml)
+        file_contents[pres_path] = pres_xml.encode('utf-8')
+        file_contents[rels_path_pres] = rels_xml.encode('utf-8')
+
+    # Delete Q2 slide files and rels
+    for slide_num in range(12, 22):
+        for path in [f'ppt/slides/slide{slide_num}.xml', f'ppt/slides/_rels/slide{slide_num}.xml.rels']:
+            if path in file_contents:
+                del file_contents[path]
+    # Delete Q2 chart files
+    for chart_file in Q2_CHART_MAP:
+        path = f'ppt/charts/{chart_file}'
+        if path in file_contents:
+            del file_contents[path]
+    # Delete Q2 pie chart
+    pie2_path = 'ppt/charts/chart15.xml'
+    if pie2_path in file_contents:
+        del file_contents[pie2_path]
+
+        # Write output ZIP
     buf_out = io.BytesIO()
     with zipfile.ZipFile(buf_out, 'w', zipfile.ZIP_DEFLATED) as zout:
         for fname, data in file_contents.items():
