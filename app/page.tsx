@@ -54,12 +54,15 @@ const REPORT_REGIONS = ['AD Al Ain','Abu Dhabi','AD Remote','Dubai','Fujairah','
 
 const KPI_CHARTS = [
   { key: 'v2_hs_kpi_report', label: 'KPI 1: HS KPI Reports Submitted vs Planned', valueLabel: 'Submitted', type: 'value' },
+  { key: 'v2_audit_findings', label: 'KPI 2: Audit Findings Closed on Time', plannedLabel: 'Total Audit Findings', actualLabel: 'Findings Closed on Time', type: 'planned_actual' },
   { key: 'v2_external_compliance', label: 'KPI 3: Authority Compliance Rate', plannedLabel: 'Applicable Compliance', actualLabel: 'Actual Compliance \u2014 Met/Exceeded', belowLabel: 'Actual Compliance \u2014 Below Target', type: 'planned_actual_below' },
   { key: 'v2_hs_committee', label: 'KPI 4: HS Committee Meetings Conducted', valueLabel: 'No. of Committee Meeting', type: 'value' },
+  { key: 'v2_committee_actions', label: 'KPI 5: Committee Meeting Actions Closed', plannedLabel: 'Total Actions', actualLabel: 'Actions Closed', type: 'planned_actual' },
   { key: 'v2_hazard_id', label: 'KPI 6: Implemented Control Measures', plannedLabel: 'Total Control Sampled', actualLabel: 'Implemented Controls \u2014 Met/Exceeded', belowLabel: 'Implemented Controls \u2014 Below Target', type: 'planned_actual_below' },
   { key: 'v2_risk_closed', label: 'KPI 7: Risk Assessments Closed', plannedLabel: 'Total Risk Assessments Registered', actualLabel: 'Risk Assessment Closed \u2014 Met/Exceeded', belowLabel: 'Risk Assessment Closed \u2014 Below Target', type: 'planned_actual_below' },
   { key: 'v2_risk_validated', label: 'KPI 8: Risk Assessments Validated & Signed Off', plannedLabel: 'Total Assessments Register', actualLabel: 'RA Validated and Signed Off \u2014 Met/Exceeded', belowLabel: 'RA Validated and Signed Off \u2014 Below Target', type: 'planned_actual_below' },
   { key: 'v2_planned_training', label: 'KPI 9: Planned Training Report', plannedLabel: 'Planned Training', actualLabel: 'Training Conducted \u2014 Met/Exceeded', belowLabel: 'Training Conducted \u2014 Below Target', type: 'planned_actual_below' },
+  { key: 'v2_awareness_campaigns', label: 'KPI 10: H&S Awareness Campaigns', valueLabel: 'Campaigns Conducted', type: 'value' },
   { key: 'v2_safe_working', label: 'KPI 11: Safe Working Procedure', plannedLabel: 'No. of SOPs Verified', actualLabel: 'No. of SOPs Implemented \u2014 Met/Exceeded', belowLabel: 'No. of SOPs Implemented \u2014 Below Target', type: 'planned_actual_below' },
   { key: 'v2_drills', label: 'KPI 12: Emergency Drills Conducted on Schedule', plannedLabel: 'Planned Drills', actualLabel: 'Drills Conducted', type: 'planned_actual' },
   { key: 'v2_permit_to_work', label: 'KPI 13: Compliance to PTW', plannedLabel: 'No. of PTWs Issued', actualLabel: 'Total Work Registered', type: 'planned_actual' },
