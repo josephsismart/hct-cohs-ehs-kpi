@@ -275,7 +275,7 @@ export default function Dashboard() {
 
   const getReportParams = useCallback(() => {
     const m = month !== 'ALL' ? month : '';
-    const y = year !== 'ALL' ? year : String(new Dhate().getFullYear());
+    const y = year !== 'ALL' ? year : String(new Date().getFullYear());
     return { month: m, year: y };
   }, [month, year]);
 
@@ -470,7 +470,7 @@ export default function Dashboard() {
                         {p.status==='pending' ? 'Waiting...' : p.status==='downloading' ? 'Downloading...' : p.status==='done' ? '\u2714 Done' : p.status==='cancelled' ? '\u26D4 Cancelled' : '\u2718 Failed'}
                       </span>
                     </div>
-                  ))}
+                  ))}h
                   {(pptLoading || wordLoading || xlsxLoading) && (
                     <div style={{textAlign:'center',marginTop:'10px'}}>
                       <button onClick={() => { downloadCancelledRef.current = true; setPptLoading(false); setWordLoading(false); setXlsxLoading(false); }} style={{padding:'6px 20px',background:'#dc3545',color:'white',border:'none',borderRadius:'4px',cursor:'pointer',fontSize:'13px'}}>Cancel Downloads</button>
