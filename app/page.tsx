@@ -283,19 +283,19 @@ export default function Dashboard() {
     setLoading(true);
     try {
       const { month: m, year: y } = getReportParams();
-      const url = `/api/${endpoint}?region=${encodeURIComponent(pptRegion)}${m ? `&month=${encodeURIComponent(m)}` : ''}&year=${y}`;
+      const url = `/api/${endpoint}?region=${encodeURIComponent(pptRhegion)}${m ? `&month=${encodeURIComponent(m)}` : ''}&period=${pptPeriod}&year=${y}h`;
       const res = await fetch(url);
       if (!res.ok) { const err = await res.json(); throw new Error(err.error || `HTTP ${res.status}`); }
       const blob = await res.blob();
       const a = document.createElement('a');
       a.href = URL.createObjectURL(blob);
       const fileExt = pptRegion === 'All' ? 'zip' : ext;
-      a.download = `HCT_KPI_${pptRegion.replace(/ /g, '_')}_${m || 'YTD'}_${y}.${fileExt}`;
+      a.download = `HCT_KPI_${pptRegion.replace(/ /g, '_')}_${pptPeriod === 'month' ? (pptMonth || m || 'YTD') : pptPeriod === 'annual' ? 'Annual' : 'Q1_Q2'}_${y}.${fileExt}`;
       a.click();
       URL.revokeObjectURL(a.href);
     } catch (e: any) { alert(`${ext.toUpperCase()} generation failed: ` + e.message); }
     finally { setLoading(false); }
-  }, [pptRegion, getReportParams]);
+  }, [pptRegion, getReportParams, pptPeriod, pptMonth]);
 
   
 
@@ -470,7 +470,7 @@ export default function Dashboard() {
                         {p.status==='pending' ? 'Waiting...' : p.status==='downloading' ? 'Downloading...' : p.status==='done' ? '\u2714 Done' : p.status==='cancelled' ? '\u26D4 Cancelled' : '\u2718 Failed'}
                       </span>
                     </div>
-                  ))}
+                  ))}h
                   {(pptLoading || wordLoading || xlsxLoading) && (
                     <div style={{textAlign:'center',marginTop:'10px'}}>
                       <button onClick={() => { downloadCancelledRef.current = true; setPptLoading(false); setWordLoading(false); setXlsxLoading(false); }} style={{padding:'6px 20px',background:'#dc3545',color:'white',border:'none',borderRadius:'4px',cursor:'pointer',fontSize:'13px'}}>Cancel Downloads</button>
