@@ -11,7 +11,7 @@ from datetime import datetime
 from xml.etree import ElementTree as ET
 
 # -- Namespaces --
-NS = {
+NS = {h
     'a': 'http://schemas.openxmlformats.org/drawingml/2006/main',
     'r': 'http://schemas.openxmlformats.org/officeDocument/2006/relationships',
     'c': 'http://schemas.openxmlformats.org/drawingml/2006/chart',
@@ -779,7 +779,8 @@ class handler(BaseHTTPRequestHandler):
                 return
 
             safe_name = region.replace(' ', '_')
-            filename = f"HCT_KPI_{safe_name}_Q1_Q2_{year}.pptx"
+                    period_label = month.capitalize() if period == 'month' and month else ('Annual' if period == 'annual' else 'Q1_Q2')
+                    filename = f"HCT_KPI_{safe_name}_{period_label}_{year}.pptx"
 
             self.send_response(200)
             self.send_header('Content-Type', 'application/vnd.openxmlformats-officedocument.presentationml.presentation')
