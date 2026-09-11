@@ -283,7 +283,7 @@ export default function Dashboard() {
     setLoading(true);
     try {
       const { month: m, year: y } = getReportParams();
-      const url = `/api/${endpoint}?region=${encodeURIComponent(pptRegion)}${m ? `&month=${encodeURIComponent(m)}` : ''}&period=${pptPeriod}&year=${y}h`;
+      const url = `/api/${endpoint}?region=${encodeURIComponent(pptRegion)}${m ? `&month=${encodeURIComponent(m)}` : ''}&period=${pptPeriod}&year=${y}`;
       const res = await fetch(url);
       if (!res.ok) { const err = await res.json(); throw new Error(err.error || `HTTP ${res.status}`); }
       const blob = await res.blob();
