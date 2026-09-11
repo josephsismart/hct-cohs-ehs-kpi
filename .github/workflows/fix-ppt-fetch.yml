@@ -1,0 +1,80 @@
+name: Fix PPT Smartsheet fetch
+on:
+  workflow_dispatch:
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fix generate-ppt.py fetch and add debug
+        run: |
+          python3 << 'PYEOF'
+import re
+
+with open('api/generate-ppt.py', 'r') as f:
+    code = f.read()
+
+# Fix 1: Add ssl import
+if 'import ssl' not in code:
+    code = code.replace(
+        'from datetime import datetime',
+        'from datetime import datetime\nimport ssl'
+    )
+
+# Fix 2: Add SSL context + error collection to _ss_fetch
+old_fetch = """def _ss_fetch(endpoint, token):
+    url = f'https://api.smartsheet.com/2.0/{endpoint}'
+    req = Request(url, headers={'Authorization': f'Bearer {token}', 'Accept': 'application/json'})
+    with urlopen(req, timeout=30) as resp:
+        return json.loads(resp.read())"""
+
+new_fetch = """_fetch_errors = []
+
+def _ss_fetch(endpoint, token):
+    url = f'https://api.smartsheet.com/2.0/{endpoint}'
+    req = Request(url, headers={'Authorization': f'Bearer {token}', 'Accept': 'application/json'})
+    ctx = ssl.create_default_context()
+    try:
+        with urlopen(req, timeout=30, context=ctx) as resp:
+            return json.loads(resp.read())
+    except Exception as e:
+        _fetch_errors.append(f'{endpoint}: {type(e).__name__}: {e}')
+        raise"""
+
+code = code.replace(old_fetch, new_fetch)
+
+# Fix 3: Change pageSize from 500 to 10000
+code = code.replace("pageSize=500", "pageSize=10000")
+
+# Fix 4: Add debug header to response
+old_header = "self.send_header('Content-Length', str(len(pptx_bytes)))"
+new_header = """self.send_header('Content-Length', str(len(pptx_bytes)))
+            if _fetch_errors:
+                self.send_header('X-Debug-Errors', json.dumps(_fetch_errors[:5]))"""
+code = code.replace(old_header, new_header)
+
+# Fix 5: Also add vercel.json entry for debug-ppt.py
+with open('vercel.json', 'r') as f:
+    vj = f.read()
+if 'debug-ppt.py' not in vj:
+    vj = vj.replace(
+        '"api/generate-ppt.py"',
+        '"api/debug-ppt.py": { "maxDuration": 30 },\n    "api/generate-ppt.py"'
+    )
+    with open('vercel.json', 'w') as f:
+        f.write(vj)
+
+with open('api/generate-ppt.py', 'w') as f:
+    f.write(code)
+
+print('Done - SSL context added, pageSize=10000, debug headers added')
+PYEOF
+      - name: Commit and push
+        run: |
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+          git add -A
+          git diff --cached --stat
+          git commit -m "Fix PPT: add SSL context, increase pageSize, add debug headers"
+          git push
