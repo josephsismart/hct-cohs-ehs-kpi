@@ -7,6 +7,49 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
+      - name: Add ssl import
+        run: sed -i 's/from urllib.request import Request, urlopen/from urllib.request import Request, urlopen\nimport ssl/' api/generate-ppt.py
+
+      - name: Add SSL context to fetch
+        run: |
+          sed -i 's/with urlopen(req, timeout=30) as resp:/ctx = ssl.create_default_context()\n    with urlopen(req, timeout=30, context=ctx) as resp:/' api/generate-ppt.py
+
+      - name: Increase pageSize
+        run: sed -i 's/pageSize=500/pageSize=10000/g' api/generate-ppt.py
+
+      - name: Add debug-ppt to vercel.json
+        run: |
+          sed -i 's/"api\/generate-ppt.py"/"api\/debug-ppt.py": { "maxDuration": 30 },\n    "api\/generate-ppt.py"/' vercel.json
+
+      - name: Verify changes
+        run: |
+          echo "=== Check ssl import ==="
+          grep -n "import ssl" api/generate-ppt.py || echo "MISSING"
+          echo "=== Check SSL context ==="
+          grep -n "ssl.create_default_context" api/generate-ppt.py || echo "MISSING"
+          echo "=== Check pageSize ==="
+          grep -n "pageSize=" api/generate-ppt.py
+          echo "=== Check vercel.json ==="
+          grep "debug-ppt" vercel.json || echo "MISSING"
+
+      - name: Commit and push
+        run: |
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+          git add -A
+          git diff --cached --stat
+          git commit -m "Fix PPT: add SSL context to urlopen, increase pageSize to 10000"
+          git push
+name: Fix PPT Smartsheet fetch
+on:
+  workflow_dispatch:
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
       - name: Fix generate-ppt.py fetch and add debug
         run: |
           python3 << 'PYEOF'
