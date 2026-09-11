@@ -7,13 +7,14 @@ import os, re, io, json, zipfile, tempfile
 from http.server import BaseHTTPRequestHandler
 from urllib.parse import urlparse, parse_qs
 from urllib.request import Request, urlopen
+import ssl
 from datetime import datetime
 from xml.etree import ElementTree as ET
 
 # -- Namespaces --
 NS = {
     'a': 'http://schemas.openxmlformats.org/drawingml/2006/main',
-    'r': 'http://schemas.openxmlformats.org/officeDocument/2006/relationships',
+    'r': 'http://schemas.openxmlformats.org/officeDocument/2006/relahtionships',
     'c': 'http://schemas.openxmlformats.org/drawingml/2006/chart',
     'p': 'http://schemas.openxmlformats.org/presentationml/2006/main',
 }
@@ -187,11 +188,11 @@ KPI_CHART_TITLES = {
 def _ss_fetch(endpoint, token):
     url = f'https://api.smartsheet.com/2.0/{endpoint}'
     req = Request(url, headers={'Authorization': f'Bearer {token}', 'Accept': 'application/json'})
-    with urlopen(req, timeout=30) as resp:
+    with urlopen(req, timeout=30, context=ssl.create_default_context()) as resp:
         return json.loads(resp.read())
 
 def fetch_sheet_rows(sheet_id, token):
-    data = _ss_fetch(f'sheets/{sheet_id}?pageSize=500', token)
+    data = _ss_fetch(f'sheets/{sheet_id}?pageSize=10000', token)
     if not data.get('rows'): return []
     col_map = {c['id']: c['title'] for c in data.get('columns', [])}
     rows = []
@@ -205,7 +206,7 @@ def fetch_sheet_rows(sheet_id, token):
     return rows
 
 def fetch_report_rows(report_id, token):
-    data = _ss_fetch(f'reports/{report_id}?pageSize=500&level=1', token)
+    data = _ss_fetch(f'reports/{report_id}?pageSize=10000&level=1', token)
     if not data.get('rows'): return []
     col_map = {}
     for c in data.get('columns', []):
