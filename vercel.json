@@ -1,4 +1,10 @@
 {
+  "functions": {
+    "api/generate-ppt.py": { "maxDuration": 60, "includeFiles": "templates/**" },
+    "api/generate-word.py": { "maxDuration": 60, "includeFiles": "templates/**" },
+    "api/generate-pdf.py": { "maxDuration": 60 },
+    "api/generate-xlsx.py": { "maxDuration": 60 }
+  },
   "crons": [
     {
       "path": "/api/sync",
