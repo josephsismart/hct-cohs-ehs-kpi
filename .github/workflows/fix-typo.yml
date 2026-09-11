@@ -1,0 +1,21 @@
+name: Fix page.tsx typos
+on:
+  workflow_dispatch:
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fix typos
+        run: |
+          sed -i 's/pptRhegion/pptRegion/g' app/page.tsx
+          sed -i "s/\${y}h\\`/\${y}\\`/g" app/page.tsx
+      - name: Commit
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add app/page.tsx
+          git diff --staged --quiet || git commit -m "fix: correct pptRhegion typo and stray h in page.tsx"
+          git push
