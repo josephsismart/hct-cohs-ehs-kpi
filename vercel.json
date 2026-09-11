@@ -1,27 +1,4 @@
 {
-  "functions": {
-    "api/generate-ppt.py": {
-      "runtime": "@vercel/python@3.12",
-      "maxDuration": 60,
-      "includeFiles": "templates/**"
-    },
-    "api/generate-word.py": {
-      "runtime": "@vercel/python@3.12",
-      "maxDuration": 60,
-      "includeFiles": "templates/**"
-    },
-    "api/generate-pdf.py": {
-      "runtime": "@vercel/python@3.12",
-      "maxDuration": 60
-    },
-    "api/generate-xlsx.py": {
-      "runtime": "@vercel/python@3.12",
-      "maxDuration": 60
-    },
-    "api/debug-ppt.py": {
-      "runtime": "@vercel/python@3.12"
-    }
-  },
   "crons": [
     {
       "path": "/api/sync",
