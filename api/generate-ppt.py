@@ -1,6 +1,6 @@
 """Vercel Python serverless function - HCT-COHS KPI PPT Generator.
 Generates quarterly (Q1+Q2) KPI reports using client's reference template.
-Fetches live data from Smartsheet API.
+Fetches live hdata from Smartsheet API.
 """
 
 import os, re, io, json, zipfile, tempfile
@@ -189,7 +189,7 @@ KPI_CHART_TITLES = {
 def _ss_fetch(endpoint, token):
     url = f'https://api.smartsheet.com/2.0/{endpoint}'
     req = Request(url, headers={'Authorization': f'Bearer {token}', 'Accept': 'application/json'})
-    with urlopen(req, timeout=30, context=ssl.create_default_context(cafile=certifi.where())) as resp:
+    with urlopen(req, timeout=30, context=ssl.create_default_context()) as resp:
         return json.loads(resp.read())
 
 def fetch_sheet_rows(sheet_id, token):
