@@ -8,6 +8,7 @@ from http.server import BaseHTTPRequestHandler
 from urllib.parse import urlparse, parse_qs
 from urllib.request import Request, urlopen
 import ssl
+import certifi
 from datetime import datetime
 from xml.etree import ElementTree as ET
 
@@ -188,7 +189,7 @@ KPI_CHART_TITLES = {
 def _ss_fetch(endpoint, token):
     url = f'https://api.smartsheet.com/2.0/{endpoint}'
     req = Request(url, headers={'Authorization': f'Bearer {token}', 'Accept': 'application/json'})
-    with urlopen(req, timeout=30, context=ssl.create_default_context()) as resp:
+    with urlopen(req, timeout=30, context=ssl.create_default_context(cafile=certifi.where())) as resp:
         return json.loads(resp.read())
 
 def fetch_sheet_rows(sheet_id, token):
@@ -262,7 +263,9 @@ def fetch_kpi_data(token, month_list=None):
             else:
                 rows = fetch_sheet_rows(src['sheetId'], token)
         except Exception as e:
-            print(f"  WARNING: Failed to fetch {src['key']}: {e}")
+            import traceback
+            print(f"  ERROR: Failed to fetch {src['key']}: {e}")
+            traceback.print_exc()
             continue
 
         kpi_row = src['kpi_row']
