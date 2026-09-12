@@ -1,6 +1,9 @@
 name: Patch SSL certifi fix
 on:
   workflow_dispatch:
+
+  permissions:
+    contents: write
 jobs:
   patch:
     runs-on: ubuntu-latest
