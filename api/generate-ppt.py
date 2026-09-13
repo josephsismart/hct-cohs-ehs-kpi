@@ -187,11 +187,11 @@ KPI_CHART_TITLES = {
 # -- Smartsheet API --
 
 def _ss_fetch(endpoint, token):
-    import requests as _req
     url = f'https://api.smartsheet.com/2.0/{endpoint}'
-    resp = _req.get(url, headers={'Authorization': f'Bearer {token}', 'Accept': 'application/json'}, timeout=30)
-    resp.raise_for_status()
-    return resp.json()
+    ctx = ssl.create_default_context(cafile=certifi.where())
+    req = Request(url, headers={'Authorization': f'Bearer {token}', 'Accept': 'application/json'})
+    resp = urlopen(req, timeout=30, context=ctx)
+    return json.loads(resp.read().decode('utf-8'))
 
 def fetch_sheet_rows(sheet_id, token):
     data = _ss_fetch(f'sheets/{sheet_id}?pageSize=10000', token)
@@ -259,6 +259,7 @@ def pct_str(v):
 def fetch_kpi_data(token, month_list=None):
     """Fetch all KPI sources. month_list: list of month names to include, or None for all."""
     data = {}
+    _fetch_errors = []
     for src in SYNC_SOURCES:
         try:
             if src.get('reportId'):
@@ -266,9 +267,7 @@ def fetch_kpi_data(token, month_list=None):
             else:
                 rows = fetch_sheet_rows(src['sheetId'], token)
         except Exception as e:
-            import traceback
-            print(f"  ERROR: Failed to fetch {src['key']}: {e}")
-            traceback.print_exc()
+            _fetch_errors.append(f"{src['key']}: {str(e)}")
             continue
 
         kpi_row = src['kpi_row']
@@ -330,7 +329,7 @@ def fetch_kpi_data(token, month_list=None):
             achieved = agg['actual']
             calc = min(achieved / planned, 1.0) if planned > 0 else 0.0
             data[campus][kpi_row] = {'planned': planned, 'achieved': achieved, 'calc': calc, 'weight': weight, 'na': planned == 0 and achieved == 0}
-    return data
+    return data, _fetch_errors
 
 # -- Scoring --
 
@@ -766,8 +765,8 @@ class handler(BaseHTTPRequestHandler):
                 q2_months = Q2_MONTHS
 
             # Fetch KPI data
-            q1_data = fetch_kpi_data(token, q1_months)
-            q2_data = fetch_kpi_data(token, q2_months) if q2_months else {}
+            q1_data, q1_errors = fetch_kpi_data(token, q1_months)
+            q2_data, q2_errors = fetch_kpi_data(token, q2_months) if q2_months else ({}, [])
 
             if debug:
                 debug_out = {}
@@ -776,7 +775,7 @@ class handler(BaseHTTPRequestHandler):
                 self.send_response(200)
                 self.send_header('Content-Type', 'application/json')
                 self.end_headers()
-                self.wfile.write(json.dumps({'q1_campuses': list(q1_data.keys()), 'q2_campuses': list(q2_data.keys()), 'q1_sample': debug_out, 'months': q1_months}, indent=2).encode())
+                self.wfile.write(json.dumps({'q1_campuses': list(q1_data.keys()), 'q2_campuses': list(q2_data.keys()), 'q1_sample': debug_out, 'months': q1_months, 'errors': q1_errors + q2_errors}, indent=2).encode())
                 return
 
             # Load template
