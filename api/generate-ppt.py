@@ -111,7 +111,7 @@ PIE_CHARTS = {'chart1.xml', 'chart15.xml'}
 SYNC_SOURCES = [
     {'key': 'v2_hs_kpi_report', 'reportId': '5852576405737348', 'campusCol': 'Campuses', 'monthCol': 'Primary', 'valueCol': 'Submitted', 'kpi_row': 2},
     {'key': 'v2_external_compliance', 'sheetId': '1325212455882628', 'campusCol': 'Campus Code', 'monthCol': 'Primary', 'plannedCol': 'Applicable Legal Compliance', 'actualCol': 'Legal Requirements Complied', 'kpi_row': 4},
-    {'key': 'v2_hs_committee', 'sheetId': '5093607634587524', 'campusCol': 'Committee', 'monthCol': 'Reporting Month', 'plannedCol': 'Was a meeting held?', 'actualCol': 'Was a meeting held?', 'kpi_row': 5},
+    {'key': 'v2_hs_committee', 'sheetId': '5093607634587524', 'campusCol': 'Committee', 'monthCol': 'Reporting Month', 'plannedCol': 'Was a meeting held?', 'actualCol': 'Was a meeting held?', 'kpi_row': 5, 'yesNoCount': True},
     {'key': 'v2_hazard_id', 'sheetId': '7524088825204612', 'campusCol': 'Campus Code', 'monthCol': 'Reporting Month', 'plannedCol': 'Total Controls Identified', 'actualCol': 'Implemented Controls', 'kpi_row': 7},
     {'key': 'v2_risk_closed', 'sheetId': '7524088825204612', 'campusCol': 'Campus Code', 'monthCol': 'Primary', 'plannedCol': 'Total Risk Assessments Registered', 'actualCol': 'Risk Assessment Closed', 'kpi_row': 8},
     {'key': 'v2_risk_validated', 'sheetId': '7524088825204612', 'campusCol': 'Campus Code', 'monthCol': 'Primary', 'plannedCol': 'Total Risk Assessments Registered', 'actualCol': 'Risk Assessment and Validation', 'kpi_row': 9},
@@ -229,6 +229,8 @@ def normalize_month(v):
     if not v: return None
     s = str(v).strip()
     if not s: return None
+        pfx = re.match(r'^\d+\.\s*(.+)', s)
+        if pfx: s = pfx.group(1).strip()
     for m in MONTH_NAMES:
         if m.lower() == s.lower(): return m
     abbr = s[:3].lower()
@@ -731,6 +733,7 @@ class handler(BaseHTTPRequestHandler):
         year = params.get('year', [str(datetime.now().year)])[0]
         period = params.get('period', ['quarter'])[0]  # month, quarter, annual
         month = params.get('month', [None])[0]  # specific month name for monthly reports
+        debug = params.get('debug', [None])[0]
 
         token = os.environ.get('SMARTSHEET_TOKEN')
         if not token:
@@ -765,6 +768,16 @@ class handler(BaseHTTPRequestHandler):
             # Fetch KPI data
             q1_data = fetch_kpi_data(token, q1_months)
             q2_data = fetch_kpi_data(token, q2_months) if q2_months else {}
+
+            if debug:
+                debug_out = {}
+                for campus, kpis in q1_data.items():
+                    debug_out[campus] = {str(k): {'p': v['planned'], 'a': v['achieved'], 'c': round(v['calc'], 3)} for k, v in kpis.items()}
+                self.send_response(200)
+                self.send_header('Content-Type', 'application/json')
+                self.end_headers()
+                self.wfile.write(json.dumps({'q1_campuses': list(q1_data.keys()), 'q2_campuses': list(q2_data.keys()), 'q1_sample': debug_out, 'months': q1_months}, indent=2).encode())
+                return
 
             # Load template
             base = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
