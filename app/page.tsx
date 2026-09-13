@@ -258,7 +258,7 @@ export default function Dashboard() {
   const [pptPeriod, setPptPeriod] = useState('quarter');
   const [pptMonth, setPptMonth] = useState('');
   const [showCustomize, setShowCustomize] = useState(false);
-  const [chartConfig, setChartConfig] = useState(() => {
+  const [chartConfig, setChartConfig] = useState<{key: string, label: string, visible: boolean}[]>(() => {
     const defaultCfg = defaultChartConfig();
     if (typeof window !== 'undefined') {
       try { const s = localStorage.getItem('hct-chart-config'); if (s) { const saved = JSON.parse(s); const sm = new Map(saved.map((c) => [c.key, c])); return defaultCfg.map(d => { const sv = sm.get(d.key); return sv ? { ...d, visible: sv.visible } : d; }); } } catch {}
