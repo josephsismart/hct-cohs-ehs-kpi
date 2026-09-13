@@ -1,0 +1,45 @@
+name: Fix _ss_fetch
+on: workflow_dispatch
+permissions:
+  contents: write
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Replace _ss_fetch function
+        run: |
+          python3 << 'PYEOF'
+          lines = open('api/generate-ppt.py').readlines()
+          out = []
+          i = 0
+          while i < len(lines):
+              if lines[i].strip() == 'def _ss_fetch(endpoint, token):':
+                  out.append(lines[i])
+                  i += 1
+                  while i < len(lines) and (lines[i].startswith('    ') or lines[i].strip() == ''):
+                      if not lines[i].startswith('    '):
+                          break
+                      i += 1
+                  out.append('    import requests as _req
+')
+                  out.append("    url = f'https://api.smartsheet.com/2.0/{endpoint}'
+")
+                  out.append("    resp = _req.get(url, headers={'Authorization': f'Bearer {token}', 'Accept': 'application/json'}, timeout=30)
+")
+                  out.append('    resp.raise_for_status()
+')
+                  out.append('    return resp.json()
+')
+              else:
+                  out.append(lines[i])
+                  i += 1
+          open('api/generate-ppt.py', 'w').writelines(out)
+          PYEOF
+      - name: Commit and push
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git add api/generate-ppt.py
+          git commit -m 'fix: switch _ss_fetch from urllib to requests for Vercel SSL compatibility'
+          git push
