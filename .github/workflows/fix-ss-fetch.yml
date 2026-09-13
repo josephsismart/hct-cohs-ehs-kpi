@@ -10,36 +10,34 @@ jobs:
       - name: Replace _ss_fetch function
         run: |
           python3 << 'PYEOF'
-          lines = open('api/generate-ppt.py').readlines()
-          out = []
-          i = 0
-          while i < len(lines):
-              if lines[i].strip() == 'def _ss_fetch(endpoint, token):':
-                  out.append(lines[i])
-                  i += 1
-                  while i < len(lines) and (lines[i].startswith('    ') or lines[i].strip() == ''):
-                      if not lines[i].startswith('    '):
-                          break
-                      i += 1
-                  out.append('    import requests as _req
-')
-                  out.append("    url = f'https://api.smartsheet.com/2.0/{endpoint}'
-")
-                  out.append("    resp = _req.get(url, headers={'Authorization': f'Bearer {token}', 'Accept': 'application/json'}, timeout=30)
-")
-                  out.append('    resp.raise_for_status()
-')
-                  out.append('    return resp.json()
-')
-              else:
-                  out.append(lines[i])
-                  i += 1
-          open('api/generate-ppt.py', 'w').writelines(out)
+          content = open('api/generate-ppt.py').read()
+          old = """def _ss_fetch(endpoint, token):
+              url = f'https://api.smartsheet.com/2.0/{endpoint}'
+              req = Request(url, headers={'Authorization': f'Bearer {token}', 'Accept': 'application/json'})
+              with urlopen(req, timeout=30, context=ssl.create_default_context(cafile=certifi.where())) as resp:
+                  return json.loads(resp.read())"""
+          new = """def _ss_fetch(endpoint, token):
+              import requests as _req
+              url = f'https://api.smartsheet.com/2.0/{endpoint}'
+              resp = _req.get(url, headers={'Authorization': f'Bearer {token}', 'Accept': 'application/json'}, timeout=30)
+              resp.raise_for_status()
+              return resp.json()"""
+          if old in content:
+              content = content.replace(old, new)
+              open('api/generate-ppt.py', 'w').write(content)
+              print('SUCCESS: replaced _ss_fetch')
+          else:
+              print('ERROR: old function not found')
+              print('Looking for def _ss_fetch...')
+              for i, line in enumerate(content.split(chr(10))):
+                  if '_ss_fetch' in line:
+                      print(f'  Line {i+1}: {line}')
           PYEOF
       - name: Commit and push
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email 'github-actions[bot]@users.noreply.github.com'
           git add api/generate-ppt.py
-          git commit -m 'fix: switch _ss_fetch from urllib to requests for Vercel SSL compatibility'
+          git diff --cached --stat
+          git commit -m 'fix: switch _ss_fetch from urllib to requests for Vercel SSL compatibility' || echo 'No changes to commit'
           git push
