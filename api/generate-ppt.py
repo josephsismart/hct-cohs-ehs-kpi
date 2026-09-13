@@ -290,7 +290,7 @@ def fetch_kpi_data(token, month_list=None):
                     row_month = normalize_month(row.get('Date Reported'))
                 if not row_month:
                     row_month = normalize_month(row.get('Primary'))
-                if row_month not in month_list:
+                if row_month is not None and row_month not in month_list:
                     continue
 
             if campus not in campus_agg:
