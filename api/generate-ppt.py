@@ -187,10 +187,11 @@ KPI_CHART_TITLES = {
 # -- Smartsheet API --
 
 def _ss_fetch(endpoint, token):
+    import requests as _req
     url = f'https://api.smartsheet.com/2.0/{endpoint}'
-    req = Request(url, headers={'Authorization': f'Bearer {token}', 'Accept': 'application/json'})
-    with urlopen(req, timeout=30, context=ssl.create_default_context(cafile=certifi.where())) as resp:
-        return json.loads(resp.read())
+    resp = _req.get(url, headers={'Authorization': f'Bearer {token}', 'Accept': 'application/json'}, timeout=30)
+    resp.raise_for_status()
+    return resp.json()
 
 def fetch_sheet_rows(sheet_id, token):
     data = _ss_fetch(f'sheets/{sheet_id}?pageSize=10000', token)
