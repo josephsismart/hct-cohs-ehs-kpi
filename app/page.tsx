@@ -257,6 +257,7 @@ export default function Dashboard() {
   const [selectedFormat, setSelectedFormat] = useState('');
   const [pptPeriod, setPptPeriod] = useState('quarter');
   const [pptMonth, setPptMonth] = useState('');
+  const [pptQuarter, setPptQuarter] = useState('Q1');
   const [showCustomize, setShowCustomize] = useState(false);
   const [chartConfig, setChartConfig] = useState<{key: string, label: string, visible: boolean}[]>(() => {
     const defaultCfg = defaultChartConfig();
@@ -283,7 +284,7 @@ export default function Dashboard() {
     setLoading(true);
     try {
       const { month: m, year: y } = getReportParams();
-      const url = `/api/${endpoint}?region=${encodeURIComponent(pptRegion)}${m ? `&month=${encodeURIComponent(m)}` : ''}&period=${pptPeriod}&year=${y}`;
+      const url = `/api/${endpoint}?region=${encodeURIComponent(pptRegion)}${m ? `&month=${encodeURIComponent(m)}` : ''}&period=${pptPeriod}&quarter=${pptQuarter}&year=${y}`;
       const res = await fetch(url);
       if (!res.ok) { const err = await res.json(); throw new Error(err.error || `HTTP ${res.status}`); }
       const blob = await res.blob();
@@ -389,7 +390,7 @@ export default function Dashboard() {
               </select>
               <label>Time Period</label>
                 <select value={pptPeriod} onChange={e => { setPptPeriod(e.target.value); if (e.target.value !== 'month') setPptMonth(''); }} style={{width:'100%',padding:'8px',marginBottom:'12px',borderRadius:'4px',border:'1px solid #ccc'}}>
-                  <option value="quarter">Quarter (Q1/Q2)</option>
+                  <option value="quarter">Quarterly</option>
                   <option value="month">Monthly</option>
                   <option value="annual">Annual</option>
                 </select>
@@ -400,6 +401,17 @@ export default function Dashboard() {
                       <option value="">Choose a month...</option>
                       {MONTHS.map(m => <option key={m} value={m}>{m}</option>)}
                     </select>
+                  </>
+                )}
+                {pptPeriod === 'quarter' && (
+                  <>
+                  <label>Select Quarter</label>
+                  <select value={pptQuarter} onChange={e => setPptQuarter(e.target.value)} style={{width:'100%',padding:'6px',borderRadius:4,border:'1px solid #555',background:'#23272e',color:'#e6e6e6'}}>
+                    <option value="Q1">Q1 (Jan–Mar)</option>
+                    <option value="Q2">Q2 (Apr–Jun)</option>
+                    <option value="Q3">Q3 (Jul–Sep)</option>
+                    <option value="Q4">Q4 (Oct–Dec)</option>
+                  </select>
                   </>
                 )}
                 <label>Choose Format</label>
@@ -442,7 +454,7 @@ export default function Dashboard() {
                       for (let i = 0; i < regions.length; i++) {
                         if (downloadCancelledRef.current) { setDownloadProgress(prev => prev.map((p,idx) => p.status==='pending' ? {...p,status:'cancelled'} : p)); break; }
                         setDownloadProgress(prev => prev.map((p,idx) => idx === i ? {...p,status:'downloading'} : p));
-                        const res = await fetch('/api/' + endpoint + '?region=' + encodeURIComponent(regions[i]) + '&month=' + encodeURIComponent(m) + '&year=' + y + '&period=' + encodeURIComponent(pptPeriod) + (pptMonth ? '&month=' + encodeURIComponent(pptMonth) : ''));
+                        const res = await fetch('/api/' + endpoint + '?region=' + encodeURIComponent(regions[i]) + '&month=' + encodeURIComponent(m) + '&year=' + y + '&period=' + encodeURIComponent(pptPeriod) + '&quarter=' + encodeURIComponent(pptQuarter) + (pptMonth ? '&month=' + encodeURIComponent(pptMonth) : ''));
                         if (!res.ok) { setDownloadProgress(prev => prev.map((p,idx) => idx === i ? {...p,status:'failed'} : p)); continue; }
                         const blob = await res.blob();
                         const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
@@ -453,7 +465,7 @@ export default function Dashboard() {
                     } catch(e: any) { alert(label + ' generation failed: ' + e.message); }
                     finally { setLoading(false); }
                   } else {
-                    window.open('/api/' + endpoint + '?region=' + encodeURIComponent(pptRegion) + '&month=' + encodeURIComponent(m) + '&year=' + y + '&name=' + encodeURIComponent(reportName) + '&period=' + encodeURIComponent(pptPeriod) + (pptMonth ? '&month=' + encodeURIComponent(pptMonth) : ''));
+                    window.open('/api/' + endpoint + '?region=' + encodeURIComponent(pptRegion) + '&month=' + encodeURIComponent(m) + '&year=' + y + '&name=' + encodeURIComponent(reportName) + '&period=' + encodeURIComponent(pptPeriod) + '&quarter=' + encodeURIComponent(pptQuarter) + (pptMonth ? '&month=' + encodeURIComponent(pptMonth) : ''));
                     setShowReport(false);
                   }
                 }} style={{width:'100%',padding:'10px',marginTop:'12px',background:'#1A1F71',color:'white',border:'none',borderRadius:'6px',cursor:'pointer',fontSize:'14px',fontWeight:600}}>
