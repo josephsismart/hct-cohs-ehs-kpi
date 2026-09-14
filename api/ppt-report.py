@@ -372,6 +372,26 @@ def read_region_data(kpi_data, region_cfg):
 
 # -- Chart XML update --
 
+def _color_bars_by_avg(ser_xml, vals, avg_val, na_flags=None):
+    """Add per-bar color overrides: blue if val >= campus avg, red if below."""
+    BLUE = '4472C4'
+    RED = 'C00000'
+    # Remove any existing dPt elements
+    ser_xml = re.sub(r'<c:dPt>.*?</c:dPt>', '', ser_xml, flags=re.DOTALL)
+    dpt_xml = ''
+    for i, val in enumerate(vals):
+        is_na = na_flags[i] if na_flags and i < len(na_flags) else False
+        if is_na:
+            color = RED
+        elif val >= avg_val and avg_val > 0:
+            color = BLUE
+        else:
+            color = RED
+        dpt_xml += f'<c:dPt><c:idx val="{i}"/><c:spPr><a:solidFill><a:srgbClr val="{color}"/></a:solidFill></c:spPr></c:dPt>'
+    # Insert after </c:order> in the series
+    ser_xml = re.sub(r'(</c:order>)', r'\1' + dpt_xml, ser_xml, count=1)
+    return ser_xml
+
 def update_chart_title(xml_str, kpi_row):
     """Update chart title to match client's KPI naming convention."""
     title = KPI_CHART_TITLES.get(kpi_row)
@@ -418,6 +438,9 @@ def update_chart_xml(xml_str, c1_val, c2_val, c1_na=False, c2_na=False):
         for si, sm in enumerate(sers):
             old = sm.group(0)
             new = _update_num_vals(old, vals_bar if si == 0 else vals_line)
+            # Add conditional bar coloring: blue if >= avg, red if below
+            if si == 0:
+                new = _color_bars_by_avg(new, vals_bar, avg_val, [c1_na, c2_na])
             bar_xml = bar_xml.replace(old, new, 1)
         xml_str = xml_str[:bar_match.start()] + bar_xml + xml_str[bar_match.end():]
 
