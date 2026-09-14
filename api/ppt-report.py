@@ -136,6 +136,8 @@ MONTH_NAMES = ['January','February','March','April','May','June',
                'July','August','September','October','November','December']
 Q1_MONTHS = ['January', 'February', 'March']
 Q2_MONTHS = ['April', 'May', 'June']
+Q3_MONTHS = ['July', 'August', 'September']
+Q4_MONTHS = ['October', 'November', 'December']
 
 # KPI display names for NA boxes and text placeholders
 KPI_NAMES = {
@@ -385,9 +387,17 @@ def update_chart_title(xml_str, kpi_row):
     new_title_block = re.sub(r'(<a:t>)(</a:t>)', lambda m: m.group(1) + safe_title + m.group(2), new_title_block, count=1)
     return xml_str[:title_match.start()] + new_title_block + xml_str[title_match.end():]
 
-def update_chart_xml(xml_str, c1_val, c2_val):
+def update_chart_xml(xml_str, c1_val, c2_val, c1_na=False, c2_na=False):
     """Update a 2-category clustered column chart: bar series = [c1, c2], line series = [avg, avg]."""
-    avg_val = (c1_val + c2_val) / 2
+    # Fix: exclude N/A campuses from average
+    if c1_na and c2_na:
+        avg_val = 0.0
+    elif c1_na:
+        avg_val = c2_val
+    elif c2_na:
+        avg_val = c1_val
+    else:
+        avg_val = (c1_val + c2_val) / 2
     vals_bar = [c1_val, c2_val]
     vals_line = [avg_val, avg_val]
 
@@ -442,6 +452,11 @@ def _set_val_axis_max(xml_str, max_val):
         new_valax = valax.replace(scaling_match.group(0), new_scaling)
     else:
         new_valax = valax.replace('<c:valAx>', f'<c:valAx><c:scaling><c:max val="{max_val}"/></c:scaling>')
+    # Add 20% major intervals
+    if '<c:majorUnit' not in new_valax:
+        new_valax = new_valax.replace('</c:scaling>', '</c:scaling><c:majorUnit val="0.2"/>')
+    else:
+        new_valax = re.sub(r'<c:majorUnit val="[^"]*"/>', '<c:majorUnit val="0.2"/>', new_valax)
     return xml_str.replace(valax, new_valax)
 
 def remove_analysis_text(xml_str):
@@ -593,7 +608,9 @@ def generate_presentation(template_bytes, region_name, year, q1_data, q2_data):
         xml_str = file_contents[path].decode('utf-8')
         c1_val = q1_data.get(campus_codes[0], {}).get(kpi_row, {}).get('calc', 0.0)
         c2_val = q1_data.get(campus_codes[1], {}).get(kpi_row, {}).get('calc', 0.0) if len(campus_codes) > 1 else 0.0
-        new_xml = update_chart_xml(xml_str, c1_val, c2_val)
+        c1_na = q1_data.get(campus_codes[0], {}).get(kpi_row, {}).get('na', False)
+        c2_na = q1_data.get(campus_codes[1], {}).get(kpi_row, {}).get('na', False) if len(campus_codes) > 1 else True
+        new_xml = update_chart_xml(xml_str, c1_val, c2_val, c1_na, c2_na)
         new_xml = update_chart_title(new_xml, kpi_row)
         file_contents[path] = new_xml.encode('utf-8')
 
@@ -729,6 +746,7 @@ class handler(BaseHTTPRequestHandler):
         year = params.get('year', [str(datetime.now().year)])[0]
         period = params.get('period', ['quarter'])[0]  # month, quarter, annual
         month = params.get('month', [None])[0]  # specific month name for monthly reports
+        quarter = params.get('quarter', ['Q1'])[0]  # Q1, Q2, Q3, Q4
         debug = params.get('debug', [None])[0]
 
         token = os.environ.get('SMARTSHEET_TOKEN')
@@ -757,6 +775,22 @@ class handler(BaseHTTPRequestHandler):
             elif period == 'month' and month:
                 q1_months = [month]
                 q2_months = []
+            elif period == 'quarter':
+                if quarter == 'Q1':
+                    q1_months = Q1_MONTHS
+                    q2_months = []
+                elif quarter == 'Q2':
+                    q1_months = Q2_MONTHS
+                    q2_months = []
+                elif quarter == 'Q3':
+                    q1_months = Q3_MONTHS
+                    q2_months = []
+                elif quarter == 'Q4':
+                    q1_months = Q4_MONTHS
+                    q2_months = []
+                else:
+                    q1_months = Q1_MONTHS
+                    q2_months = []
             else:
                 q1_months = Q1_MONTHS
                 q2_months = Q2_MONTHS
@@ -777,11 +811,18 @@ class handler(BaseHTTPRequestHandler):
 
             # Load template
             base = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-            template_path = os.path.join(base, 'templates', 'template.pptx')
+            # Select template based on period
+            if period == 'month':
+                template_name = 'HCT KPI 13 EHS Committee Monthly Report Master Template.pptx'
+            else:
+                template_name = 'HCT KPI 13 EHS Committee Quarterly Report Master Template.pptx'
+            template_path = os.path.join(base, 'templates', template_name)
             if not os.path.exists(template_path):
-                template_path = os.path.join(os.getcwd(), 'templates', 'template.pptx')
+                template_path = os.path.join(base, 'templates', 'template.pptx')
             if not os.path.exists(template_path):
-                template_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'templates', 'template.pptx')
+                template_path = os.path.join(os.getcwd(), 'templates', template_name)
+            if not os.path.exists(template_path):
+                template_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'templates', template_name)
             with open(template_path, 'rb') as f:
                 template_bytes = f.read()
 
