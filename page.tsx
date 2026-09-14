@@ -299,7 +299,7 @@ export default function Dashboard() {
 
   
 
-    const downloadPpt = useCallback(() => { downloadFile('generate-ppt', 'pptx', setPptLoading); }, [downloadFile, setPptLoading]);
+    const downloadPpt = useCallback(() => { downloadFile('ppt-report', 'pptx', setPptLoading); }, [downloadFile, setPptLoading]);
     const downloadWord = useCallback(() => { downloadFile('generate-word', 'docx', setWordLoading); }, [downloadFile, setWordLoading]);
     const downloadXlsx = useCallback(() => { downloadFile('generate-xlsx', 'pdf', setXlsxLoading); }, [downloadFile, setXlsxLoading]);
 
@@ -421,9 +421,9 @@ export default function Dashboard() {
                 <button disabled={pptLoading || wordLoading || xlsxLoading} onClick={async () => {
                   const {month:m,year:y} = getReportParams();
                   const apiMap: Record<string,{endpoint:string;ext:string;setLoading:(v:boolean)=>void;label:string}> = {
-                    ppt: {endpoint:'generate-ppt',ext:'.pptx',setLoading:setPptLoading,label:'PPT'},
+                    ppt: {endpoint:'ppt-report',ext:'.pptx',setLoading:setPptLoading,label:'PPT'},
                     word: {endpoint:'generate-word',ext:'.docx',setLoading:setWordLoading,label:'Word'},
-                    pdf: {endpoint:'generate-xlsx',ext:'.pdf',setLoading:setXlsxLoading,label:'Excel'},
+                    xlsx: {endpoint:'generate-xlsx',ext:'.xlsx',setLoading:setXlsxLoading,label:'Excel'},
                   };
                   const {endpoint,ext,setLoading,label} = apiMap[selectedFormat];
 
@@ -457,7 +457,7 @@ export default function Dashboard() {
                     setShowReport(false);
                   }
                 }} style={{width:'100%',padding:'10px',marginTop:'12px',background:'#1A1F71',color:'white',border:'none',borderRadius:'6px',cursor:'pointer',fontSize:'14px',fontWeight:600}}>
-                  {(pptLoading || wordLoading || xlsxLoading) ? 'Generating...' : '\u2B07 Download ' + (selectedFormat==='ppt' ? 'PowerPoint' : selectedFormat==='word' ? 'Word' : 'PDF')}
+                  {(pptLoading || wordLoading || xlsxLoading) ? 'Generating...' : '\u2B07 Download ' + (selectedFormat==='ppt' ? 'PowerPoint' : selectedFormat==='word' ? 'Word' : 'Excel')}
                 </button>
               )}
               {downloadProgress.length > 0 && (
