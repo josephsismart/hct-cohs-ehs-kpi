@@ -17,7 +17,7 @@ export interface SyncSource {
   realCampusCol?: string;
 }
 
-export const SYNC_SOURCES: SyncSource[] = [h
+export const SYNC_SOURCES: SyncSource[] = [
   // Original 7 KPIs â matched to GAS SyncService.gs
   { key: 'drills', sheetId: '7139786694283140', tab: 'raw_drills', campusCol: 'Campus Code', monthCol: 'Reporting Month', plannedCol: 'Planned Drill? (Yes/No)', actualCol: 'Are there any submission?', hasMonth: true, yesNoCount: true },
   { key: 'ehs', sheetId: '1510149721116548', tab: 'raw_ehs', monthCol: 'Primary', campusCol: 'Campus Code', plannedCol: 'No. of EHS Inspections Planned', actualCol: 'No. of EHS Inspections Completed', hasMonth: true },
