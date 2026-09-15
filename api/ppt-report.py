@@ -389,7 +389,7 @@ def _color_bars_by_avg(ser_xml, vals, avg_val, na_flags=None):
             color = RED
         dpt_xml += f'<c:dPt><c:idx val="{i}"/><c:spPr><a:solidFill><a:srgbClr val="{color}"/></a:solidFill></c:spPr></c:dPt>'
     # Insert after </c:order> in the series
-    ser_xml = re.sub(r'(</c:order>)', r'\1' + dpt_xml, ser_xml, count=1)
+    ser_xml = re.sub(r'(<c:order\s[^>]*/>)', r'\1' + dpt_xml, ser_xml, count=1)
     return ser_xml
 
 def update_chart_title(xml_str, kpi_row):
