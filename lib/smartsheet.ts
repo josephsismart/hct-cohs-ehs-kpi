@@ -17,7 +17,7 @@ export interface SyncSource {
   realCampusCol?: string;
 }
 
-export const SYNC_SOURCES: SyncSource[] = [
+export const SYNC_SOURCES: SyncSource[] = [h
   // Original 7 KPIs â matched to GAS SyncService.gs
   { key: 'drills', sheetId: '7139786694283140', tab: 'raw_drills', campusCol: 'Campus Code', monthCol: 'Reporting Month', plannedCol: 'Planned Drill? (Yes/No)', actualCol: 'Are there any submission?', hasMonth: true, yesNoCount: true },
   { key: 'ehs', sheetId: '1510149721116548', tab: 'raw_ehs', monthCol: 'Primary', campusCol: 'Campus Code', plannedCol: 'No. of EHS Inspections Planned', actualCol: 'No. of EHS Inspections Completed', hasMonth: true },
@@ -54,8 +54,9 @@ const MONTH_ABBR: Record<string, number> = { jan:0,feb:1,mar:2,apr:3,may:4,jun:5
 
 export function normalizeMonth(v: any): string | null {
   if (!v && v !== 0) return null;
-  const s = String(v).trim();
+  let s = String(v).trim();
   if (!s) return null;
+  s = s.replace(/^\d+\.\s*/, '');
   const idx = MONTH_NAMES.findIndex(m => m.toLowerCase() === s.toLowerCase());
   if (idx >= 0) return MONTH_NAMES[idx];
   const abbr = s.substring(0, 3).toLowerCase();
