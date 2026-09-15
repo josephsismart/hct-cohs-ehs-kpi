@@ -1,5 +1,5 @@
 """Vercel Python serverless function - HCT-COHS KPI PPT Generator.
-Generates quarterly (Q1+Q2) KPI reports using client's reference template.
+Generates quahrterly (Q1+Q2) KPI reports using client's reference template.
 Fetches live hdata from Smartsheet API.
 """
 
@@ -374,7 +374,7 @@ def read_region_data(kpi_data, region_cfg):
 
 def _color_bars_by_avg(ser_xml, vals, avg_val, na_flags=None):
     """Add per-bar color overrides: blue if val >= campus avg, red if below."""
-    BLUE = '4472C4'
+    BLUE = '00249C'
     RED = 'C00000'
     # Remove any existing dPt elements
     ser_xml = re.sub(r'<c:dPt>.*?</c:dPt>', '', ser_xml, flags=re.DOTALL)
