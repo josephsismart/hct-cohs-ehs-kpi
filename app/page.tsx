@@ -36,7 +36,6 @@ const SMARTSHEET_LINKS: Record<string, string> = {
   v2_hs_committee: 'https://app.smartsheet.com/sheets/WfWrRj2gjP9wq95pXxCJ37PQm5rRxHc3fFxvpFp1',
   v2_planned_training: 'https://app.smartsheet.com/reports/5V2V2Wm4Rp5R5PwG3fP5WPmFQxM8XmvrF6qww381',
   incidents: 'https://app.smartsheet.com/sheets/PX265hP3Rc9wQPxcM2cwvx3FpXpCmcWXj6g639r1',
-  v2_incident_types: 'https://app.smartsheet.com/sheets/PX265hP3Rc9wQPxcM2cwvx3FpXpCmcWXj6g639r1',
   v2_hs_kpi_report: 'https://app.smartsheet.com/reports/P55q6cC58J9HrJVqCqjwRQgwXQCHqFrC7c5XgJ71',
   v2_external_compliance: 'https://app.smartsheet.com/sheets/6Cqr6R7H2Q6pvcg9QRmP27rr85G37f6gGGHRhhr1',
   v2_investigation_on_time: 'https://app.smartsheet.com/reports/Cq58QHJ8xWjW4RCWf7g58Gr7Px7CP2qM9x8xJ971',
@@ -75,7 +74,6 @@ const KPI_CHARTS = [
 
 const EXTRA_CHARTS = [
   { key: 'incidents', label: 'Total Incidents', subtitle: 'Incident count by campus \u2014 lower is better', valueLabel: 'Incidents', type: 'value' },
-  { key: 'v2_incident_types', label: 'Incidents by Type', subtitle: 'Count of incidents per category', type: 'pie' },
   { key: 'training', label: 'Total Training Hours by Campus', subtitle: 'Actual training hours per campus', valueLabel: 'Hours', type: 'value_hours' },
   { key: 'ehs_rate', label: 'EHS Inspection Rate', subtitle: 'Scheduled vs Completed EHS Inspections', sourceKey: 'ehs', type: 'rate_pct' },
   { key: 'findings_rate', label: 'Findings Closed Rate', subtitle: 'Total Findings vs Findings Closed', sourceKey: 'findings', type: 'rate_pct' },
