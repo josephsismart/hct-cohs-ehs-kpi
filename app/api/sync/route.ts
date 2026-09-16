@@ -61,7 +61,7 @@ export async function GET(request: Request) {
     })
   );
 
-  // Extract unique campuses and months â skip isolated sources (pie charts, committee, mgmt review)
+  // Extract unique campuses and months -- skip isolated sources (pie charts, committee, mgmt review)
   const campusSet = new Set<string>();
   const monthSet = new Set<string>();
   const isolatedKeys = new Set(SYNC_SOURCES.filter(s => s.isolateFromCampusSet).map(s => s.key));
