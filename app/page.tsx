@@ -15,13 +15,24 @@ const QUARTER_LABELS: Record<string, string> = {
 };
 
 const SUMMARY_CARDS = [
-  { key: 'incidents', label: 'Total Incidents', unit: 'count', color: '#dc3545' },
-  { key: 'training', label: 'Training Hours', unit: 'val', color: '#0d6efd' },
-  { key: 'ehs', label: 'EHS Inspection Rate', unit: 'pct', color: '#198754' },
-  { key: 'drills', label: 'Drills Completion', unit: 'pct', color: '#20c997' },
-  { key: 'findings', label: 'Findings Closed', unit: 'pct', color: '#ffc107' },
-  { key: 'notification', label: 'Notification Rate', unit: 'pct', color: '#fd7e14' },
-  { key: 'risk', label: 'Risk Assessment', unit: 'pct', color: '#6f42c1' },
+  { key: 'v2_hs_kpi_report', label: 'KPI 1: HS KPI Reports', color: '#4A90D9' },
+  { key: 'v2_audit_findings', label: 'KPI 2: Audit Findings', color: '#1D9E75' },
+  { key: 'v2_external_compliance', label: 'KPI 3: Authority Compliance', color: '#198754' },
+  { key: 'v2_hs_committee', label: 'KPI 4: Committee Meetings', color: '#0d6efd' },
+  { key: 'v2_committee_actions', label: 'KPI 5: Actions Closed', color: '#20c997' },
+  { key: 'v2_hazard_id', label: 'KPI 6: Control Measures', color: '#ffc107' },
+  { key: 'v2_risk_closed', label: 'KPI 7: Risk Closed', color: '#6f42c1' },
+  { key: 'v2_risk_validated', label: 'KPI 8: RA Validated', color: '#fd7e14' },
+  { key: 'v2_planned_training', label: 'KPI 9: Training', color: '#dc3545' },
+  { key: 'v2_awareness_campaigns', label: 'KPI 10: Awareness', color: '#0dcaf0' },
+  { key: 'v2_safe_working', label: 'KPI 11: Safe Working', color: '#198754' },
+  { key: 'v2_drills', label: 'KPI 12: Drills', color: '#20c997' },
+  { key: 'v2_permit_to_work', label: 'KPI 13: PTW Compliance', color: '#4A90D9' },
+  { key: 'v2_onsite_induction', label: 'KPI 14: Safety Induction', color: '#1D9E75' },
+  { key: 'v2_findings_on_time', label: 'KPI 15: Findings Closed', color: '#ffc107' },
+  { key: 'v2_ehs_inspection', label: 'KPI 16: EHS Inspection', color: '#198754' },
+  { key: 'notification', label: 'KPI 17: Notification Rate', color: '#fd7e14' },
+  { key: 'v2_investigation_on_time', label: 'KPI 18: Investigation', color: '#6f42c1' },
 ];
 
 const SMARTSHEET_LINKS: Record<string, string> = {
@@ -355,16 +366,13 @@ export default function Dashboard() {
     return SUMMARY_CARDS.map(card => {
       const rows = getRows(card.key);
       const agg = aggregate(rows);
-      if (card.unit === 'pct') {
-        const pct = agg.planned > 0 ? Math.min(Math.round(agg.actual / agg.planned * 100), 100) : 0;
-        return { ...card, display: `${pct}%`, sub: `${agg.actual} / ${agg.planned}` };
+      if (rows.length === 0) return { ...card, display: 'N/A', sub: 'No data' };
+      if (agg.planned > 0) {
+        const pct = Math.min(Math.round(agg.actual / agg.planned * 100), 100);
+        return { ...card, display: pct + '%', sub: agg.actual.toLocaleString() + ' / ' + agg.planned.toLocaleString() };
       }
-      if (card.unit === 'val') {
-        const val = agg.value || agg.actual || agg.planned;
-        return { ...card, display: card.key === 'training' ? `${Number(val).toLocaleString(undefined, {maximumFractionDigits: 1})} hrs` : String(val), sub: '' };
-      }
-      const val = agg.value || agg.actual || agg.planned;
-      return { ...card, display: String(val), sub: `${data.campuses.filter((c: string) => CAMPUS_CODES.has(c)).length} campuses` };
+      const val = agg.value || agg.actual;
+      return { ...card, display: String(val), sub: rows.length + ' records' };
     });
   }, [data, getRows]);
 
