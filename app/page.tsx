@@ -106,7 +106,7 @@ function filterRows(rows: KpiRow[], campus: string, month: string, quarter: stri
   if (month !== 'ALL') {
     filtered = filtered.filter(r => r.month === month);
   } else if (quarter !== 'ALL' && QUARTERS[quarter]) {
-    filtered = filtered.filter(r => r.month && QUARTERS[quarter].includes(r.month));
+    filtered = filtered.filter(r => r.month && (QUARTERS[quarter].includes(r.month) || r.month === quarter));
   }
   return filtered;
 }
