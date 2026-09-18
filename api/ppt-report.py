@@ -471,10 +471,11 @@ def _set_val_axis_max(xml_str, max_val):
         else:
             inner += f'<c:max val="{max_val}"/>'
         inner = re.sub(r'<c:min val="[^"]*"/>', '', inner)
+        inner += '<c:min val="0"/>'
         new_scaling = f'<c:scaling>{inner}</c:scaling>'
         new_valax = valax.replace(scaling_match.group(0), new_scaling)
     else:
-        new_valax = valax.replace('<c:valAx>', f'<c:valAx><c:scaling><c:max val="{max_val}"/></c:scaling>')
+        new_valax = valax.replace('<c:valAx>', f'<c:valAx><c:scaling><c:min val="0"/><c:max val="{max_val}"/></c:scaling>')
     # Add 20% major intervals
     if '<c:majorUnit' not in new_valax:
         new_valax = new_valax.replace('</c:scaling>', '</c:scaling><c:majorUnit val="0.2"/>')
