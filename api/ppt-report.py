@@ -499,6 +499,66 @@ def remove_analysis_text(xml_str):
         xml_str = xml_str[:start] + xml_str[end:]
     return xml_str
 
+# -- Dashboard summary slide (slide 2) update --
+
+def update_dashboard_slide(xml_str, kpi_data, campus_codes, short_names):
+    """Populate slide 2 EHS KPI Dashboard with KPI values for the Leadership pillar (KPIs 1-6).
+    Adds missing KPI 4-6 text boxes and Key Observations section."""
+    # KPI mappings for the Leadership pillar bottom row
+    # KPI 4 = kpi_row 5 (Committee Meetings), KPI 5 = kpi_row 6 (Actions Closed), KPI 6 = kpi_row 7 (Control Measures)
+    bottom_kpis = [
+        {'kpi_row': 5, 'label': 'KPI 4', 'name': '% of HS Committee Meetings\nConducted as per TORs',
+         'formula': '(Meetings conducted / planned meetings) x 100'},
+        {'kpi_row': 6, 'label': 'KPI 5', 'name': '% Committee Meeting Actions\nClosed on Time',
+         'formula': '(Actions closed on time / Total actions) x 100'},
+        {'kpi_row': 7, 'label': 'KPI 7', 'name': '% of Implemented Control Measures',
+         'formula': '(Legal requirements complied / Total requirements) x 100'},
+    ]
+
+    # Calculate values for each campus
+    for i, kpi in enumerate(bottom_kpis):
+        row = kpi['kpi_row']
+        c1_data = kpi_data.get(campus_codes[0], {}).get(row, {})
+        c2_data = kpi_data.get(campus_codes[1], {}).get(row, {}) if len(campus_codes) > 1 else {}
+        c1_calc = c1_data.get('calc', 0.0)
+        c2_calc = c2_data.get('calc', 0.0)
+        c1_na = c1_data.get('na', True)
+        c2_na = c2_data.get('na', True)
+        if c1_na and c2_na:
+            kpi['value_text'] = 'No scoring for this quarter'
+        else:
+            avg = (c1_calc + c2_calc) / 2 if not c1_na and not c2_na else (c2_calc if c1_na else c1_calc)
+            kpi['value_text'] = f'{short_names[0]}: {pct_str(c1_calc)}  |  {short_names[1]}: {pct_str(c2_calc)}  |  Avg: {pct_str(avg)}'
+
+    # Build XML shapes for bottom row KPIs
+    # Positions in EMU (1 inch = 914400 EMU)
+    # Slide is ~10x5.625 inches. Bottom row starts around y=3.5 inches
+    base_y = 3200400  # ~3.5 inches from top
+    box_w = 2743200   # ~3 inches wide
+    box_h = 1371600   # ~1.5 inches tall
+    gap = 152400      # ~0.17 inch gap
+    start_x = 304800  # ~0.33 inch from left
+
+    shapes_xml = ''
+    for i, kpi in enumerate(bottom_kpis):
+        x = start_x + i * (box_w + gap)
+        label = kpi['label']
+        name = kpi['name'].replace('\\n', '&#xA;')
+        formula = kpi['formula']
+        val = kpi['value_text']
+        shapes_xml += f'''<p:sp><p:nvSpPr><p:cNvPr id="{900+i}" name="KPI_{label}"/><p:cNvSpPr txBox="1"/><p:nvPr/></p:nvSpPr><p:spPr><a:xfrm><a:off x="{x}" y="{base_y}"/><a:ext cx="{box_w}" cy="{box_h}"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom><a:solidFill><a:srgbClr val="F2F2F2"/></a:solidFill><a:ln w="6350"><a:solidFill><a:srgbClr val="D9D9D9"/></a:solidFill></a:ln></p:spPr><p:txBody><a:bodyPr wrap="square" lIns="91440" tIns="45720" rIns="91440" bIns="45720"/><a:lstStyle/><a:p><a:pPr algn="ctr"/><a:r><a:rPr lang="en-US" sz="1000" b="1"><a:solidFill><a:srgbClr val="00249C"/></a:solidFill></a:rPr><a:t>{label}</a:t></a:r></a:p><a:p><a:pPr algn="ctr"/><a:r><a:rPr lang="en-US" sz="800"><a:solidFill><a:srgbClr val="333333"/></a:solidFill></a:rPr><a:t>{formula}</a:t></a:r></a:p><a:p><a:pPr algn="ctr"/><a:r><a:rPr lang="en-US" sz="900" b="1"><a:solidFill><a:srgbClr val="000000"/></a:solidFill></a:rPr><a:t>{val}</a:t></a:r></a:p></p:txBody></p:sp>'''
+
+    # Also add Key Observations box
+    obs_y = base_y + box_h + gap
+    obs_w = 3 * box_w + 2 * gap
+    obs_h = 457200  # 0.5 inch
+    shapes_xml += f'''<p:sp><p:nvSpPr><p:cNvPr id="910" name="KeyObs"/><p:cNvSpPr txBox="1"/><p:nvPr/></p:nvSpPr><p:spPr><a:xfrm><a:off x="{start_x}" y="{obs_y}"/><a:ext cx="{obs_w}" cy="{obs_h}"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></p:spPr><p:txBody><a:bodyPr wrap="square" lIns="91440" tIns="45720"/><a:lstStyle/><a:p><a:r><a:rPr lang="en-US" sz="900" b="1"><a:solidFill><a:srgbClr val="00249C"/></a:solidFill></a:rPr><a:t>Key Observations</a:t></a:r></a:p></p:txBody></p:sp>'''
+
+    # Insert shapes before </p:spTree>
+    xml_str = xml_str.replace('</p:spTree>', shapes_xml + '</p:spTree>')
+    return xml_str
+
+
 # -- Scoring summary slide update --
 
 def update_scoring_slide(xml_str, region_data, short_names):
@@ -624,6 +684,13 @@ def generate_presentation(template_bytes, region_name, year, q1_data, q2_data):
         xml = xml.replace('>DMC<', f'>{short_names[0]}<')
         xml = xml.replace('>DBN<', f'>{short_names[1]}<')
         file_contents[slide1_path] = xml.encode('utf-8')
+
+    # 1b. Update slide 2 - EHS KPI Dashboard with bottom KPIs
+    slide2_path = 'ppt/slides/slide2.xml'
+    if slide2_path in file_contents:
+        xml = file_contents[slide2_path].decode('utf-8')
+        xml = update_dashboard_slide(xml, q1_data, campus_codes, short_names)
+        file_contents[slide2_path] = xml.encode('utf-8')
 
     # 2. Update Q1 charts (slides 4-11)
     for chart_file, kpi_row in Q1_CHART_MAP.items():
