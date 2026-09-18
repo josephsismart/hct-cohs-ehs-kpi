@@ -53,7 +53,18 @@ export async function GET(request: Request) {
           if (src.valueCol && !cols.includes(src.valueCol)) missing.push(`valueCol: '${src.valueCol}'`);
           if (missing.length > 0) debug[src.key].missingColumns = missing;
         }
-        results[src.key] = { rows: processed };
+        // Deduplicate: for non-yesNoCount sources with planned/actual cols,
+        // keep only the LAST row per campus+month (handles resubmissions)
+        let deduped = processed;
+        if (!src.yesNoCount && src.plannedCol && src.actualCol) {
+          const map = new Map<string, typeof processed[0]>();
+          processed.forEach(r => {
+            const k = (r.campus || '') + '|' + (r.month || '');
+            map.set(k, r); // last one wins
+          });
+          deduped = [...map.values()];
+        }
+        results[src.key] = { rows: deduped };
       } catch (e: any) {
         results[src.key] = { rows: [], error: e.message };
         errors.push(`${src.key}: ${e.message}`);
