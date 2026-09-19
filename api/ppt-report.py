@@ -712,14 +712,14 @@ def generate_presentation(template_bytes, region_name, year, q1_data, q2_data, p
             xml = xml.replace('>KPI PERFORMANCE Q1<', f'>KPI PERFORMANCE {quarter_label_s1}<')
         file_contents[slide1_path] = xml.encode('utf-8')
 
-    # 1b. Update slide 2 - EHS KPI Dashboard with bottom KPIs
-    # Skip for monthly - slide 2 is Agenda in monthly template, not Dashboard
-    if period != 'month':
-      slide2_path = 'ppt/slides/slide2.xml'
-      if slide2_path in file_contents:
-          xml = file_contents[slide2_path].decode('utf-8')
-          xml = update_dashboard_slide(xml, q1_data, campus_codes, short_names)
-          file_contents[slide2_path] = xml.encode('utf-8')
+    # 1b. Slide 2 - EHS KPI Dashboard (pie chart only, no KPI boxes)
+    # KPI boxes were overlapping the pie chart on slide 2, so removed
+    # if period != 'month':
+    #   slide2_path = 'ppt/slides/slide2.xml'
+    #   if slide2_path in file_contents:
+    #       xml = file_contents[slide2_path].decode('utf-8')
+    #       xml = update_dashboard_slide(xml, q1_data, campus_codes, short_names)
+    #       file_contents[slide2_path] = xml.encode('utf-8')
 
     # 2. Update Q1 charts (slides 4-11)
     for chart_file, kpi_row in Q1_CHART_MAP.items():
@@ -984,7 +984,8 @@ class handler(BaseHTTPRequestHandler):
             self.send_header('Content-Type', 'application/vnd.openxmlformats-officedocument.presentationml.presentation')
             self.send_header('Content-Disposition', f'attachment; filename="{filename}"')
             self.send_header('Content-Length', str(len(pptx_bytes)))
-            self.send_header('Access-Control-Allow-Origin', '*')
+   pie chart only
+self.send_header('Access-Control-Allow-Origin', '*')
             self.end_headers()
             self.wfile.write(pptx_bytes)
 
