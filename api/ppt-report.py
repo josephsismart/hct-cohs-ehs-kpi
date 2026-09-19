@@ -572,10 +572,15 @@ def update_scoring_slide(xml_str, region_data, short_names):
     # Replace campus name headers: DMC -> short_names[0], DBN -> short_names[1]
     xml_str = xml_str.replace('>DMC<', f'>{short_names[0]}<')
     xml_str = xml_str.replace('>DBN<', f'>{short_names[1]}<')
+    # Monthly template uses Campus X / Campus Y placeholders
+    xml_str = xml_str.replace('>Campus X<', f'>{short_names[0]}<')
+    xml_str = xml_str.replace('>Campus Y<', f'>{short_names[1]}<')
 
     # Replace total score labels
     xml_str = xml_str.replace('>DMC Total Score<', f'>{short_names[0]} Total Score<')
     xml_str = xml_str.replace('>DBN Total Score<', f'>{short_names[1]} Total Score<')
+    xml_str = xml_str.replace('>Campus X Total Score<', f'>{short_names[0]} Total Score<')
+    xml_str = xml_str.replace('>Campus Y Total Score<', f'>{short_names[1]} Total Score<')
 
     # Build ordered list of percentage values to replace:
     # For each of 5 pillars: C1%, C2%, Avg%
@@ -689,19 +694,21 @@ def generate_presentation(template_bytes, region_name, year, q1_data, q2_data, p
         # Monthly template: update month name in title
         if period == 'month' and month_name:
             for mn in MONTH_NAMES:
-                if f'>{mn} ' in xml:
-                    xml = re.sub(f'>{mn} \\d{{4}}<', f'>{month_name} {year}<', xml)
+                if mn in xml:
+                    xml = re.sub(f'{mn} \\d{{4}}', f'{month_name} {year}', xml, count=1)
                     break
         xml = xml.replace('>DMC<', f'>{short_names[0]}<')
         xml = xml.replace('>DBN<', f'>{short_names[1]}<')
         file_contents[slide1_path] = xml.encode('utf-8')
 
     # 1b. Update slide 2 - EHS KPI Dashboard with bottom KPIs
-    slide2_path = 'ppt/slides/slide2.xml'
-    if slide2_path in file_contents:
-        xml = file_contents[slide2_path].decode('utf-8')
-        xml = update_dashboard_slide(xml, q1_data, campus_codes, short_names)
-        file_contents[slide2_path] = xml.encode('utf-8')
+    # Skip for monthly - slide 2 is Agenda in monthly template, not Dashboard
+    if period != 'month':
+      slide2_path = 'ppt/slides/slide2.xml'
+      if slide2_path in file_contents:
+          xml = file_contents[slide2_path].decode('utf-8')
+          xml = update_dashboard_slide(xml, q1_data, campus_codes, short_names)
+          file_contents[slide2_path] = xml.encode('utf-8')
 
     # 2. Update Q1 charts (slides 4-11)
     for chart_file, kpi_row in Q1_CHART_MAP.items():
@@ -754,6 +761,12 @@ def generate_presentation(template_bytes, region_name, year, q1_data, q2_data, p
                 changed = True
             if '>DBN<' in xml:
                 xml = xml.replace('>DBN<', f'>{short_names[1]}<')
+                changed = True
+            if '>Campus X<' in xml:
+                xml = xml.replace('>Campus X<', f'>{short_names[0]}<')
+                changed = True
+            if '>Campus Y<' in xml:
+                xml = xml.replace('>Campus Y<', f'>{short_names[1]}<')
                 changed = True
             if changed:
                 file_contents[fname] = xml.encode('utf-8')
