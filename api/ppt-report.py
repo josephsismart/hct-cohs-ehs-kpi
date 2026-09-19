@@ -827,15 +827,15 @@ def generate_presentation(template_bytes, region_name, year, q1_data, q2_data, p
             xml = _set_val_axis_max(xml, 1.0)
             file_contents[fname] = xml.encode('utf-8')
 
-    # 9. Remove analysis text from content slides (per client: keep titles only)
-    # Skip for monthly reports - monthly template has its own text structure
-    if period != 'month':
-      for slide_num in range(4, 12):
-        slide_path = f'ppt/slides/slide{slide_num}.xml'
-        if slide_path in file_contents:
-            xml = file_contents[slide_path].decode('utf-8')
-            xml = remove_analysis_text(xml)
-            file_contents[slide_path] = xml.encode('utf-8')
+    # 9. Keep template text shapes (Key Observations, Rectification, KPI formulas)
+    # Previously removed these but client wants them preserved in the template
+    # if period != 'month':
+    #   for slide_num in range(4, 12):
+    #     slide_path = f'ppt/slides/slide{slide_num}.xml'
+    #     if slide_path in file_contents:
+    #         xml = file_contents[slide_path].decode('utf-8')
+    #         xml = remove_analysis_text(xml)
+    #         file_contents[slide_path] = xml.encode('utf-8')
 
     # 10. Remove Q2 duplicate slides (12-21) per client request
     pres_path = 'ppt/presentation.xml'
