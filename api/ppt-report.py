@@ -554,8 +554,10 @@ def update_dashboard_slide(xml_str, kpi_data, campus_codes, short_names):
     obs_h = 457200  # 0.5 inch
     shapes_xml += f'''<p:sp><p:nvSpPr><p:cNvPr id="910" name="KeyObs"/><p:cNvSpPr txBox="1"/><p:nvPr/></p:nvSpPr><p:spPr><a:xfrm><a:off x="{start_x}" y="{obs_y}"/><a:ext cx="{obs_w}" cy="{obs_h}"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></p:spPr><p:txBody><a:bodyPr wrap="square" lIns="91440" tIns="45720"/><a:lstStyle/><a:p><a:r><a:rPr lang="en-US" sz="900" b="1"><a:solidFill><a:srgbClr val="00249C"/></a:solidFill></a:rPr><a:t>Key Observations</a:t></a:r></a:p></p:txBody></p:sp>'''
 
-    # Insert shapes before </p:spTree>
-    xml_str = xml_str.replace('</p:spTree>', shapes_xml + '</p:spTree>')
+    # Only add KPI boxes if they don't already exist in template
+    has_our_boxes = 'name="KPI_KPI' in xml_str
+    if not has_our_boxes:
+        xml_str = xml_str.replace('</p:spTree>', shapes_xml + '</p:spTree>')
     return xml_str
 
 
@@ -652,7 +654,7 @@ def update_scoring_slide(xml_str, region_data, short_names):
 
 # -- Main generation --
 
-def generate_presentation(template_bytes, region_name, year, q1_data, q2_data):
+def generate_presentation(template_bytes, region_name, year, q1_data, q2_data, period='quarter', month_name=None):
     if region_name not in REGIONS:
         return None, f"Unknown region: {region_name}"
 
@@ -681,6 +683,15 @@ def generate_presentation(template_bytes, region_name, year, q1_data, q2_data):
         # Replace subtitle with correct region
         subtitle_safe = region_cfg['subtitle'].replace('&', '&amp;')
         xml = re.sub(r'>Dubai Academic City[^<]*Al Nahda<', f'>{subtitle_safe}<', xml)
+        # Monthly template: XXXX placeholders for date and campus
+        xml = re.sub(r'(Date:\s*)XXXX', rf'\g<1>{date_str}', xml)
+        xml = re.sub(r'>XXXX<', f'>{subtitle_safe}<', xml)
+        # Monthly template: update month name in title
+        if period == 'month' and month_name:
+            for mn in MONTH_NAMES:
+                if f'>{mn} ' in xml:
+                    xml = re.sub(f'>{mn} \\d{{4}}<', f'>{month_name} {year}<', xml)
+                    break
         xml = xml.replace('>DMC<', f'>{short_names[0]}<')
         xml = xml.replace('>DBN<', f'>{short_names[1]}<')
         file_contents[slide1_path] = xml.encode('utf-8')
@@ -780,7 +791,9 @@ def generate_presentation(template_bytes, region_name, year, q1_data, q2_data):
             file_contents[fname] = xml.encode('utf-8')
 
     # 9. Remove analysis text from content slides (per client: keep titles only)
-    for slide_num in range(4, 12):
+    # Skip for monthly reports - monthly template has its own text structure
+    if period != 'month':
+      for slide_num in range(4, 12):
         slide_path = f'ppt/slides/slide{slide_num}.xml'
         if slide_path in file_contents:
             xml = file_contents[slide_path].decode('utf-8')
@@ -917,7 +930,7 @@ class handler(BaseHTTPRequestHandler):
             with open(template_path, 'rb') as f:
                 template_bytes = f.read()
 
-            pptx_bytes, error = generate_presentation(template_bytes, region, year, q1_data, q2_data)
+            pptx_bytes, error = generate_presentation(template_bytes, region, year, q1_data, q2_data, period=period, month_name=month)
 
             if error:
                 self.send_response(500)
