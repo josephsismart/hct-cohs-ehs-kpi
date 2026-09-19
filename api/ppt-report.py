@@ -581,6 +581,11 @@ def update_scoring_slide(xml_str, region_data, short_names):
     xml_str = xml_str.replace('>DBN Total Score<', f'>{short_names[1]} Total Score<')
     xml_str = xml_str.replace('>Campus X Total Score<', f'>{short_names[0]} Total Score<')
     xml_str = xml_str.replace('>Campus Y Total Score<', f'>{short_names[1]} Total Score<')
+    # Quarterly template uses Baniyas A / Baniyas B (Abu Dhabi defaults)
+    xml_str = xml_str.replace('>Baniyas A<', f'>{short_names[0]}<')
+    xml_str = xml_str.replace('>Baniyas B<', f'>{short_names[1]}<')
+    xml_str = xml_str.replace('>Baniyas A Total Score<', f'>{short_names[0]} Total Score<')
+    xml_str = xml_str.replace('>Baniyas B Total Score<', f'>{short_names[1]} Total Score<')
 
     # Build ordered list of percentage values to replace:
     # For each of 5 pillars: C1%, C2%, Avg%
@@ -688,6 +693,8 @@ def generate_presentation(template_bytes, region_name, year, q1_data, q2_data, p
         # Replace subtitle with correct region
         subtitle_safe = region_cfg['subtitle'].replace('&', '&amp;')
         xml = re.sub(r'>Dubai Academic City[^<]*Al Nahda<', f'>{subtitle_safe}<', xml)
+        # Quarterly template: Abu Dhabi default subtitle
+        xml = re.sub(r'>Abu Dhabi Baniyas A[^<]*Baniyas B<', f'>{subtitle_safe}<', xml)
         # Monthly template: XXXX placeholders for date and campus
         xml = re.sub(r'(Date:\s*)XXXX', rf'\g<1>{date_str}', xml)
         xml = re.sub(r'>XXXX<', f'>{subtitle_safe}<', xml)
@@ -768,19 +775,31 @@ def generate_presentation(template_bytes, region_name, year, q1_data, q2_data, p
             if '>Campus Y<' in xml:
                 xml = xml.replace('>Campus Y<', f'>{short_names[1]}<')
                 changed = True
+            if '>ADA<' in xml:
+                xml = xml.replace('>ADA<', f'>{short_names[0]}<')
+                changed = True
+            if '>ADB<' in xml:
+                xml = xml.replace('>ADB<', f'>{short_names[1]}<')
+                changed = True
+            if '>Baniyas A<' in xml:
+                xml = xml.replace('>Baniyas A<', f'>{short_names[0]}<')
+                changed = True
+            if '>Baniyas B<' in xml:
+                xml = xml.replace('>Baniyas B<', f'>{short_names[1]}<')
+                changed = True
             if changed:
                 file_contents[fname] = xml.encode('utf-8')
 
-    # Also replace campus names in chart category caches
+    # Replace template default chart labels (ADA/ADB) with region short names
     for fname in list(file_contents.keys()):
         if fname.startswith('ppt/charts/chart') and fname.endswith('.xml') and fname.split('/')[-1] not in PIE_CHARTS:
             xml = file_contents[fname].decode('utf-8')
             changed = False
-            if '>DMC<' in xml:
-                xml = xml.replace('>DMC<', f'>{campus_codes[0]}<')
+            if '>ADA<' in xml:
+                xml = xml.replace('>ADA<', f'>{short_names[0]}<')
                 changed = True
-            if '>DBN<' in xml:
-                xml = xml.replace('>DBN<', f'>{campus_codes[1]}<')
+            if '>ADB<' in xml:
+                xml = xml.replace('>ADB<', f'>{short_names[1]}<')
                 changed = True
             if changed:
                 file_contents[fname] = xml.encode('utf-8')
