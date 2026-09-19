@@ -664,7 +664,7 @@ def update_scoring_slide(xml_str, region_data, short_names):
 
 # -- Main generation --
 
-def generate_presentation(template_bytes, region_name, year, q1_data, q2_data, period='quarter', month_name=None):
+def generate_presentation(template_bytes, region_name, year, q1_data, q2_data, period='quarter', month_name=None, quarter='Q1'):
     if region_name not in REGIONS:
         return None, f"Unknown region: {region_name}"
 
@@ -706,6 +706,10 @@ def generate_presentation(template_bytes, region_name, year, q1_data, q2_data, p
                     break
         xml = xml.replace('>DMC<', f'>{short_names[0]}<')
         xml = xml.replace('>DBN<', f'>{short_names[1]}<')
+        # Quarterly/Annual: update Q1 label in title
+        if period != 'month':
+            quarter_label_s1 = 'Annual' if period == 'annual' else quarter
+            xml = xml.replace('>KPI PERFORMANCE Q1<', f'>KPI PERFORMANCE {quarter_label_s1}<')
         file_contents[slide1_path] = xml.encode('utf-8')
 
     # 1b. Update slide 2 - EHS KPI Dashboard with bottom KPIs
@@ -747,7 +751,8 @@ def generate_presentation(template_bytes, region_name, year, q1_data, q2_data, p
         xml = file_contents[slide3_path].decode('utf-8')
         xml = update_scoring_slide(xml, q1_region, short_names)
         # Update quarter label in title
-        xml = xml.replace('>Q1<', f'>Q1<')
+        quarter_label = 'Annual' if period == 'annual' else quarter
+        xml = xml.replace('>Q1<', f'>{quarter_label}<')
         file_contents[slide3_path] = xml.encode('utf-8')
 
     # 5. Q2 scoring summary REMOVED per client request
@@ -962,7 +967,7 @@ class handler(BaseHTTPRequestHandler):
             with open(template_path, 'rb') as f:
                 template_bytes = f.read()
 
-            pptx_bytes, error = generate_presentation(template_bytes, region, year, q1_data, q2_data, period=period, month_name=month)
+            pptx_bytes, error = generate_presentation(template_bytes, region, year, q1_data, q2_data, period=period, month_name=month, quarter=quarter)
 
             if error:
                 self.send_response(500)
