@@ -107,9 +107,10 @@ PIE_CHARTS = {'chart1.xml', 'chart15.xml'}
 
 # -- Smartsheet sources --
 SYNC_SOURCES = [
-    {'key': 'v2_hs_kpi_report', 'reportId': '5852576405737348', 'campusCol': 'Campus', 'monthCol': 'Primary', 'valueCol': 'Submitted', 'kpi_row': 2},
+    {'key': 'v2_hs_kpi_report', 'reportId': '5852576405737348', 'campusCol': 'Committee', 'monthCol': 'Reporting Quarter', 'valueCol': 'KPI 1 - % of HS KPI Reports Submitted', 'kpi_row': 2},
     {'key': 'v2_external_compliance', 'sheetId': '1325212455882628', 'campusCol': 'Campus Code', 'monthCol': 'Primary', 'plannedCol': 'Applicable Legal Compliance', 'actualCol': 'Legal Requirements Complied', 'kpi_row': 4},
     {'key': 'v2_hs_committee', 'sheetId': '5093607634587524', 'campusCol': 'Committee', 'monthCol': 'Reporting Month', 'plannedCol': 'Was a meeting held?', 'actualCol': 'Was a meeting held?', 'kpi_row': 5, 'yesNoCount': True},
+    {'key': 'v2_mgmt_review_actions', 'sheetId': '2636187066912644', 'campusCol': 'Campus Group', 'monthCol': 'Reporting Month', 'plannedCol': 'Number of Actions Raised', 'actualCol': 'Number of Actions Closed', 'kpi_row': 6},
     {'key': 'v2_hazard_id', 'sheetId': '7524088825204612', 'campusCol': 'Campus Code', 'monthCol': 'Reporting Month', 'plannedCol': 'Total Controls Identified', 'actualCol': 'Implemented Controls', 'kpi_row': 7},
     {'key': 'v2_risk_closed', 'sheetId': '7524088825204612', 'campusCol': 'Campus Code', 'monthCol': 'Primary', 'plannedCol': 'Total Risk Assessments Registered', 'actualCol': 'Risk Assessment Closed', 'kpi_row': 8},
     {'key': 'v2_risk_validated', 'sheetId': '7524088825204612', 'campusCol': 'Campus Code', 'monthCol': 'Primary', 'plannedCol': 'Total Risk Assessments Registered', 'actualCol': 'Monthly Risk Assessment Validated and Signed off', 'kpi_row': 9},
@@ -125,11 +126,12 @@ SYNC_SOURCES = [
 ]
 
 COMMITTEE_MAP = {
-    'Al Ain': ['AAF', 'AAZ'], 'Abu Dhabi': ['ADA', 'ADB'],
+    'Al Ain': ['AAF', 'AAZ'], 'Abu Dhabi Al Ain': ['AAF', 'AAZ'],
+    'Abu Dhabi': ['ADA', 'ADB'],
     'Dubai': ['DMC', 'DBN'], 'Fujairah': ['FJF', 'FJH'],
     'Sharjah': ['SHJA', 'SHJB'], 'Ras Al Khaimah': ['RKA', 'RKB'],
-    'AD Remote': ['ADH', 'MZY'], 'Al Dhafra': ['ADH', 'MZY'],
-    'Ruwais': ['ADH', 'MZY'],
+    'AD Remote': ['ADH', 'MZY'], 'Abu Dhabi Remote': ['ADH', 'MZY'],
+    'Al Dhafra': ['ADH', 'MZY'], 'Ruwais': ['ADH', 'MZY'],
 }
 
 MONTH_NAMES = ['January','February','March','April','May','June',
@@ -312,7 +314,7 @@ def fetch_kpi_data(token, month_list=None):
                 campus_agg[campus]['planned'] += v
                 campus_agg[campus]['actual'] += v
 
-        if src['key'] == 'v2_hs_committee':
+        if src['key'] in ('v2_hs_committee', 'v2_hs_kpi_report', 'v2_mgmt_review_actions'):
             expanded = {}
             for cname, agg_val in campus_agg.items():
                 if cname in COMMITTEE_MAP:
