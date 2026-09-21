@@ -843,7 +843,7 @@ def generate_presentation(template_bytes, region_name, year, q1_data, q2_data, p
     if pres_path in file_contents and rels_path_pres in file_contents:
         pres_xml = file_contents[pres_path].decode('utf-8')
         rels_xml = file_contents[rels_path_pres].decode('utf-8')
-        for slide_num in range(12, 22):
+        for slide_num in range(13, 22):
             # Find rId for this slide
             rid_match = re.search(rf'Id="(rId\d+)"[^>]*slides/slide{slide_num}\.xml', rels_xml)
             if rid_match:
@@ -854,7 +854,7 @@ def generate_presentation(template_bytes, region_name, year, q1_data, q2_data, p
         file_contents[rels_path_pres] = rels_xml.encode('utf-8')
 
     # Delete Q2 slide files and rels
-    for slide_num in range(12, 22):
+    for slide_num in range(13, 22):
         for path in [f'ppt/slides/slide{slide_num}.xml', f'ppt/slides/_rels/slide{slide_num}.xml.rels']:
             if path in file_contents:
                 del file_contents[path]
