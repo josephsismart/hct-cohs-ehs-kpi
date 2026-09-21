@@ -136,6 +136,7 @@ COMMITTEE_MAP = {
 
 MONTH_NAMES = ['January','February','March','April','May','June',
                'July','August','September','October','November','December']
+QUARTER_MONTHS = {'Q1': ['January','February','March'], 'Q2': ['April','May','June'], 'Q3': ['July','August','September'], 'Q4': ['October','November','December']}
 Q1_MONTHS = ['January', 'February', 'March']
 Q2_MONTHS = ['April', 'May', 'June']
 Q3_MONTHS = ['July', 'August', 'September']
@@ -293,15 +294,20 @@ def fetch_kpi_data(token, month_list=None):
             if campus in ('ADC',) or str(row.get('Campus Code', '')).strip() in ('ADC',): continue
 
             if month_list and month_col:
-                row_month = normalize_month(row.get(month_col))
-                if not row_month:
-                    row_month = normalize_month(row.get('Reporting Month'))
-                if not row_month:
-                    row_month = normalize_month(row.get('Date Reported'))
-                if not row_month:
-                    row_month = normalize_month(row.get('Primary'))
-                if row_month is not None and row_month not in month_list:
-                    continue
+                raw_mv = str(row.get(month_col, '')).strip().upper()
+                if raw_mv in QUARTER_MONTHS:
+                    if not any(m in month_list for m in QUARTER_MONTHS[raw_mv]):
+                        continue
+                else:
+                    row_month = normalize_month(row.get(month_col))
+                    if not row_month:
+                        row_month = normalize_month(row.get('Reporting Month'))
+                    if not row_month:
+                        row_month = normalize_month(row.get('Date Reported'))
+                    if not row_month:
+                        row_month = normalize_month(row.get('Primary'))
+                    if row_month is not None and row_month not in month_list:
+                        continue
 
             if campus not in campus_agg:
                 campus_agg[campus] = {'planned': 0, 'actual': 0}
@@ -318,6 +324,15 @@ def fetch_kpi_data(token, month_list=None):
                 v = safe_float(row.get(value_col))
                 campus_agg[campus]['planned'] += v
                 campus_agg[campus]['actual'] += v
+                campus_agg[campus]['_vc_count'] = campus_agg[campus].get('_vc_count', 0) + 1
+
+        # Average valueCol sources (percentage metrics) instead of summing
+        if value_col:
+            for campus_k in campus_agg:
+                cnt = campus_agg[campus_k].pop('_vc_count', 1)
+                if cnt > 1:
+                    campus_agg[campus_k]['planned'] /= cnt
+                    campus_agg[campus_k]['actual'] /= cnt
 
         if src['key'] in ('v2_hs_committee', 'v2_hs_kpi_report', 'v2_mgmt_review_actions'):
             expanded = {}
