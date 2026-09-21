@@ -478,8 +478,10 @@ def update_chart_xml(xml_str, c1_val, c2_val, c1_na=False, c2_na=False):
             line_xml = line_xml.replace(old, new, 1)
         xml_str = xml_str[:line_match.start()] + line_xml + xml_str[line_match.end():]
 
-    # Force Y-axis max to 1.0
+    # Force Y-axis max to 1.0 and format as percentage
     xml_str = _set_val_axis_max(xml_str, 1.0)
+    # Set number format to percentage on value axis
+    xml_str = re.sub(r'(<c:numFmt\s+formatCode=")[^"]*("\s+sourceLinked=")[^"]*(")', r'\g<1>0%\g<2>0\3', xml_str)
     return xml_str
 
 def _set_val_axis_max(xml_str, max_val):
@@ -521,6 +523,35 @@ def remove_analysis_text(xml_str):
     for start, end in sorted(removals, reverse=True):
         xml_str = xml_str[:start] + xml_str[end:]
     return xml_str
+
+# -- Pie chart (scoring summary) update --
+
+def update_pie_chart(xml_str, pillar_scores):
+    """Update pie chart with actual pillar average scores."""
+    # Try both 2D and 3D pie chart types
+    pie_match = re.search(r'<c:pieChart>.*?</c:pieChart>', xml_str, re.DOTALL)
+    if not pie_match:
+        pie_match = re.search(r'<c:pie3DChart>.*?</c:pie3DChart>', xml_str, re.DOTALL)
+    if not pie_match:
+        return xml_str
+    pie_xml = pie_match.group(0)
+    ser_match = re.search(r'<c:ser>.*?</c:ser>', pie_xml, re.DOTALL)
+    if not ser_match:
+        return xml_str
+    ser_xml = ser_match.group(0)
+    val_match = re.search(r'<c:val>.*?</c:val>', ser_xml, re.DOTALL)
+    if not val_match:
+        return xml_str
+    val_xml = val_match.group(0)
+    # Remove existing data points
+    new_val = re.sub(r'<c:pt idx="\d+">\s*<c:v>[^<]*</c:v>\s*</c:pt>', '', val_xml)
+    # Insert new data points with actual scores
+    pts = ''.join(f'<c:pt idx="{i}"><c:v>{pillar_scores[i]}</c:v></c:pt>' for i in range(len(pillar_scores)))
+    new_val = new_val.replace('</c:numCache>', pts + '</c:numCache>')
+    new_val = re.sub(r'<c:ptCount val="\d+"/>', f'<c:ptCount val="{len(pillar_scores)}"/>', new_val)
+    new_ser = ser_xml.replace(val_match.group(0), new_val)
+    new_pie = pie_xml.replace(ser_match.group(0), new_ser)
+    return xml_str[:pie_match.start()] + new_pie + xml_str[pie_match.end():]
 
 # -- Dashboard summary slide (slide 2) update --
 
@@ -756,6 +787,13 @@ def generate_presentation(template_bytes, region_name, year, q1_data, q2_data, p
         new_xml = update_chart_xml(xml_str, c1_val, c2_val, c1_na, c2_na)
         new_xml = update_chart_title(new_xml, kpi_row)
         file_contents[path] = new_xml.encode('utf-8')
+
+    # 2b. Update Q1 pie chart with actual pillar scores
+    pie1_path = 'ppt/charts/chart1.xml'
+    if pie1_path in file_contents:
+        xml_str = file_contents[pie1_path].decode('utf-8')
+        xml_str = update_pie_chart(xml_str, q1_region['avg_pillar'])
+        file_contents[pie1_path] = xml_str.encode('utf-8')
 
     # 3. Q2 charts REMOVED per client request (slides 12-21 deleted)
     # for chart_file, kpi_row in Q2_CHART_MAP.items():
