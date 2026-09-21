@@ -806,15 +806,16 @@ def generate_presentation(template_bytes, region_name, year, q1_data, q2_data, p
         # new_xml = update_chart_title(new_xml, kpi_row)
         # file_contents[path] = new_xml.encode('utf-8')
 
-    # 4. Update Q1 scoring summary (slide 3)
-    slide3_path = 'ppt/slides/slide3.xml'
-    if slide3_path in file_contents:
-        xml = file_contents[slide3_path].decode('utf-8')
-        xml = update_scoring_slide(xml, q1_region, short_names)
-        # Update quarter label in title
-        quarter_label = 'Annual' if period == 'annual' else quarter
-        xml = xml.replace('>Q1<', f'>{quarter_label}<')
-        file_contents[slide3_path] = xml.encode('utf-8')
+    # 4. Update Q1 scoring summary (slide3 for quarterly, slide4 for monthly)
+    for scoring_slide_path in ['ppt/slides/slide3.xml', 'ppt/slides/slide4.xml']:
+        if scoring_slide_path in file_contents:
+            xml = file_contents[scoring_slide_path].decode('utf-8')
+            if re.search(r'<a:t>\d+%</a:t>', xml):
+                xml = update_scoring_slide(xml, q1_region, short_names)
+                quarter_label = 'Annual' if period == 'annual' else quarter
+                xml = xml.replace('>Q1<', f'>{quarter_label}<')
+                file_contents[scoring_slide_path] = xml.encode('utf-8')
+                break
 
     # 5. Q2 scoring summary REMOVED per client request
     # slide13_path = 'ppt/slides/slide13.xml'
