@@ -256,6 +256,8 @@ def pct_str(v):
 # -- Fetch KPI data --
 
 def fetch_kpi_data(token, month_list=None):
+    if month_list:
+        month_list = [normalize_month(m) or m for m in month_list]
     """Fetch all KPI sources. month_list: list of month names to include, or None for all."""
     data = {}
     _fetch_errors = []
