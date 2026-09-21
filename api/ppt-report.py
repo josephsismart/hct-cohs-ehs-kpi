@@ -296,8 +296,7 @@ def fetch_kpi_data(token, month_list=None):
             if month_list and month_col:
                 raw_mv = str(row.get(month_col, '')).strip().upper()
                 if raw_mv in QUARTER_MONTHS:
-                    if not any(m in month_list for m in QUARTER_MONTHS[raw_mv]):
-                        continue
+                    pass  # quarterly data passes through all month filters
                 else:
                     row_month = normalize_month(row.get(month_col))
                     if not row_month:
