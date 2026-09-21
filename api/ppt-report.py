@@ -250,7 +250,12 @@ def normalize_month(v):
 def safe_float(v, default=0.0):
     if v is None: return default
     try: return float(v)
-    except: return default
+    except:
+        s = str(v).strip()
+        if s.endswith('%'):
+            try: return float(s[:-1]) / 100.0
+            except: pass
+        return default
 
 def pct_str(v):
     return f"{round(v * 100)}%"
