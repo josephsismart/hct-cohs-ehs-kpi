@@ -1,4 +1,4 @@
-"""Debug endpoint - test Smartsheet API connectivity from Python runtime."""
+"""Debug endpoint - dump Smartsheet column names for problem sheets."""
 import os, json
 from http.server import BaseHTTPRequestHandler
 from urllib.request import Request, urlopen
@@ -9,37 +9,42 @@ def _ss_fetch(endpoint, token):
     with urlopen(req, timeout=30) as resp:
         return json.loads(resp.read())
 
+SHEETS_TO_CHECK = {
+    'v2_onsite_induction (KPI14)': '3519179394076548',
+    'v2_findings_on_time (KPI15)': '1510149721116548',
+    'v2_hs_committee (KPI4)': '5093607634587524',
+    'v2_planned_training (KPI9)': '4456464805482372',
+    'v2_hazard_id (KPI6)': '7524088825204612',
+    'v2_drills (KPI12)': '7139786694283140',
+}
+
+REPORTS_TO_CHECK = {
+    'v2_hs_kpi_report (KPI1)': '5852576405737348',
+    'v2_investigation (KPI18)': '5432865759121284',
+    'notification (KPI17)': '8527961731846020',
+}
+
 class handler(BaseHTTPRequestHandler):
     def do_GET(self):
         token = os.environ.get('SMARTSHEET_TOKEN')
-        result = {'token_exists': bool(token), 'token_len': len(token) if token else 0}
-        test_sheet = '2717764266446724'
-        try:
-            data = _ss_fetch(f'sheets/{test_sheet}?pageSize=5', token)
-            col_map = {c['id']: c['title'] for c in data.get('columns', [])}
-            cols = list(col_map.values())
-            row_count = len(data.get('rows', []))
-            first_row = {}
-            if data.get('rows'):
-                for cell in data['rows'][0].get('cells', []):
-                    title = col_map.get(cell.get('columnId'))
-                    if title:
-                        first_row[title] = cell.get('displayValue') or cell.get('value') or ''
-            result['sheet_test'] = {'status': 'ok', 'total_rows': row_count, 'columns': cols[:10], 'first_row': first_row}
-        except Exception as e:
-            result['sheet_test'] = {'status': 'error', 'error': str(e)}
-        test_report = '8527961731846020'
-        try:
-            data = _ss_fetch(f'reports/{test_report}?pageSize=5&level=1', token)
-            col_map = {}
-            for c in data.get('columns', []):
-                if c.get('id'): col_map[c['id']] = c['title']
-                if c.get('virtualId'): col_map[c['virtualId']] = c['title']
-            cols = list(set(col_map.values()))
-            row_count = len(data.get('rows', []))
-            result['report_test'] = {'status': 'ok', 'total_rows': row_count, 'columns': cols[:10]}
-        except Exception as e:
-            result['report_test'] = {'status': 'error', 'error': str(e)}
+        result = {}
+
+        for name, sid in SHEETS_TO_CHECK.items():
+            try:
+                data = _ss_fetch(f'sheets/{sid}?pageSize=1', token)
+                cols = [c['title'] for c in data.get('columns', [])]
+                result[name] = {'columns': cols}
+            except Exception as e:
+                result[name] = {'error': str(e)}
+
+        for name, rid in REPORTS_TO_CHECK.items():
+            try:
+                data = _ss_fetch(f'reports/{rid}?pageSize=1&level=1', token)
+                cols = list(set(c['title'] for c in data.get('columns', [])))
+                result[name] = {'columns': sorted(cols)}
+            except Exception as e:
+                result[name] = {'error': str(e)}
+
         self.send_response(200)
         self.send_header('Content-Type', 'application/json')
         self.send_header('Access-Control-Allow-Origin', '*')
