@@ -628,13 +628,17 @@ def update_scoring_slide(xml_str, region_data, short_names):
     xml_str = xml_str.replace('>DBN<', f'>{short_names[1]}<')
     # Monthly template uses Campus X / Campus Y placeholders
     xml_str = xml_str.replace('>Campus X<', f'>{short_names[0]}<')
+    xml_str = xml_str.replace('>Campus X <', f'>{short_names[0]} <')
     xml_str = xml_str.replace('>Campus Y<', f'>{short_names[1]}<')
+    xml_str = xml_str.replace('>Campus Y <', f'>{short_names[1]} <')
 
     # Replace total score labels
     xml_str = xml_str.replace('>DMC Total Score<', f'>{short_names[0]} Total Score<')
     xml_str = xml_str.replace('>DBN Total Score<', f'>{short_names[1]} Total Score<')
     xml_str = xml_str.replace('>Campus X Total Score<', f'>{short_names[0]} Total Score<')
+    xml_str = xml_str.replace('>Campus X Total Score <', f'>{short_names[0]} Total Score <')
     xml_str = xml_str.replace('>Campus Y Total Score<', f'>{short_names[1]} Total Score<')
+    xml_str = xml_str.replace('>Campus Y Total Score <', f'>{short_names[1]} Total Score <')
     # Quarterly template uses Baniyas A / Baniyas B (Abu Dhabi defaults)
     xml_str = xml_str.replace('>Baniyas A<', f'>{short_names[0]}<')
     xml_str = xml_str.replace('>Baniyas B<', f'>{short_names[1]}<')
