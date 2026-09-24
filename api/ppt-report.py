@@ -415,6 +415,22 @@ def _color_bars_by_avg(ser_xml, vals, avg_val, na_flags=None):
     ser_xml = re.sub(r'(<c:order\s[^>]*/>)', r'\1' + dpt_xml, ser_xml, count=1)
     return ser_xml
 
+def _strip_custom_data_labels(ser_xml):
+    """Remove hardcoded custom text data labels from a chart series.
+    Template charts may have manually-typed labels (e.g. '79%') that don't update
+    when we change the underlying data values. Stripping them lets PowerPoint
+    auto-generate labels from the actual numCache values."""
+    dlbls_match = re.search(r'<c:dLbls>.*?</c:dLbls>', ser_xml, re.DOTALL)
+    if not dlbls_match:
+        return ser_xml
+    dlbls = dlbls_match.group(0)
+    if '<c:tx>' not in dlbls:
+        return ser_xml  # No custom text labels, leave as-is
+    # Replace with clean dLbls that auto-generates labels from data
+    clean_dlbls = '<c:dLbls><c:numFmt formatCode="0%" sourceLinked="0"/><c:showLegendKey val="0"/><c:showVal val="1"/><c:showCatName val="0"/><c:showSerName val="0"/><c:showPercent val="0"/><c:showBubbleSize val="0"/></c:dLbls>'
+    return ser_xml.replace(dlbls, clean_dlbls, 1)
+
+
 def update_chart_title(xml_str, kpi_row):
     """Update chart title to match client's KPI naming convention."""
     title = KPI_CHART_TITLES.get(kpi_row)
@@ -464,6 +480,7 @@ def update_chart_xml(xml_str, c1_val, c2_val, c1_na=False, c2_na=False):
             # Add conditional bar coloring: blue if >= avg, red if below
             if si == 0:
                 new = _color_bars_by_avg(new, vals_bar, avg_val, [c1_na, c2_na])
+                new = _strip_custom_data_labels(new)
             bar_xml = bar_xml.replace(old, new, 1)
         xml_str = xml_str[:bar_match.start()] + bar_xml + xml_str[bar_match.end():]
 
