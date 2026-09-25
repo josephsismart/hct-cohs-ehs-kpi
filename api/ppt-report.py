@@ -434,8 +434,54 @@ def _strip_custom_data_labels(ser_xml):
     if '<c:tx>' not in dlbls:
         return ser_xml  # No custom text labels, leave as-is
     # Replace with clean dLbls that auto-generates labels from data
-    clean_dlbls = '<c:dLbls><c:numFmt formatCode="0%" sourceLinked="0"/><c:showLegendKey val="0"/><c:showVal val="1"/><c:showCatName val="0"/><c:showSerName val="0"/><c:showPercent val="0"/><c:showBubbleSize val="0"/></c:dLbls>'
+    clean_dlbls = ('<c:dLbls>'
+           '<c:numFmt formatCode="0%" sourceLinked="0"/>'
+           '<c:txPr><a:bodyPr/><a:lstStyle/><a:p><a:pPr>'
+           '<a:defRPr sz="900" b="1">'
+           '<a:solidFill><a:srgbClr val="00249C"/></a:solidFill>'
+           '<a:latin typeface="Arial"/><a:cs typeface="Arial"/>'
+           '</a:defRPr></a:pPr><a:endParaRPr lang="en-US"/></a:p></c:txPr>'
+           '<c:showLegendKey val="0"/><c:showVal val="1"/>'
+           '<c:showCatName val="0"/><c:showSerName val="0"/>'
+           '<c:showPercent val="0"/><c:showBubbleSize val="0"/></c:dLbls>')
     return ser_xml.replace(dlbls, clean_dlbls, 1)
+
+def _set_chart_blue_font(xml_str):
+    """Set blue (00249C) font and Arial typeface on chart axis labels and title."""
+    BLUE = '00249C'
+    blue_txpr = ('<c:txPr><a:bodyPr/><a:lstStyle/><a:p><a:pPr>'
+                 '<a:defRPr sz="800"><a:solidFill><a:srgbClr val="' + BLUE + '"/></a:solidFill>'
+                 '<a:latin typeface="Arial"/><a:cs typeface="Arial"/>'
+                 '</a:defRPr></a:pPr><a:endParaRPr lang="en-US"/></a:p></c:txPr>')
+
+    # Replace or add txPr in catAx and valAx for blue axis labels
+    for ax_tag in ['catAx', 'valAx']:
+        ax_match = re.search(rf'<c:{ax_tag}>(.*?)</c:{ax_tag}>', xml_str, re.DOTALL)
+        if not ax_match:
+            continue
+        ax_xml = ax_match.group(0)
+        txpr_match = re.search(r'<c:txPr>.*?</c:txPr>', ax_xml, re.DOTALL)
+        if txpr_match:
+            new_ax = ax_xml.replace(txpr_match.group(0), blue_txpr)
+        else:
+            new_ax = ax_xml.replace(f'</c:{ax_tag}>', f'{blue_txpr}</c:{ax_tag}>')
+        xml_str = xml_str.replace(ax_xml, new_ax)
+
+    # Set chart title text to blue + Arial
+    title_match = re.search(r'<c:title>(.*?)</c:title>', xml_str, re.DOTALL)
+    if title_match:
+        old_title = title_match.group(0)
+        new_title = old_title
+        # Add blue color after each rPr opening tag (removes old solidFill first)
+        new_title = re.sub(r'<a:solidFill><a:srgbClr val="[^"]*"/></a:solidFill>', '', new_title)
+        new_title = re.sub(r'(<a:rPr[^>]*>)',
+            r'\1<a:solidFill><a:srgbClr val="' + BLUE + r'"/></a:solidFill>', new_title)
+        # Set Arial font on title
+        new_title = re.sub(r'<a:latin typeface="[^"]*"/>', '<a:latin typeface="Arial"/>', new_title)
+        new_title = re.sub(r'<a:cs typeface="[^"]*"/>', '<a:cs typeface="Arial"/>', new_title)
+        xml_str = xml_str.replace(old_title, new_title)
+
+    return xml_str
 
 
 def update_chart_title(xml_str, kpi_row):
@@ -917,6 +963,7 @@ def generate_presentation(template_bytes, region_name, year, q1_data, q2_data, p
             if cname in PIE_CHARTS: continue
             xml = file_contents[fname].decode('utf-8') if isinstance(file_contents[fname], bytes) else file_contents[fname]
             xml = _set_val_axis_max(xml, 1.0)
+            xml = _set_chart_blue_font(xml)
             file_contents[fname] = xml.encode('utf-8')
 
     # 9. Keep template text shapes (Key Observations, Rectification, KPI formulas)
