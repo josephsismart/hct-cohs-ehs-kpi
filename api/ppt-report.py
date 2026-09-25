@@ -360,6 +360,7 @@ def read_campus_data(kpi_data, sheet_name):
     campus = kpi_data.get(sheet_name, {})
     kpis = []
     pillar_scores = []
+    pillar_active = []
     for pillar in PILLAR_CLASSIFICATION:
         group_scores = []
         group_weights = []
@@ -382,9 +383,15 @@ def read_campus_data(kpi_data, sheet_name):
         tcw = sum(group_weights)
         p_score = sum(s * w for s, w in zip(group_scores, group_weights)) / tcw if tcw > 0 else 0
         pillar_scores.append(p_score)
+        pillar_active.append(tcw > 0)
     weights = [p['weight'] for p in PILLAR_CLASSIFICATION]
-    overall = sum(s * w for s, w in zip(pillar_scores, weights))
-    return {'sheet': sheet_name, 'kpis': kpis, 'pillar_scores': pillar_scores, 'overall': overall}
+    active_pairs = [(s, w) for s, w, has_data in zip(pillar_scores, weights, pillar_active) if has_data]
+    if active_pairs:
+        total_active_wt = sum(w for _, w in active_pairs)
+        overall = sum(s * w / total_active_wt for s, w in active_pairs)
+    else:
+        overall = 0.0
+    return {'sheet': sheet_name, 'kpis': kpis, 'pillar_scores': pillar_scores, 'pillar_active': pillar_active, 'overall': overall}
 
 def read_region_data(kpi_data, region_cfg):
     campuses = [read_campus_data(kpi_data, s) for s in region_cfg['sheets']]
@@ -667,8 +674,10 @@ def update_scoring_slide(xml_str, region_data, short_names):
     # Then totals: C1 total%, C2 total%, Avg total%
     new_pcts = []
     for pi in range(5):
-        new_pcts.append(pct_str(c1['pillar_scores'][pi]))
-        new_pcts.append(pct_str(c2['pillar_scores'][pi]))
+        c1_active = c1.get('pillar_active', [True]*5)[pi]
+        c2_active = c2.get('pillar_active', [True]*5)[pi]
+        new_pcts.append(pct_str(c1['pillar_scores'][pi]) if c1_active else 'N/A')
+        new_pcts.append(pct_str(c2['pillar_scores'][pi]) if c2_active else 'N/A')
         new_pcts.append(pct_str(region_data['avg_pillar'][pi]))
     new_pcts.append(pct_str(c1['overall']))
     new_pcts.append(pct_str(c2['overall']))
@@ -1066,7 +1075,7 @@ class handler(BaseHTTPRequestHandler):
             self.send_response(200)
             self.send_header('Content-Type', 'application/vnd.openxmlformats-officedocument.presentationml.presentation')
             self.send_header('Content-Disposition', f'attachment; filename="{filename}"')
-            self.send_header('Content-Length', str(len(pptx_bytes)))
+            self.send_header('Conthent-Length', str(len(pptx_bytes)))
             self.send_header('Access-Control-Allow-Origin', '*')
             self.end_headers()
             self.wfile.write(pptx_bytes)
