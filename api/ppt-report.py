@@ -121,8 +121,8 @@ SYNC_SOURCES = [
     {'key': 'v2_onsite_induction', 'sheetId': '3519179394076548', 'campusCol': 'Campus Code', 'monthCol': 'Reporting Month', 'plannedCol': 'No. of Active Contractors', 'actualCol': 'No. of Contractors Inducted', 'kpi_row': 15},
     {'key': 'v2_ehs_inspection', 'sheetId': '1510149721116548', 'campusCol': 'Campus Code', 'monthCol': 'Primary', 'plannedCol': 'No. of EHS Inspections Planned', 'actualCol': 'No. of EHS Inspections Completed', 'kpi_row': 17},
     {'key': 'v2_findings_on_time', 'sheetId': '1510149721116548', 'campusCol': 'Campus Code', 'monthCol': 'Primary', 'plannedCol': 'No. of Total Findings', 'actualCol': 'No. of Findings Closed', 'kpi_row': 16},
-    {'key': 'v2_investigation_on_time', 'reportId': '5432865759121284', 'campusCol': 'Campus Code', 'monthCol': 'Reporting Month', 'plannedCol': 'Total Incident Investigated', 'actualCol': 'Investigation Completed on Time', 'kpi_row': 19},
-    {'key': 'notification', 'reportId': '8527961731846020', 'campusCol': 'Campus Code', 'monthCol': 'Reporting Month', 'plannedCol': 'Total Incident', 'actualCol': 'Incident Notification Submitted on Time', 'kpi_row': 18},
+    {'key': 'v2_investigation_on_time', 'sheetId': '5977763159691140', 'campusCol': 'Campus Code', 'monthCol': 'Reporting Month', 'plannedCol': 'Total Incident Investigated', 'actualCol': 'Investigation Completed on Time', 'kpi_row': 19},
+    {'key': 'notification', 'sheetId': '5977763159691140', 'campusCol': 'Campus Code', 'monthCol': 'Reporting Month', 'plannedCol': 'Total Incident', 'actualCol': 'Incident Notification Submitted on Time', 'kpi_row': 18},
 ]
 
 COMMITTEE_MAP = {
