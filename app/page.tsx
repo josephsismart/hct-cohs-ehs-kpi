@@ -100,9 +100,27 @@ interface SyncData {
   wasteData?: Record<string, any>[];
 }
 
+const REGION_CAMPUSES: Record<string, string[]> = {
+  'Abu Dhabi Remote': ['ADH', 'MZY'],
+  'Al Dhafra': ['ADH', 'MZY'],
+  'Dubai': ['DMC', 'DBN'],
+  'Sharjah': ['SHJA', 'SHJB'],
+  'Fujairah': ['FJF', 'FJH'],
+  'Ras Al Khaimah': ['RKA', 'RKB'],
+  'Abu Dhabi': ['ADA', 'ADB'],
+  'Abu Dhabi Al Ain': ['AAF', 'AAZ'],
+  'Saint John Bosco': ['SJB', 'SJA'],
+};
+
 function filterRows(rows: KpiRow[], campus: string, month: string, quarter: string): KpiRow[] {
   let filtered = rows;
-  if (campus !== 'ALL') filtered = filtered.filter(r => (r.realCampus || r.campus) === campus);
+  if (campus !== 'ALL') {
+    filtered = filtered.filter(r => {
+      if ((r.realCampus || r.campus) === campus) return true;
+      const regionCampuses = REGION_CAMPUSES[r.campus];
+      return regionCampuses ? regionCampuses.includes(campus) : false;
+    });
+  }
   if (month !== 'ALL') {
     filtered = filtered.filter(r => r.month === month);
   } else if (quarter !== 'ALL' && QUARTERS[quarter]) {
