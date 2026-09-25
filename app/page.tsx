@@ -57,7 +57,7 @@ const SMARTSHEET_LINKS: Record<string, string> = {
   drills: 'https://app.smartsheet.com/sheets/JhV8P6MwPJ228fcqcR6qR7RGGjvj2J2JQ64mqmQ1',
   v2_mgmt_review_actions: 'https://app.smartsheet.com/sheets/Jq2p2qwhGMVqHpJXPhWpcgmQJXHHjvPhh6MvC8j1',
   v2_waste_segregation: 'https://app.smartsheet.com/sheets/7xQW36mQVrm6Jrv2g9ph37M3hF3V5Wc9xPc5pp91',
-  v2_drills: 'https://app.smartsheet.com/sheets/5053158949605252',
+  v2_drills: 'https://app.smartsheet.com/sheets/JhV8P6MwPJ228fcqcR6qR7RGGjvj2J2JQ64mqmQ1',
 };
 
 const REPORT_REGIONS = ['AD Al Ain','Abu Dhabi','AD Remote','Dubai','Fujairah','Sharjah','Ras Al Khaimah'];
@@ -76,8 +76,8 @@ const KPI_CHARTS = [
   { key: 'v2_safe_working', label: 'KPI 11: Safe Working Procedure', plannedLabel: 'No. of SOPs Verified', actualLabel: 'No. of SOPs Implemented \u2014 Met/Exceeded', belowLabel: 'No. of SOPs Implemented \u2014 Below Target', type: 'planned_actual_below' },
   { key: 'v2_drills', label: 'KPI 12: Emergency Drills Conducted on Schedule', plannedLabel: 'Planned Drills', actualLabel: 'Drills Conducted', type: 'planned_actual' },
   { key: 'v2_permit_to_work', label: 'KPI 13: Compliance to PTW', plannedLabel: 'No. of PTWs Issued', actualLabel: 'Total Work Registered', type: 'planned_actual' },
-  { key: 'v2_onsite_induction', label: 'KPI 14: Onsite Safety Induction', plannedLabel: 'No. of New Contractors (Individuals)', actualLabel: 'Contractors Inducted \u2014 Met/Exceeded', belowLabel: 'Contractors Inducted \u2014 Below Target', type: 'planned_actual_below' },
-  { key: 'v2_findings_on_time', label: 'KPI 15: Findings Closed On Time', plannedLabel: 'No. of Findings in Reporting Month', actualLabel: 'No. of Findings Closed \u2014 Met/Exceeded', belowLabel: 'No. of Findings Closed \u2014 Below Target', type: 'planned_actual_below' },
+  { key: 'v2_onsite_induction', label: 'KPI 14: Onsite Safety Induction', plannedLabel: 'No. of New Contractors (Individuals)', actualLabel: 'Contractors Inducted', type: 'planned_actual' },
+  { key: 'v2_findings_on_time', label: 'KPI 15: Findings Closed On Time', plannedLabel: 'No. of Findings in Reporting Month', actualLabel: 'No. of Findings Closed on Time', type: 'planned_actual' },
   { key: 'v2_ehs_inspection', label: 'KPI 16: Scheduled EHS Inspection', plannedLabel: 'No. of EHS Inspections Planned', actualLabel: 'No. of EHS Inspections Completed \u2014 Met/Exceeded', belowLabel: 'No. of EHS Inspections Completed \u2014 Below Target', type: 'planned_actual_below' },
   { key: 'notification', label: 'KPI 17: Incident Notifications Reported On Time', plannedLabel: 'Total Incident', actualLabel: 'Notification Submitted on Time', type: 'planned_actual' },
   { key: 'v2_investigation_on_time', label: 'KPI 18: Investigations Completed On Time', plannedLabel: 'Total Incident', actualLabel: 'Investigation Completed on Time', type: 'planned_actual' },
@@ -151,6 +151,10 @@ function KpiBarChart({ chartDef, rows }: { chartDef: typeof KPI_CHARTS[0]; rows:
   const campuses = Object.keys(byCampus).sort();
   if (campuses.length === 0) return <div className="no-data">No data available</div>;
 
+  // Show N/A when all planned and actual values are zero
+  const allZero = campuses.every(c => byCampus[c].planned === 0 && byCampus[c].actual === 0 && byCampus[c].value === 0);
+  if (allZero) return <div className="no-data" style={{ fontSize: '28px', fontWeight: 'bold', color: '#999', padding: '60px 0' }}>N/A</div>;
+
   const series: Highcharts.SeriesOptionsType[] = [];
   if (chartDef.type === 'value') {
     series.push({
@@ -178,7 +182,7 @@ function KpiBarChart({ chartDef, rows }: { chartDef: typeof KPI_CHARTS[0]; rows:
     yAxis: { title: { text: null }, gridLineColor: '#f0f0f0' },
     legend: { align: 'center', verticalAlign: 'bottom', margin: 2, padding: 0, itemMarginTop: 0, itemMarginBottom: 0, itemStyle: { fontSize: '8px' } },
     plotOptions: {
-      column: { borderRadius: 2, groupPadding: 0.15, pointPadding: 0.05, dataLabels: { enabled: true, formatter: function() { var v = this.y; return v.toLocaleString('en-US', {maximumFractionDigits: 2}); }, style: { fontSize: '9px', fontWeight: 'normal' } } },
+      column: { borderRadius: 2, groupPadding: 0.15, pointPadding: 0.05, dataLabels: { enabled: true, formatter: function() { var v = this.y; if (v === 0 || v === null) return ''; return v.toLocaleString('en-US', {maximumFractionDigits: 2}); }, style: { fontSize: '9px', fontWeight: 'normal' } } },
     },
     series,
     credits: { enabled: false },
@@ -432,10 +436,10 @@ export default function Dashboard() {
                   <>
                   <label>Select Quarter</label>
                   <select value={pptQuarter} onChange={e => setPptQuarter(e.target.value)} style={{width:'100%',padding:'6px',borderRadius:4,border:'1px solid #555',background:'#23272e',color:'#e6e6e6'}}>
-                    <option value="Q1">Q1 (Jan–Mar)</option>
-                    <option value="Q2">Q2 (Apr–Jun)</option>
-                    <option value="Q3">Q3 (Jul–Sep)</option>
-                    <option value="Q4">Q4 (Oct–Dec)</option>
+                    <option value="Q1">Q1 (JanâMar)</option>
+                    <option value="Q2">Q2 (AprâJun)</option>
+                    <option value="Q3">Q3 (JulâSep)</option>
+                    <option value="Q4">Q4 (OctâDec)</option>
                   </select>
                   </>
                 )}
@@ -448,10 +452,6 @@ export default function Dashboard() {
                 <button className={"report-btn word" + (selectedFormat==='word' ? ' selected' : '')} onClick={() => setSelectedFormat('word')} style={selectedFormat==='word' ? {outline:'3px solid #1A1F71',outlineOffset:'2px'} : {}}>
                   <i className="fa fa-file-word"></i>
                   <span>Word</span>
-                </button>
-                <button className={"report-btn pdf" + (selectedFormat==='xlsx' ? ' selected' : '')} onClick={() => setSelectedFormat('xlsx')} style={selectedFormat==='xlsx' ? {outline:'3px solid #1A1F71',outlineOffset:'2px'} : {}}>
-                  <i className="fa fa-file-excel"></i>
-                  <span>Excel</span>
                 </button>
               </div>
               {selectedFormat && (
@@ -695,7 +695,7 @@ export default function Dashboard() {
             })()}
 
             {/*  KPI SUMMARY */}
-            <h3 className="section-title">EXECUTIVE KPI SUMMARY — BY CAMPUS</h3>
+            <h3 className="section-title">EXECUTIVE KPI SUMMARY â BY CAMPUS</h3>
             {(() => {
               const EXEC_KPIS = [
                 { key: 'drills', label: 'Drills Completion', type: 'pct' },
