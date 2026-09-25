@@ -46,7 +46,7 @@ export const SYNC_SOURCES: SyncSource[] = [
   { key: 'v2_planned_training', sheetId: '4456464805482372', tab: 'raw_v2_planned_training', campusCol: 'Campus Code', plannedCol: 'Planned (Yes/No)', actualCol: 'Planned (Yes/No)', monthCol: 'Reporting Month', hasMonth: true, yesNoCount: true },
   { key: 'v2_drills', sheetId: '7139786694283140', tab: 'raw_v2_drills', campusCol: 'Campus Code', monthCol: 'Reporting Month', plannedCol: 'Planned Drill? (Yes/No)', actualCol: 'Are there any submission?', hasMonth: true, yesNoCount: true },
   { key: 'v2_waste_segregation', sheetId: '6383128615538564', tab: 'raw_v2_waste_segregation', campusCol: 'Campus Code', monthCol: 'Reporting Month', hasMonth: true },
-  { key: 'v2_mgmt_review_actions', sheetId: '2636187066912644', tab: 'raw_v2_mgmt_review_actions', campusCol: 'Campus Group', monthCol: 'Reporting Month', hasMonth: true, isolateFromCampusSet: true },
+  { key: 'v2_mgmt_review_actions', sheetId: '2636187066912644', tab: 'raw_v2_mgmt_review_actions', campusCol: 'Campus Group', plannedCol: 'Number of Actions Raised', actualCol: 'Number of Actions Closed', monthCol: 'Reporting Month', hasMonth: true, isolateFromCampusSet: true },
 ];
 
 const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
