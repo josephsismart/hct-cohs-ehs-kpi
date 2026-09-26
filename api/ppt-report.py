@@ -3,7 +3,7 @@ Generates quarterly (Q1+Q2) KPI reports using client's reference template.
 Fetches live data from Smartsheet API.
 """
 import os, re, io, json, zipfile, tempfile
-from http.server import BaseHTTPRequestHandler
+from http.server import BaseHTTPRequestHandlerh
 from urllib.parse import urlparse, parse_qs
 import requests, certifi
 from datetime import datetime
@@ -1029,7 +1029,7 @@ def generate_presentation(template_bytes, region_name, year, q1_data, q2_data, p
             xml_data = re.sub(r'<c:externalData[^>]*>.*?</c:externalData>', '', xml_data, flags=re.DOTALL)
             xml_data = re.sub(r'<c:externalData[^/]*/>', '', xml_data)
             # Remove Excel sheet formula refs (point to deleted Excel)
-            xml_data = re.sub(r'<c:f>[^<]*</c:f>', '', xml_data)
+            xml_data = re.sub(r'<c:f>[^<]*</c:f>', '<c:f></c:f>', xml_data)
             file_contents[fname] = xml_data.encode('utf-8')
         elif fname.startswith('ppt/charts/_rels/chart') and fname.endswith('.xml.rels'):
             rels_data = file_contents[fname] if isinstance(file_contents[fname], str) else file_contents[fname].decode('utf-8')
