@@ -3,7 +3,7 @@ Generates quarterly (Q1+Q2) KPI reports using client's reference template.
 Fetches live data from Smartsheet API.
 """
 import os, re, io, json, zipfile, tempfile
-from http.server import BaseHTTPRequestHandlerh
+from http.server import BaseHTTPRequestHandler
 from urllib.parse import urlparse, parse_qs
 import requests, certifi
 from datetime import datetime
