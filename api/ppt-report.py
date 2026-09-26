@@ -76,8 +76,8 @@ Q1_CHART_MAP = {
     'chart4.xml': 6,    # KPI 5
     'chart5.xml': 7,    # KPI 6
     'chart6.xml': 10,   # KPI 9
-    'chart7.xml': 12,   # KPI 11
-    'chart8.xml': 13,   # KPI 12
+    'chart7.xml': 13,   # KPI 11
+    'chart8.xml': 12,   # KPI 12
     'chart9.xml': 14,   # KPI 13
     'chart10.xml': 15,  # KPI 14
     'chart11.xml': 16,  # KPI 15
@@ -496,6 +496,15 @@ def update_chart_title(xml_str, kpi_row):
     # Clear all <a:t> content first, then set correct title in first run
     new_title_block = re.sub(r'(<a:t>)[^<]*(</a:t>)', r'\1\2', title_block)
     new_title_block = re.sub(r'(<a:t>)(</a:t>)', lambda m: m.group(1) + safe_title + m.group(2), new_title_block, count=1)
+    # Add blue font color (002060) to all run properties in title
+    def add_blue_color(m):
+        rpr = m.group(0)
+        # Remove any existing solidFill
+        rpr = re.sub(r'<a:solidFill>.*?</a:solidFill>', '', rpr, flags=re.DOTALL)
+        # Insert blue solidFill before closing tag
+        rpr = rpr.replace('</a:rPr>', '<a:solidFill><a:srgbClr val="002060"/></a:solidFill></a:rPr>')
+        return rpr
+    new_title_block = re.sub(r'<a:rPr[^>]*>.*?</a:rPr>', add_blue_color, new_title_block, flags=re.DOTALL)
     return xml_str[:title_match.start()] + new_title_block + xml_str[title_match.end():]
 
 def update_chart_xml(xml_str, c1_val, c2_val, c1_na=False, c2_na=False):
@@ -773,6 +782,9 @@ def update_scoring_slide(xml_str, region_data, short_names):
                 bg_cx = int(bg_cx_m.group(1))
                 new_cx = max(int(bg_cx * max(c1_score, 0.02)), 1) if c1_score > 0 else 1
                 new_fill = re.sub(r'(<a:ext cx=")\d+(")', f'\\g<1>{new_cx}\\2', fill_shape, count=1)
+                # Change bar color: blue (002060) for 100%, yellow (FFC000) for <100%
+                bar_color = '002060' if c1_score >= 1.0 else 'FFC000'
+                new_fill = re.sub(r'<a:solidFill>.*?</a:solidFill>', f'<a:solidFill><a:srgbClr val="{bar_color}"/></a:solidFill>', new_fill, count=1, flags=re.DOTALL)
                 bar_updates.append((shapes[c1_fill_idx].start(), shapes[c1_fill_idx].end(), new_fill))
 
         if c2_fill_idx < len(shapes) and c2_bg_idx < len(shapes):
@@ -783,6 +795,9 @@ def update_scoring_slide(xml_str, region_data, short_names):
                 bg_cx = int(bg_cx_m.group(1))
                 new_cx = max(int(bg_cx * max(c2_score, 0.02)), 1) if c2_score > 0 else 1
                 new_fill = re.sub(r'(<a:ext cx=")\d+(")', f'\\g<1>{new_cx}\\2', fill_shape, count=1)
+                # Change bar color: blue (002060) for 100%, yellow (FFC000) for <100%
+                bar_color = '002060' if c2_score >= 1.0 else 'FFC000'
+                new_fill = re.sub(r'<a:solidFill>.*?</a:solidFill>', f'<a:solidFill><a:srgbClr val="{bar_color}"/></a:solidFill>', new_fill, count=1, flags=re.DOTALL)
                 bar_updates.append((shapes[c2_fill_idx].start(), shapes[c2_fill_idx].end(), new_fill))
 
     # Apply bar width updates in reverse order
