@@ -1,11 +1,12 @@
 """Vercel Python serverless function - HCT-COHS KPI PPT Generator.
-Generates quarterly (Q1+Q2) KPI reports using client's reference template.
-Fetches live data from Smartsheet API.
+Generates quahrterly (Q1+Q2) KPI reports using client's reference template.
+Fetches live hdata from Smartsheet API.
 """
+h
 import os, re, io, json, zipfile, tempfile
 from http.server import BaseHTTPRequestHandler
 from urllib.parse import urlparse, parse_qs
-import requests, certifi
+from urllib.request import Request, urlopen
 from datetime import datetime
 from xml.etree import ElementTree as ET
 
@@ -190,9 +191,9 @@ KPI_CHART_TITLES = {
 
 def _ss_fetch(endpoint, token):
     url = f'https://api.smartsheet.com/2.0/{endpoint}'
-    resp = requests.get(url, headers={'Authorization': f'Bearer {token}', 'Accept': 'application/json'}, timeout=30, verify=certifi.where())
-    resp.raise_for_status()
-    return resp.json()
+    req = Request(url, headers={'Authorization': f'Bearer {token}', 'Accept': 'application/json'})
+    with urlopen(req, timeout=30) as resp:
+        return json.loads(resp.read())
 
 def fetch_sheet_rows(sheet_id, token):
     data = _ss_fetch(f'sheets/{sheet_id}?pageSize=10000', token)
@@ -773,8 +774,6 @@ def update_scoring_slide(xml_str, region_data, short_names):
                 bg_cx = int(bg_cx_m.group(1))
                 new_cx = max(int(bg_cx * max(c1_score, 0.02)), 1) if c1_score > 0 else 1
                 new_fill = re.sub(r'(<a:ext cx=")\d+(")', f'\\g<1>{new_cx}\\2', fill_shape, count=1)
-                bar_color = '00249C' if c1_score >= 1.0 else 'FFC000'
-                new_fill = re.sub(r'(<a:srgbClr val=")[^"]+(")', f'\\g<1>{bar_color}\\2', new_fill)
                 bar_updates.append((shapes[c1_fill_idx].start(), shapes[c1_fill_idx].end(), new_fill))
 
         if c2_fill_idx < len(shapes) and c2_bg_idx < len(shapes):
@@ -785,8 +784,6 @@ def update_scoring_slide(xml_str, region_data, short_names):
                 bg_cx = int(bg_cx_m.group(1))
                 new_cx = max(int(bg_cx * max(c2_score, 0.02)), 1) if c2_score > 0 else 1
                 new_fill = re.sub(r'(<a:ext cx=")\d+(")', f'\\g<1>{new_cx}\\2', fill_shape, count=1)
-                bar_color = '00249C' if c2_score >= 1.0 else 'FFC000'
-                new_fill = re.sub(r'(<a:srgbClr val=")[^"]+(")', f'\\g<1>{bar_color}\\2', new_fill)
                 bar_updates.append((shapes[c2_fill_idx].start(), shapes[c2_fill_idx].end(), new_fill))
 
     # Apply bar width updates in reverse order
@@ -1009,62 +1006,6 @@ def generate_presentation(template_bytes, region_name, year, q1_data, q2_data, p
     pie2_path = 'ppt/charts/chart15.xml'
     if pie2_path in file_contents:
         del file_contents[pie2_path]
-
-    # Clean up [Content_Types].xml — remove overrides for deleted slides/charts
-    ct_path = '[Content_Types].xml'
-    if ct_path in file_contents:
-        ct_xml = file_contents[ct_path].decode('utf-8')
-        for slide_num in range(13, 22):
-            ct_xml = re.sub(rf'<Override[^>]*slides/slide{slide_num}\.xml[^>]*/>', '', ct_xml)
-        for chart_file in list(Q2_CHART_MAP.keys()) + ['chart15.xml']:
-            ct_xml = re.sub(rf'<Override[^>]*charts/{chart_file}[^>]*/>', '', ct_xml)
-        for slide_num in range(13, 22):
-            ct_xml = re.sub(rf'<Override[^>]*slides/_rels/slide{slide_num}\.xml\.rels[^>]*/>', '', ct_xml)
-        file_contents[ct_path] = ct_xml.encode('utf-8')
-
-    # 11. Remove Excel embedding references to prevent chart data mismatch repair dialog
-    for fname in list(file_contents.keys()):
-        if fname.startswith('ppt/charts/chart') and fname.endswith('.xml') and '_rels' not in fname:
-            xml_data = file_contents[fname] if isinstance(file_contents[fname], str) else file_contents[fname].decode('utf-8')
-            xml_data = re.sub(r'<c:externalData[^>]*>.*?</c:externalData>', '', xml_data, flags=re.DOTALL)
-            xml_data = re.sub(r'<c:externalData[^/]*/>', '', xml_data)
-            # Remove Excel sheet formula refs (point to deleted Excel)
-            xml_data = re.sub(r'<c:f>[^<]*</c:f>', '<c:f></c:f>', xml_data)
-            file_contents[fname] = xml_data.encode('utf-8')
-        elif fname.startswith('ppt/charts/_rels/chart') and fname.endswith('.xml.rels'):
-            rels_data = file_contents[fname] if isinstance(file_contents[fname], str) else file_contents[fname].decode('utf-8')
-            rels_data = re.sub(r'<Relationship[^>]*relationships/package[^>]*/>', '', rels_data)
-            if '<Relationship ' not in rels_data:
-                del file_contents[fname]
-            else:
-                file_contents[fname] = rels_data.encode('utf-8')
-    for fname in list(file_contents.keys()):
-        if fname.startswith('ppt/embeddings/'):
-            del file_contents[fname]
-    if ct_path in file_contents:
-        ct_xml2 = file_contents[ct_path].decode('utf-8')
-        ct_xml2 = re.sub(r'<Override[^>]*embeddings/[^>]*/>', '', ct_xml2)
-        file_contents[ct_path] = ct_xml2.encode('utf-8')
-
-    # 12. Remove collaboration tracking files that reference deleted slides (causes repair dialog)
-    for fname in list(file_contents.keys()):
-        if fname.startswith('ppt/changesInfos/') or fname in ('ppt/revisionInfo.xml', 'ppt/authors.xml'):
-            del file_contents[fname]
-    # Clean references from presentation.xml.rels
-    pres_rels_path = 'ppt/_rels/presentation.xml.rels'
-    if pres_rels_path in file_contents:
-        pr_data = file_contents[pres_rels_path] if isinstance(file_contents[pres_rels_path], str) else file_contents[pres_rels_path].decode('utf-8')
-        pr_data = re.sub(r'<Relationship[^>]*relationships/changesInfo[^>]*/>', '', pr_data)
-        pr_data = re.sub(r'<Relationship[^>]*relationships/revisionInfo[^>]*/>', '', pr_data)
-        pr_data = re.sub(r'<Relationship[^>]*relationships/authors[^>]*/>', '', pr_data)
-        file_contents[pres_rels_path] = pr_data.encode('utf-8')
-    # Clean Content_Types
-    if ct_path in file_contents:
-        ct_xml3 = file_contents[ct_path] if isinstance(file_contents[ct_path], str) else file_contents[ct_path].decode('utf-8')
-        ct_xml3 = re.sub(r'<Override[^>]*changesInfo[^>]*/>', '', ct_xml3)
-        ct_xml3 = re.sub(r'<Override[^>]*revisionInfo[^>]*/>', '', ct_xml3)
-        ct_xml3 = re.sub(r'<Override[^>]*authors[^>]*/>', '', ct_xml3)
-        file_contents[ct_path] = ct_xml3.encode('utf-8')
 
         # Write output ZIP
     buf_out = io.BytesIO()
