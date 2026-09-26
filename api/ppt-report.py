@@ -1024,15 +1024,17 @@ def generate_presentation(template_bytes, region_name, year, q1_data, q2_data, p
 
     # 11. Remove Excel embedding references to prevent chart data mismatch repair dialog
     for fname in list(file_contents.keys()):
-        if fname.startswith('ppt/charts/chart') and fname.endswith('.xml'):
+        if fname.startswith('ppt/charts/chart') and fname.endswith('.xml') and '_rels' not in fname:
             xml_data = file_contents[fname] if isinstance(file_contents[fname], str) else file_contents[fname].decode('utf-8')
             xml_data = re.sub(r'<c:externalData[^>]*>.*?</c:externalData>', '', xml_data, flags=re.DOTALL)
             xml_data = re.sub(r'<c:externalData[^/]*/>', '', xml_data)
+            # Remove Excel sheet formula refs (point to deleted Excel)
+            xml_data = re.sub(r'<c:f>[^<]*</c:f>', '', xml_data)
             file_contents[fname] = xml_data.encode('utf-8')
         elif fname.startswith('ppt/charts/_rels/chart') and fname.endswith('.xml.rels'):
             rels_data = file_contents[fname] if isinstance(file_contents[fname], str) else file_contents[fname].decode('utf-8')
             rels_data = re.sub(r'<Relationship[^>]*relationships/package[^>]*/>', '', rels_data)
-            if '<Relationship' not in rels_data:
+            if '<Relationship ' not in rels_data:
                 del file_contents[fname]
             else:
                 file_contents[fname] = rels_data.encode('utf-8')
