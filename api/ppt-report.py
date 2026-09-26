@@ -472,7 +472,7 @@ def _set_chart_blue_font(xml_str):
         old_title = title_match.group(0)
         new_title = old_title
         # Add blue color after each rPr opening tag (removes old solidFill first)
-        new_title = re.sub(r'<a:solidFill><a:srgbClr val="[^"]*"/></a:solidFill>', '', new_title)
+        new_title = re.sub(r'<a:solidFill>.*?</a:solidFill>', '', new_title)
         new_title = re.sub(r'(<a:rPr[^>]*>)',
             r'\1<a:solidFill><a:srgbClr val="' + BLUE + r'"/></a:solidFill>', new_title)
         # Set Arial font on title
