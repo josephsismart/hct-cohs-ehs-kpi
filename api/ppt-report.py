@@ -1,6 +1,6 @@
 """Vercel Python serverless function - HCT-COHS KPI PPT Generator.
-Generates quahrterly (Q1+Q2) KPI reports using client's reference template.
-Fetches live hdata from Smartsheet API.
+Generates quarterly (Q1+Q2) KPI reports using client's reference template.
+Fetches live data from Smartsheet API.
 """
 import os, re, io, json, zipfile, tempfile
 from http.server import BaseHTTPRequestHandler
@@ -773,6 +773,8 @@ def update_scoring_slide(xml_str, region_data, short_names):
                 bg_cx = int(bg_cx_m.group(1))
                 new_cx = max(int(bg_cx * max(c1_score, 0.02)), 1) if c1_score > 0 else 1
                 new_fill = re.sub(r'(<a:ext cx=")\d+(")', f'\\g<1>{new_cx}\\2', fill_shape, count=1)
+                bar_color = '00249C' if c1_score >= 1.0 else 'FFC000'
+                new_fill = re.sub(r'(<a:srgbClr val=")[^"]+(")', f'\\g<1>{bar_color}\\2', new_fill)
                 bar_updates.append((shapes[c1_fill_idx].start(), shapes[c1_fill_idx].end(), new_fill))
 
         if c2_fill_idx < len(shapes) and c2_bg_idx < len(shapes):
@@ -783,6 +785,8 @@ def update_scoring_slide(xml_str, region_data, short_names):
                 bg_cx = int(bg_cx_m.group(1))
                 new_cx = max(int(bg_cx * max(c2_score, 0.02)), 1) if c2_score > 0 else 1
                 new_fill = re.sub(r'(<a:ext cx=")\d+(")', f'\\g<1>{new_cx}\\2', fill_shape, count=1)
+                bar_color = '00249C' if c2_score >= 1.0 else 'FFC000'
+                new_fill = re.sub(r'(<a:srgbClr val=")[^"]+(")', f'\\g<1>{bar_color}\\2', new_fill)
                 bar_updates.append((shapes[c2_fill_idx].start(), shapes[c2_fill_idx].end(), new_fill))
 
     # Apply bar width updates in reverse order
@@ -1005,6 +1009,18 @@ def generate_presentation(template_bytes, region_name, year, q1_data, q2_data, p
     pie2_path = 'ppt/charts/chart15.xml'
     if pie2_path in file_contents:
         del file_contents[pie2_path]
+
+    # Clean up [Content_Types].xml — remove overrides for deleted slides/charts
+    ct_path = '[Content_Types].xml'
+    if ct_path in file_contents:
+        ct_xml = file_contents[ct_path].decode('utf-8')
+        for slide_num in range(13, 22):
+            ct_xml = re.sub(rf'<Override[^>]*slides/slide{slide_num}\.xml[^/]*/>', '', ct_xml)
+        for chart_file in list(Q2_CHART_MAP.keys()) + ['chart15.xml']:
+            ct_xml = re.sub(rf'<Override[^>]*charts/{chart_file}[^/]*/>', '', ct_xml)
+        for slide_num in range(13, 22):
+            ct_xml = re.sub(rf'<Override[^>]*slides/_rels/slide{slide_num}\.xml\.rels[^/]*/>', '', ct_xml)
+        file_contents[ct_path] = ct_xml.encode('utf-8')
 
         # Write output ZIP
     buf_out = io.BytesIO()
