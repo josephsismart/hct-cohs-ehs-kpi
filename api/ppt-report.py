@@ -1014,6 +1014,10 @@ def generate_presentation(template_bytes, region_name, year, q1_data, q2_data, p
             ct_xml = re.sub(rf'<Override\s+PartName="/ppt/slides/slide{slide_num}\.xml"[^>]*/>', '', ct_xml)
         for chart_num in range(15, 29):
             ct_xml = re.sub(rf'<Override\s+PartName="/ppt/charts/chart{chart_num}\.xml"[^>]*/>', '', ct_xml)
+        # Remove overrides for collaboration tracking files
+        ct_xml = re.sub(r'<Override[^>]*PartName="/ppt/changesInfos/[^"]*"[^>]*/>', '', ct_xml)
+        ct_xml = re.sub(r'<Override[^>]*PartName="/ppt/revisionInfo\.xml"[^>]*/>', '', ct_xml)
+        ct_xml = re.sub(r'<Override[^>]*PartName="/ppt/authors\.xml"[^>]*/>', '', ct_xml)
         file_contents[ct_path] = ct_xml.encode('utf-8')
 
     # 12. Delete orphaned chart rels and embeddings for Q2
@@ -1023,6 +1027,18 @@ def generate_presentation(template_bytes, region_name, year, q1_data, q2_data, p
             if path in file_contents:
                 del file_contents[path]
 
+    # 13. Remove collaboration tracking files (changesInfo, revisionInfo, authors)
+    # These contain stale slide IDs from programmatic slide deletion and cause repair dialogs
+    collab_skip = [k for k in file_contents if k.startswith('ppt/changesInfos/') or k == 'ppt/revisionInfo.xml' or k == 'ppt/authors.xml']
+    for path in collab_skip:
+        del file_contents[path]
+    # Also clean their relationships from presentation.xml.rels
+    if rels_path_pres in file_contents:
+        rels_xml = file_contents[rels_path_pres].decode('utf-8')
+        rels_xml = re.sub(r'<Relationship[^>]*Target="changesInfos/[^"]*"[^/]*/>', '', rels_xml)
+        rels_xml = re.sub(r'<Relationship[^>]*Target="revisionInfo\.xml"[^/]*/>', '', rels_xml)
+        rels_xml = re.sub(r'<Relationship[^>]*Target="authors\.xml"[^/]*/>', '', rels_xml)
+        file_contents[rels_path_pres] = rels_xml.encode('utf-8')
 
         # Write output ZIP
     buf_out = io.BytesIO()
