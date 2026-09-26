@@ -6,7 +6,7 @@ h
 import os, re, io, json, zipfile, tempfile
 from http.server import BaseHTTPRequestHandler
 from urllib.parse import urlparse, parse_qs
-from urllib.request import Request, urlopen
+import requests, certifi
 from datetime import datetime
 from xml.etree import ElementTree as ET
 
@@ -191,9 +191,9 @@ KPI_CHART_TITLES = {
 
 def _ss_fetch(endpoint, token):
     url = f'https://api.smartsheet.com/2.0/{endpoint}'
-    req = Request(url, headers={'Authorization': f'Bearer {token}', 'Accept': 'application/json'})
-    with urlopen(req, timeout=30) as resp:
-        return json.loads(resp.read())
+    resp = requests.get(url, headers={'Authorization': f'Bearer {token}', 'Accept': 'application/json'}, timeout=30, verify=certifi.where())
+    resp.raise_for_status()
+    return resp.json()
 
 def fetch_sheet_rows(sheet_id, token):
     data = _ss_fetch(f'sheets/{sheet_id}?pageSize=10000', token)
