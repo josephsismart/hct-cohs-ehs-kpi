@@ -1022,6 +1022,28 @@ def generate_presentation(template_bytes, region_name, year, q1_data, q2_data, p
             ct_xml = re.sub(rf'<Override[^>]*slides/_rels/slide{slide_num}\.xml\.rels[^>]*/>', '', ct_xml)
         file_contents[ct_path] = ct_xml.encode('utf-8')
 
+    # 11. Remove Excel embedding references to prevent chart data mismatch repair dialog
+    for fname in list(file_contents.keys()):
+        if fname.startswith('ppt/charts/chart') and fname.endswith('.xml'):
+            xml_data = file_contents[fname] if isinstance(file_contents[fname], str) else file_contents[fname].decode('utf-8')
+            xml_data = re.sub(r'<c:externalData[^>]*>.*?</c:externalData>', '', xml_data, flags=re.DOTALL)
+            xml_data = re.sub(r'<c:externalData[^/]*/>', '', xml_data)
+            file_contents[fname] = xml_data.encode('utf-8')
+        elif fname.startswith('ppt/charts/_rels/chart') and fname.endswith('.xml.rels'):
+            rels_data = file_contents[fname] if isinstance(file_contents[fname], str) else file_contents[fname].decode('utf-8')
+            rels_data = re.sub(r'<Relationship[^>]*relationships/package[^>]*/>', '', rels_data)
+            if '<Relationship' not in rels_data:
+                del file_contents[fname]
+            else:
+                file_contents[fname] = rels_data.encode('utf-8')
+    for fname in list(file_contents.keys()):
+        if fname.startswith('ppt/embeddings/'):
+            del file_contents[fname]
+    if ct_path in file_contents:
+        ct_xml2 = file_contents[ct_path].decode('utf-8')
+        ct_xml2 = re.sub(r'<Override[^>]*embeddings/[^>]*/>', '', ct_xml2)
+        file_contents[ct_path] = ct_xml2.encode('utf-8')
+
         # Write output ZIP
     buf_out = io.BytesIO()
     with zipfile.ZipFile(buf_out, 'w', zipfile.ZIP_DEFLATED) as zout:
