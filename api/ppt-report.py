@@ -1046,6 +1046,26 @@ def generate_presentation(template_bytes, region_name, year, q1_data, q2_data, p
         ct_xml2 = re.sub(r'<Override[^>]*embeddings/[^>]*/>', '', ct_xml2)
         file_contents[ct_path] = ct_xml2.encode('utf-8')
 
+    # 12. Remove collaboration tracking files that reference deleted slides (causes repair dialog)
+    for fname in list(file_contents.keys()):
+        if fname.startswith('ppt/changesInfos/') or fname in ('ppt/revisionInfo.xml', 'ppt/authors.xml'):
+            del file_contents[fname]
+    # Clean references from presentation.xml.rels
+    pres_rels_path = 'ppt/_rels/presentation.xml.rels'
+    if pres_rels_path in file_contents:
+        pr_data = file_contents[pres_rels_path] if isinstance(file_contents[pres_rels_path], str) else file_contents[pres_rels_path].decode('utf-8')
+        pr_data = re.sub(r'<Relationship[^>]*relationships/changesInfo[^>]*/>', '', pr_data)
+        pr_data = re.sub(r'<Relationship[^>]*relationships/revisionInfo[^>]*/>', '', pr_data)
+        pr_data = re.sub(r'<Relationship[^>]*relationships/authors[^>]*/>', '', pr_data)
+        file_contents[pres_rels_path] = pr_data.encode('utf-8')
+    # Clean Content_Types
+    if ct_path in file_contents:
+        ct_xml3 = file_contents[ct_path] if isinstance(file_contents[ct_path], str) else file_contents[ct_path].decode('utf-8')
+        ct_xml3 = re.sub(r'<Override[^>]*changesInfo[^>]*/>', '', ct_xml3)
+        ct_xml3 = re.sub(r'<Override[^>]*revisionInfo[^>]*/>', '', ct_xml3)
+        ct_xml3 = re.sub(r'<Override[^>]*authors[^>]*/>', '', ct_xml3)
+        file_contents[ct_path] = ct_xml3.encode('utf-8')
+
         # Write output ZIP
     buf_out = io.BytesIO()
     with zipfile.ZipFile(buf_out, 'w', zipfile.ZIP_DEFLATED) as zout:
