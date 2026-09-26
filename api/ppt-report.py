@@ -1015,11 +1015,11 @@ def generate_presentation(template_bytes, region_name, year, q1_data, q2_data, p
     if ct_path in file_contents:
         ct_xml = file_contents[ct_path].decode('utf-8')
         for slide_num in range(13, 22):
-            ct_xml = re.sub(rf'<Override[^>]*slides/slide{slide_num}\.xml[^/]*/>', '', ct_xml)
+            ct_xml = re.sub(rf'<Override[^>]*slides/slide{slide_num}\.xml[^>]*/>', '', ct_xml)
         for chart_file in list(Q2_CHART_MAP.keys()) + ['chart15.xml']:
-            ct_xml = re.sub(rf'<Override[^>]*charts/{chart_file}[^/]*/>', '', ct_xml)
+            ct_xml = re.sub(rf'<Override[^>]*charts/{chart_file}[^>]*/>', '', ct_xml)
         for slide_num in range(13, 22):
-            ct_xml = re.sub(rf'<Override[^>]*slides/_rels/slide{slide_num}\.xml\.rels[^/]*/>', '', ct_xml)
+            ct_xml = re.sub(rf'<Override[^>]*slides/_rels/slide{slide_num}\.xml\.rels[^>]*/>', '', ct_xml)
         file_contents[ct_path] = ct_xml.encode('utf-8')
 
         # Write output ZIP
