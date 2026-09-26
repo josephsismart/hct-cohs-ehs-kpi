@@ -1006,6 +1006,24 @@ def generate_presentation(template_bytes, region_name, year, q1_data, q2_data, p
     if pie2_path in file_contents:
         del file_contents[pie2_path]
 
+    # 11. Clean up [Content_Types].xml — remove overrides for deleted parts
+    ct_path = '[Content_Types].xml'
+    if ct_path in file_contents:
+        ct_xml = file_contents[ct_path].decode('utf-8')
+        for slide_num in range(13, 22):
+            ct_xml = re.sub(rf'<Override\s+PartName="/ppt/slides/slide{slide_num}\.xml"[^>]*/>', '', ct_xml)
+        for chart_num in range(15, 29):
+            ct_xml = re.sub(rf'<Override\s+PartName="/ppt/charts/chart{chart_num}\.xml"[^>]*/>', '', ct_xml)
+        file_contents[ct_path] = ct_xml.encode('utf-8')
+
+    # 12. Delete orphaned chart rels and embeddings for Q2
+    for chart_num in range(15, 29):
+        for path in [f'ppt/charts/_rels/chart{chart_num}.xml.rels',
+                     f'ppt/embeddings/Microsoft_Excel_Worksheet{chart_num}.xlsx']:
+            if path in file_contents:
+                del file_contents[path]
+
+
         # Write output ZIP
     buf_out = io.BytesIO()
     with zipfile.ZipFile(buf_out, 'w', zipfile.ZIP_DEFLATED) as zout:
@@ -1121,7 +1139,7 @@ class handler(BaseHTTPRequestHandler):
             self.send_response(200)
             self.send_header('Content-Type', 'application/vnd.openxmlformats-officedocument.presentationml.presentation')
             self.send_header('Content-Disposition', f'attachment; filename="{filename}"')
-            self.send_header('Conthent-Length', str(len(pptx_bytes)))
+            self.send_header('Content-Length', str(len(pptx_bytes)))
             self.send_header('Access-Control-Allow-Origin', '*')
             self.end_headers()
             self.wfile.write(pptx_bytes)
