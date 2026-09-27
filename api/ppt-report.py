@@ -509,6 +509,19 @@ def update_chart_title(xml_str, kpi_row):
         rpr = rpr.replace('</a:rPr>', '<a:solidFill><a:srgbClr val="002060"/></a:solidFill></a:rPr>')
         return rpr
     new_title_block = re.sub(r'<a:rPr[^>]*>.*?</a:rPr>', add_blue_color, new_title_block, flags=re.DOTALL)
+    # Also handle self-closing <a:rPr .../> tags (convert to open/close with blue fill)
+    def fix_self_closing_rpr(m):
+        tag = m.group(0)
+        # Extract attributes from the self-closing tag
+        attrs = tag[len('<a:rPr'):-len('/>')].strip()
+        # Normalize font size
+        attrs = re.sub(r' sz="\d+"', ' sz="1100"', attrs)
+        if ' sz="' not in attrs:
+            attrs = ' sz="1100"' + (' ' + attrs if attrs else '')
+        else:
+            attrs = ' ' + attrs if attrs else ''
+        return '<a:rPr' + attrs + '><a:solidFill><a:srgbClr val="002060"/></a:solidFill></a:rPr>'
+    new_title_block = re.sub(r'<a:rPr[^>]*/>', fix_self_closing_rpr, new_title_block)
     return xml_str[:title_match.start()] + new_title_block + xml_str[title_match.end():]
 
 def update_chart_xml(xml_str, c1_val, c2_val, c1_na=False, c2_na=False):
