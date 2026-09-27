@@ -164,7 +164,11 @@ def normalize_month(v):
 def safe_float(v, default=0.0):
     if v is None: return default
     try: return float(v)
-    except: return default
+    except:
+        try:
+            s = str(v).strip().replace(',', '').replace('%', '')
+            return float(s) if s else default
+        except: return default
 
 def yes_to_int(v):
     s = str(v).strip().lower()
