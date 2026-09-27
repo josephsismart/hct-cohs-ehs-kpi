@@ -20,6 +20,13 @@ ET.register_namespace('w', W_NS)
 MONTH_NAMES = ['January','February','March','April','May','June',
                'July','August','September','October','November','December']
 
+# Campus code aliases (template chart labels -> data keys)
+CAMPUS_ALIAS = {
+    'RAK A': 'RKA', 'RAK B': 'RKB',
+    'RAK A\xa0': 'RKA', 'RAK B\xa0': 'RKB',
+    'RAK A ': 'RKA', 'RAK B ': 'RKB',
+}
+
 # ---- Campus codes for all regions ----
 ALL_CAMPUSES = ['ADA','ADB','AAF','AAZ','DMC','DBN','ADH','MZY','FJF','FJH','SJA','SJB','RKA','RKB']
 REGION_CAMPUSES = {
@@ -269,6 +276,7 @@ def update_chart_xml(chart_xml_bytes, kpi_data, chart_info, committee_data=None)
                         idx = int(pt.get('idx', 0))
                         if idx < len(cats):
                             campus = cats[idx].strip()
+                            campus = CAMPUS_ALIAS.get(campus, campus)
                             d = kpi_data.get(campus, {}).get(kpi_row, {})
                             planned = d.get('planned', 0)
                             actual = d.get('actual', 0)
@@ -297,6 +305,7 @@ def update_chart_xml(chart_xml_bytes, kpi_data, chart_info, committee_data=None)
                         idx = int(pt.get('idx', 0))
                         if idx < len(cats):
                             campus = cats[idx].strip()
+                            campus = CAMPUS_ALIAS.get(campus, campus)
                             d = kpi_data.get(campus, {}).get(kpi_row, {})
                             hours = d.get('actual', 0)
                             v = pt.find(f'{{{C_NS}}}v')
@@ -324,6 +333,7 @@ def update_chart_xml(chart_xml_bytes, kpi_data, chart_info, committee_data=None)
                         idx = int(pt.get('idx', 0))
                         if idx < len(cats):
                             campus = cats[idx].strip()
+                            campus = CAMPUS_ALIAS.get(campus, campus)
                             d = kpi_data.get(campus, {}).get(kpi_row, {})
                             val = d.get(field, 0)
                             v = pt.find(f'{{{C_NS}}}v')
@@ -397,6 +407,13 @@ def update_chart_xml(chart_xml_bytes, kpi_data, chart_info, committee_data=None)
                             v = pt.find(f'{{{C_NS}}}v')
                             if v is not None: v.text = str(round(tot))
 
+    # Remove externalData references (causes "unreadable content" in Word)
+    for ext_data in list(root.iter(f'{{{C_NS}}}externalData')):
+        for parent in root.iter():
+            if ext_data in list(parent):
+                parent.remove(ext_data)
+                break
+
     return ET.tostring(root, encoding='UTF-8', xml_declaration=True)
 
 # ---- Text replacement ----
@@ -458,6 +475,15 @@ def generate_report(token, month, year, template_url):
                     raw = replace_text_in_doc(raw, month_name, year)
                 except Exception as e:
                     print(f"  WARNING: Failed to update document.xml: {e}")
+
+            # Strip external file references from chart .rels
+            if item.filename.startswith('word/charts/_rels/') and item.filename.endswith('.rels'):
+                try:
+                    rels_text = raw.decode('utf-8')
+                    rels_text = re.sub(r'<Relationship[^>]*Target="file:///[^"]*"[^/]*/>', '', rels_text)
+                    raw = rels_text.encode('utf-8')
+                except Exception as e:
+                    print(f"  WARNING: Failed to clean rels {item.filename}: {e}")
 
             zout.writestr(item, raw)
 
