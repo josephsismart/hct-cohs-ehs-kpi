@@ -82,7 +82,8 @@ SYNC_SOURCES = [
     {'key': 'v2_hazard_id', 'sheetId': '7323092115214212', 'campusCol': 'Campus Code', 'monthCol': 'Reporting Month', 'plannedCol': 'Total Controls Identified', 'actualCol': 'Implemented Controls', 'kpi_row': 7},
     {'key': 'v2_risk_closed', 'sheetId': '7323092115214212', 'campusCol': 'Campus', 'monthCol': 'Primary', 'plannedCol': 'Total Risk Assessments Registered', 'actualCol': 'Risk Assessment Closed', 'kpi_row': 8},
     {'key': 'v2_risk_validated', 'sheetId': '7323092115214212', 'campusCol': 'Campus', 'monthCol': 'Primary', 'plannedCol': 'Total Assessments Register', 'actualCol': 'RA Validated and Signed Off', 'kpi_row': 9},
-    {'key': 'v2_planned_training', 'sheetId': '8549734774951812', 'campusCol': 'Campus Code', 'monthCol': 'Reporting Month', 'plannedCol': 'Planned (Yes/No)', 'actualCol': 'Planned (Yes/No)', 'kpi_row': 10, 'yesNoCount': True},    {'key': 'v2_safe_working', 'sheetId': '1693592581001092', 'campusCol': 'Campus', 'monthCol': 'Primary', 'plannedCol': 'No. of SOPs Verified', 'actualCol': 'No. of SOPs Implemented', 'kpi_row': 12},
+    {'key': 'v2_planned_training', 'sheetId': '8549734774951812', 'campusCol': 'Campus Code', 'monthCol': 'Reporting Month', 'plannedCol': 'Planned (Yes/No)', 'actualCol': 'Planned (Yes/No)', 'kpi_row': 10, 'yesNoCount': True},
+    {'key': 'v2_safe_working', 'sheetId': '1693592581001092', 'campusCol': 'Campus', 'monthCol': 'Primary', 'plannedCol': 'No. of SOPs Verified', 'actualCol': 'No. of SOPs Implemented', 'kpi_row': 12},
     {'key': 'v2_drills', 'sheetId': '5053158949605252', 'campusCol': 'Campus Code', 'monthCol': 'Reporting Month', 'plannedCol': 'Planned Drill? (Yes/No)', 'actualCol': 'Are there any submission?', 'kpi_row': 13, 'yesNoCount': True},
     {'key': 'v2_permit_to_work', 'sheetId': '5899016251330436', 'campusCol': 'Campus Code', 'monthCol': 'Reporting Month', 'plannedCol': 'No. of PTWs Issued', 'actualCol': 'Total Work Registered', 'kpi_row': 14},
     {'key': 'v2_onsite_induction', 'sheetId': '5899016251330436', 'campusCol': 'Campus Code', 'monthCol': 'Reporting Month', 'plannedCol': "No. of New Contractors (Individuals)", 'actualCol': 'Contractors Inducted in the Reporting Month', 'kpi_row': 15},
@@ -179,7 +180,8 @@ def fetch_kpi_data(token, month_filter):
         try:
             if src.get('reportId'):
                 rows = fetch_report_rows(src['reportId'], token)
-            else:                rows = fetch_sheet_rows(src['sheetId'], token)
+            else:
+                rows = fetch_sheet_rows(src['sheetId'], token)
         except Exception as e:
             print(f"  WARNING: Failed to fetch {src['key']}: {e}")
             continue
@@ -409,7 +411,7 @@ def make_word_chart_xml(title, categories, series_list, max_val=None):
                  f'<c:ptCount val="{len(s["values"])}"/>')
         for vi, v in enumerate(s['values']):
             x.append(f'<c:pt idx="{vi}"><c:v>{v}</c:v></c:pt>')
-            x.append('</c:numCache></c:numRef></c:val></c:ser>')
+        x.append('</c:numCache></c:numRef></c:val></c:ser>')
     x.append('<c:axId val="111111111"/><c:axId val="222222222"/></c:barChart>')
     x.append('<c:catAx><c:axId val="111111111"/><c:scaling><c:orientation val="minMax"/></c:scaling>'
              '<c:delete val="0"/><c:axPos val="b"/>'
@@ -715,7 +717,8 @@ def generate_report(region_name, month_name, year, token):
         score = round(region_data['avg_pillar'][i] * 100)
         body.append(make_para(f'{pillar["pillar"]}  —  {score}%  (Weight: {int(pillar["weight"]*100)}%)',
                               style='Heading2'))
-        for ci, c in enumerate(campuses):            campus_score = round(c['pillar_scores'][i] * 100)
+        for ci, c in enumerate(campuses):
+            campus_score = round(c['pillar_scores'][i] * 100)
             body.append(make_para(f'  {short[ci]}: {campus_score}%', size=11, space_after=40))
         # Per-pillar chart (charts 2-6)
         body.append(make_chart_marker(i + 2))
@@ -799,7 +802,8 @@ def generate_report(region_name, month_name, year, token):
                 '  <Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>',
                 '  <Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/>',
                 '  <Override PartName="/word/settings.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.settings+xml"/>']
-    for ci in range(1, total_charts + 1):        ct_parts.append(f'  <Override PartName="/word/charts/chart{ci}.xml" ContentType="application/vnd.openxmlformats-officedocument.drawingml.chart+xml"/>')
+    for ci in range(1, total_charts + 1):
+        ct_parts.append(f'  <Override PartName="/word/charts/chart{ci}.xml" ContentType="application/vnd.openxmlformats-officedocument.drawingml.chart+xml"/>')
     ct_parts.append('</Types>')
     content_types_xml = '\n'.join(ct_parts)
 
