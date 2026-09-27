@@ -524,7 +524,7 @@ def update_chart_title(xml_str, kpi_row):
     new_title_block = re.sub(r'<a:rPr[^>]*/>', fix_self_closing_rpr, new_title_block)
     return xml_str[:title_match.start()] + new_title_block + xml_str[title_match.end():]
 
-def update_chart_xml(xml_str, c1_val, c2_val, c1_na=False, c2_na=False):
+def update_chart_xml(xml_str, c1_val, c2_val, c1_na=False, c2_na=False, kpi_row=None):
     """Update a 2-category clustered column chart: bar series = [c1, c2], line series = [avg, avg]."""
     # Fix: exclude N/A campuses from average
     if c1_na and c2_na:
@@ -535,6 +535,9 @@ def update_chart_xml(xml_str, c1_val, c2_val, c1_na=False, c2_na=False):
         avg_val = c1_val
     else:
         avg_val = (c1_val + c2_val) / 2
+    # KPIs needing simple 2-bar treatment (no avg line, fixed colors)
+    SIMPLE_BAR_KPIS = {13, 15, 16}  # KPI 12 (Drills), KPI 14 (Induction), KPI 15 (Findings)
+    is_simple = kpi_row in SIMPLE_BAR_KPIS if kpi_row else False
     vals_bar = [c1_val, c2_val]
     vals_line = [avg_val, avg_val]
 
@@ -557,12 +560,26 @@ def update_chart_xml(xml_str, c1_val, c2_val, c1_na=False, c2_na=False):
             new = _update_num_vals(old, vals_bar if si == 0 else vals_line)
             # Add conditional bar coloring: blue if >= avg, red if below
             if si == 0:
-                new = _color_bars_by_avg(new, vals_bar, avg_val, [c1_na, c2_na])
+                if is_simple:
+                    # Fixed distinct colors for simple 2-bar KPIs
+                    new = re.sub(r'<c:dPt>.*?</c:dPt>', '', new, flags=re.DOTALL)
+                    dpt_xml = '<c:dPt><c:idx val="0"/><c:spPr><a:solidFill><a:srgbClr val="00249C"/></a:solidFill></c:spPr></c:dPt>'
+                    dpt_xml += '<c:dPt><c:idx val="1"/><c:spPr><a:solidFill><a:srgbClr val="00B050"/></a:solidFill></c:spPr></c:dPt>'
+                    new = re.sub(r'(<c:order\s[^>]*/>)', r'\1' + dpt_xml, new, count=1)
+                else:
+                    new = _color_bars_by_avg(new, vals_bar, avg_val, [c1_na, c2_na])
                 new = _strip_custom_data_labels(new)
+                # KPI 14 (kpi_row 15): no numbers on top of bars
+                if kpi_row == 15:
+                    new = re.sub(r'<c:dLbls>.*?</c:dLbls>', '<c:dLbls><c:showVal val="0"/><c:showCatName val="0"/><c:showSerName val="0"/><c:showPercent val="0"/></c:dLbls>', new, flags=re.DOTALL)
             bar_xml = bar_xml.replace(old, new, 1)
         xml_str = xml_str[:bar_match.start()] + bar_xml + xml_str[bar_match.end():]
 
-    # Update line chart series (avg line)
+    # For simple bar KPIs: remove the avg line chart entirely
+    if is_simple:
+        xml_str = re.sub(r'<c:lineChart>.*?</c:lineChart>', '', xml_str, flags=re.DOTALL)
+
+    # Update line chart series (avg line) — skip if already removed
     line_match = re.search(r'<c:lineChart>.*?</c:lineChart>', xml_str, re.DOTALL)
     if line_match:
         line_xml = line_match.group(0)
@@ -577,6 +594,10 @@ def update_chart_xml(xml_str, c1_val, c2_val, c1_na=False, c2_na=False):
     xml_str = _set_val_axis_max(xml_str, 1.0)
     # Set number format to percentage on value axis
     xml_str = re.sub(r'(<c:numFmt\s+formatCode=")[^"]*("\s+sourceLinked=")[^"]*(")', r'\g<1>0%\g<2>0\3', xml_str)
+    # KPI 14 (kpi_row 15): remove "Below Target" legend/label text
+    if kpi_row == 15:
+        xml_str = xml_str.replace('Below Target', '')
+        xml_str = xml_str.replace('Contractors Inducted - Below Target', '')
     return xml_str
 
 def _set_val_axis_max(xml_str, max_val):
@@ -891,7 +912,7 @@ def generate_presentation(template_bytes, region_name, year, q1_data, q2_data, p
         c2_val = q1_data.get(campus_codes[1], {}).get(kpi_row, {}).get('calc', 0.0) if len(campus_codes) > 1 else 0.0
         c1_na = q1_data.get(campus_codes[0], {}).get(kpi_row, {}).get('na', False)
         c2_na = q1_data.get(campus_codes[1], {}).get(kpi_row, {}).get('na', False) if len(campus_codes) > 1 else True
-        new_xml = update_chart_xml(xml_str, c1_val, c2_val, c1_na, c2_na)
+        new_xml = update_chart_xml(xml_str, c1_val, c2_val, c1_na, c2_na, kpi_row=kpi_row)
         new_xml = update_chart_title(new_xml, kpi_row)
         file_contents[path] = new_xml.encode('utf-8')
 
@@ -909,7 +930,7 @@ def generate_presentation(template_bytes, region_name, year, q1_data, q2_data, p
         # xml_str = file_contents[path].decode('utf-8')
         # c1_val = q2_data.get(campus_codes[0], {}).get(kpi_row, {}).get('calc', 0.0)
         # c2_val = q2_data.get(campus_codes[1], {}).get(kpi_row, {}).get('calc', 0.0) if len(campus_codes) > 1 else 0.0
-        # new_xml = update_chart_xml(xml_str, c1_val, c2_val)
+        # new_xml = update_chart_xml(xml_str, c1_val, c2_val, kpi_row=kpi_row)
         # new_xml = update_chart_title(new_xml, kpi_row)
         # file_contents[path] = new_xml.encode('utf-8')
 
