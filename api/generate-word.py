@@ -289,8 +289,9 @@ def update_chart_xml(chart_xml_bytes, kpi_data, chart_info, committee_data=None)
 
             val_el = ser.find(f'{{{C_NS}}}val')
             if val_el:
-            0;
-            num_cache = cache.find(f'{{{C_NS}}}numCache')
+                cache = val_el.find(f'{{{C_NS}}}numRef')
+                if cache is None: cache = val_el
+                num_cache = cache.find(f'{{{C_NS}}}numCache')
                 if num_cache is not None:
                     for pt in num_cache.findall(f'{{{C_NS}}}pt'):
                         idx = int(pt.get('idx', 0))
@@ -355,12 +356,12 @@ def update_chart_xml(chart_xml_bytes, kpi_data, chart_info, committee_data=None)
                                 d = committee_data.get(region_name, {})
                             else:
                                 # Aggregate from campuses
-                            if not d:
-                                campus_codes = REGION_CAMPUSES.get(region_name, [])
-                                if campus_codes:
-                                    tot_p = sum(kpi_data.get(c, {}).get(kpi_row, {}).get('planned', 0) for c in campus_codes)
-                                    tot_a = sum(kpi_data.get(c, {}).get(kpi_row, {}).get('actual', 0) for c in campus_codes)
-                                    d = {'planned': tot_p, 'actual': tot_a}
+                                if not d:
+                                    campus_codes = REGION_CAMPUSES.get(region_name, [])
+                                    if campus_codes:
+                                        tot_p = sum(kpi_data.get(c, {}).get(kpi_row, {}).get('planned', 0) for c in campus_codes)
+                                        tot_a = sum(kpi_data.get(c, {}).get(kpi_row, {}).get('actual', 0) for c in campus_codes)
+                                        d = {'planned': tot_p, 'actual': tot_a}
                             val = d.get(field, 0) if d else 0
                             v = pt.find(f'{{{C_NS}}}v')
                             if v is not None: v.text = str(round(val))
