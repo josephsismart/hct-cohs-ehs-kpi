@@ -5,7 +5,7 @@ Template-based: loads word_template.docx, updates charts with live Smartsheet da
 import os, io, json, zipfile, re, copy, base64
 from http.server import BaseHTTPRequestHandler
 from urllib.parse import urlparse, parse_qs
-from urllib.request import Request, urlopen
+import requests as http_requests
 from xml.etree import ElementTree as ET
 
 # ---- Namespaces ----
@@ -101,9 +101,9 @@ CHART_KPI_MAP = {
 
 def _ss_fetch(endpoint, token):
     url = f'https://api.smartsheet.com/2.0/{endpoint}'
-    req = Request(url, headers={'Authorization': f'Bearer {token}', 'Accept': 'application/json'})
-    with urlopen(req, timeout=30) as resp:
-        return json.loads(resp.read())
+    resp = http_requests.get(url, headers={'Authorization': f'Bearer {token}', 'Accept': 'application/json'}, timeout=30)
+    resp.raise_for_status()
+    return resp.json()
 
 def fetch_sheet_rows(sheet_id, token):
     data = _ss_fetch(f'sheets/{sheet_id}?pageSize=500', token)
@@ -433,15 +433,14 @@ def replace_text_in_doc(doc_xml_bytes, month_name, year):
 
 def generate_report(token, month, year, template_url):
     """Generate Word report from template."""
-    import urllib.request
 
     month_name = normalize_month(month) or month
 
     # Download template
     print(f"  Downloading template from {template_url}")
-    req = urllib.request.Request(template_url)
-    with urllib.request.urlopen(req) as resp:
-        template_bytes = resp.read()
+    resp = http_requests.get(template_url, timeout=30)
+    resp.raise_for_status()
+    template_bytes = resp.content
 
     # Fetch all KPI data
     print(f"  Fetching KPI data for {month_name} {year}")
