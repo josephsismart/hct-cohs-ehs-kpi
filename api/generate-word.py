@@ -57,7 +57,7 @@ COMMITTEE_MAP = {
 
 # ---- Smartsheet sources ----
 SYNC_SOURCES = [
-    {'key': 'v2_hs_kpi_report', 'reportId': '5852576405737348', 'campusCol': 'Committee', 'monthCol': 'Reporting Quarter', 'valueCol': 'KPI 1 - % of HS KPI Reports Submitted', 'kpi_row': 2},
+    {'key': 'v2_hs_kpi_report', 'reportId': '5852576405737348', 'campusCol': 'Committee', 'monthCol': 'Reporting Quarter', 'valueCol': 'KPI 1 - % of HS KPI Reports Submitted', 'kpi_row': 2, 'isolateFromCampusSet': True},
     {'key': 'v2_external_compliance', 'sheetId': '1325212455882628', 'campusCol': 'Campus Code', 'monthCol': 'Primary', 'plannedCol': 'Applicable Legal Compliance', 'actualCol': 'Legal Requirements Complied', 'kpi_row': 4},
     {'key': 'v2_hs_committee', 'sheetId': '5093607634587524', 'campusCol': 'Committee', 'monthCol': 'Reporting Month', 'plannedCol': 'Was a meeting held?', 'actualCol': 'Was a meeting held?', 'kpi_row': 5, 'yesNoCount': True, 'isolateFromCampusSet': True},
     {'key': 'v2_hazard_id', 'sheetId': '7524088825204612', 'campusCol': 'Campus Code', 'monthCol': 'Reporting Month', 'plannedCol': 'Total Controls Identified', 'actualCol': 'Implemented Controls', 'kpi_row': 7},
@@ -451,6 +451,18 @@ def generate_report(token, month, year, template_url):
     print(f"  Fetching KPI data for {month_name} {year}")
     kpi_data, committee_data = fetch_all_kpi_data(token, month_name)
     print(f"  Got data for {len(kpi_data)} campuses")
+    # Debug: show per-kpi-row data counts
+    kpi_rows_with_data = {}
+    for campus, kpis in kpi_data.items():
+        for kr, vals in kpis.items():
+            if kr not in kpi_rows_with_data:
+                kpi_rows_with_data[kr] = {'campuses': 0, 'total_planned': 0, 'total_actual': 0}
+            kpi_rows_with_data[kr]['campuses'] += 1
+            kpi_rows_with_data[kr]['total_planned'] += vals.get('planned', 0)
+            kpi_rows_with_data[kr]['total_actual'] += vals.get('actual', 0)
+    for kr in sorted(kpi_rows_with_data.keys()):
+        d = kpi_rows_with_data[kr]
+        print(f"  KPI row {kr}: {d['campuses']} campuses, planned={d['total_planned']}, actual={d['total_actual']}")
 
     # Unzip template
     template_io = io.BytesIO(template_bytes)
