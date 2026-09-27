@@ -76,8 +76,8 @@ Q1_CHART_MAP = {
     'chart4.xml': 6,    # KPI 5
     'chart5.xml': 7,    # KPI 6
     'chart6.xml': 10,   # KPI 9
-    'chart7.xml': 13,   # KPI 11
-    'chart8.xml': 12,   # KPI 12
+    'chart7.xml': 12,   # KPI 11 (Safe Working)
+    'chart8.xml': 13,   # KPI 12 (Drills)
     'chart9.xml': 14,   # KPI 13
     'chart10.xml': 15,  # KPI 14
     'chart11.xml': 16,  # KPI 15
