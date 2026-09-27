@@ -300,7 +300,8 @@ def make_run(text, bold=False, size=None, color=None, italic=False):
     if color:
         cl = w_el('color'); cl.set(f'{{{W}}}val', color); rPr.append(cl)
     r.append(rPr)
-    t = w_el('t'); t.text = text    t.set('{http://www.w3.org/XML/1998/namespace}space', 'preserve')
+    t = w_el('t'); t.text = text
+    t.set('{http://www.w3.org/XML/1998/namespace}space', 'preserve')
     r.append(t)
     return r
 
@@ -407,7 +408,8 @@ def make_word_chart_xml(title, categories, series_list, max_val=None):
                  f'<c:formatCode>0</c:formatCode>'
                  f'<c:ptCount val="{len(s["values"])}"/>')
         for vi, v in enumerate(s['values']):
-            x.append(f'<c:pt idx="{vi}"><c:v>{v}</c:v></c:pt>')        x.append('</c:numCache></c:numRef></c:val></c:ser>')
+            x.append(f'<c:pt idx="{vi}"><c:v>{v}</c:v></c:pt>')
+            x.append('</c:numCache></c:numRef></c:val></c:ser>')
     x.append('<c:axId val="111111111"/><c:axId val="222222222"/></c:barChart>')
     x.append('<c:catAx><c:axId val="111111111"/><c:scaling><c:orientation val="minMax"/></c:scaling>'
              '<c:delete val="0"/><c:axPos val="b"/>'
@@ -506,7 +508,8 @@ def make_kpi_summary_table(region_data, region_cfg):
             for c in campuses:
                 kpi = c['kpis'][kpi_idx] if kpi_idx < len(c['kpis']) else {'calc': 0}
                 pct = round(kpi['calc'] * 100)
-                color = '00B050' if pct >= 90 else ('FFC000' if pct >= 70 else 'FF0000')                tr.append(make_cell(f'{pct}%', W3, size=9, center=True, color=color))
+                color = '00B050' if pct >= 90 else ('FFC000' if pct >= 70 else 'FF0000')
+                tr.append(make_cell(f'{pct}%', W3, size=9, center=True, color=color))
                 vals.append(kpi['calc'])
             avg = sum(vals) / len(vals) if vals else 0
             avg_pct = round(avg * 100)
@@ -617,7 +620,8 @@ def generate_report(region_name, month_name, year, token):
     kpi_idx_map = {}
     idx = 0
     for pillar in PILLAR_KPIS:
-        for r in pillar['rows']:            kpi_idx_map[r] = idx
+        for r in pillar['rows']:
+            kpi_idx_map[r] = idx
             idx += 1
 
     # Chart 1: Pillar Score Summary
