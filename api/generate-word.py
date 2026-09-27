@@ -64,7 +64,7 @@ SYNC_SOURCES = [
     {'key': 'v2_risk_closed', 'sheetId': '7524088825204612', 'campusCol': 'Campus', 'monthCol': 'Primary', 'plannedCol': 'Total Risk Assessments Registered', 'actualCol': 'Risk Assessment Closed', 'kpi_row': 8},
     {'key': 'v2_risk_validated', 'sheetId': '7524088825204612', 'campusCol': 'Campus', 'monthCol': 'Primary', 'plannedCol': 'Total Risk Assessments Registered', 'actualCol': 'Risk Assessment and Validation', 'kpi_row': 9},
     {'key': 'v2_planned_training', 'sheetId': '4456464805482372', 'campusCol': 'Campus Code', 'monthCol': 'Reporting Month', 'plannedCol': 'Planned (Yes/No)', 'actualCol': 'Planned (Yes/No)', 'kpi_row': 10, 'yesNoCount': True},
-    {'key': 'v2_training_hours', 'sheetId': '4456464805482372', 'campusCol': 'Campus Code', 'monthCol': 'Reporting Month', 'plannedCol': 'No. of Training Hours Planned', 'actualCol': 'No. of Training Hours Conducted', 'kpi_row': 11},
+    {'key': 'v2_training_hours', 'sheetId': '4456464805482372', 'campusCol': 'Campus Code', 'monthCol': 'Reporting Month', 'valueCol': 'Total Hours', 'kpi_row': 11},
     {'key': 'v2_safe_working', 'sheetId': '2717764266446724', 'campusCol': 'Campus Code', 'monthCol': 'Primary', 'plannedCol': 'No. of activities checked', 'actualCol': 'No. of compliant activities', 'kpi_row': 12},
     {'key': 'v2_drills', 'sheetId': '7139786694283140', 'campusCol': 'Campus Code', 'monthCol': 'Reporting Month', 'plannedCol': 'No. of Planned Drills', 'actualCol': 'No. of Planned Drills Conducted', 'kpi_row': 13},
     {'key': 'v2_permit_to_work', 'sheetId': '3519179394076548', 'campusCol': 'Campus Code', 'monthCol': 'Reporting Month', 'plannedCol': 'No. of PTWs Issued', 'actualCol': 'Total Work Registered', 'kpi_row': 14},
@@ -204,13 +204,17 @@ def fetch_all_kpi_data(token, month_filter):
 
             # Month filtering
             if month_col and month_filter:
-                row_month = normalize_month(row.get(month_col))
-                if row_month != month_filter:
-                    row_month = normalize_month(row.get('Reporting Month'))
+                raw_mv = str(row.get(month_col, '')).strip().upper()
+                if raw_mv in ('Q1', 'Q2', 'Q3', 'Q4'):
+                    pass  # quarterly data passes through all month filters
+                else:
+                    row_month = normalize_month(row.get(month_col))
                     if row_month != month_filter:
-                        row_month = normalize_month(row.get('Primary'))
+                        row_month = normalize_month(row.get('Reporting Month'))
                         if row_month != month_filter:
-                            continue
+                            row_month = normalize_month(row.get('Primary'))
+                            if row_month != month_filter:
+                                continue
 
             if campus not in agg:
                 agg[campus] = {'planned': 0, 'actual': 0}
