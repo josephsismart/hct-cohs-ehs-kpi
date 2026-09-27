@@ -453,6 +453,15 @@ def replace_text_in_doc(doc_xml_bytes, month_name, year):
         for mn in MONTH_NAMES:
             if mn != month_name:
                 content = content.replace(mn, month_name)
+        # Also replace abbreviated month names (e.g. "Mar" -> "August")
+        MONTH_ABBREVS = ['Jan','Feb','Mar','Apr','May','Jun',
+                         'Jul','Aug','Sep','Oct','Nov','Dec']
+        target_abbrev = month_name[:3]  # e.g. "Aug" for "August"
+        for ma in MONTH_ABBREVS:
+            if ma != target_abbrev:
+                content = content.replace(ma, month_name)
+            elif ma != month_name[:3]:
+                pass  # skip if same abbreviation
         for y in range(2024, 2028):
             if str(y) != year:
                 content = content.replace(str(y), year)
@@ -519,6 +528,14 @@ def generate_report(token, month, year, template_url):
                     raw = replace_text_in_doc(raw, month_name, year)
                 except Exception as e:
                     print(f"  WARNING: Failed to update document.xml: {e}")
+
+            # Update footer and header XML files (same text replacements)
+            if item.filename.startswith('word/footer') or item.filename.startswith('word/header'):
+                if item.filename.endswith('.xml'):
+                    try:
+                        raw = replace_text_in_doc(raw, month_name, year)
+                    except Exception as e:
+                        print(f"  WARNING: Failed to update {item.filename}: {e}")
 
             # Strip external file references from chart .rels
             if item.filename.startswith('word/charts/_rels/') and item.filename.endswith('.rels'):
