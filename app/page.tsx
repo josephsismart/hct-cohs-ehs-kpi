@@ -436,10 +436,10 @@ export default function Dashboard() {
                   <>
                   <label>Select Quarter</label>
                   <select value={pptQuarter} onChange={e => setPptQuarter(e.target.value)} style={{width:'100%',padding:'6px',borderRadius:4,border:'1px solid #555',background:'#23272e',color:'#e6e6e6'}}>
-                    <option value="Q1">Q1 (JanâMar)</option>
-                    <option value="Q2">Q2 (AprâJun)</option>
-                    <option value="Q3">Q3 (JulâSep)</option>
-                    <option value="Q4">Q4 (OctâDec)</option>
+                    <option value="Q1">Q1 (Jan-Mar)</option>
+                    <option value="Q2">Q2 (Apr-Jun)</option>
+                    <option value="Q3">Q3 (Jul-Sep)</option>
+                    <option value="Q4">Q4 (Oct-Dec)</option>
                   </select>
                   </>
                 )}
