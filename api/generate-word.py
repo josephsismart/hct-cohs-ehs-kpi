@@ -2,7 +2,7 @@
 Template-based: loads word_template.docx, updates charts with live Smartsheet data.
 """
 
-import os, io, json, zipfile, re, copy
+import os, io, json, zipfile, re, copy, base64
 from http.server import BaseHTTPRequestHandler
 from urllib.parse import urlparse, parse_qs
 from urllib.request import Request, urlopen
@@ -467,10 +467,34 @@ def generate_report(token, month, year, template_url):
 
 class handler(BaseHTTPRequestHandler):
     def do_GET(self):
-        self.send_response(200)
-        self.send_header('Content-Type', 'application/json')
-        self.end_headers()
-        self.wfile.write(json.dumps({'status': 'ok', 'endpoint': 'generate-word'}).encode())
+        qs = parse_qs(urlparse(self.path).query)
+        token = (qs.get('token') or [os.environ.get('SMARTSHEET_ACCESS_TOKEN','')])[0]
+        if not token:
+            self.send_response(400)
+            self.send_header('Content-Type', 'application/json')
+            self.end_headers()
+            self.wfile.write(json.dumps({"error": "No token"}).encode())
+            return
+        month = (qs.get('month') or ['August'])[0] or 'August'
+        year = (qs.get('year') or ['2026'])[0]
+        template_url = (qs.get('templateUrl') or ['https://raw.githubusercontent.com/josephsismart/hct-cohs-ehs-kpi/main/templates/word_template.docx'])[0]
+        print(f"GET: Generating Word report for {month} {year}")
+        try:
+            doc_bytes = generate_report(token, month, year, template_url)
+            filename = f'KPI_Report_{month}_{year}.docx'
+            self.send_response(200)
+            self.send_header('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document')
+            self.send_header('Content-Disposition', f'attachment; filename="{filename}"')
+            self.send_header('Content-Length', str(len(doc_bytes)))
+            self.end_headers()
+            self.wfile.write(doc_bytes)
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            self.send_response(500)
+            self.send_header('Content-Type', 'application/json')
+            self.end_headers()
+            self.wfile.write(json.dumps({'error': str(e)}).encode())
 
     def do_POST(self):
         try:
