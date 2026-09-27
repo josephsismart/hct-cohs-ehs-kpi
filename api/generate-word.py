@@ -520,8 +520,43 @@ class handler(BaseHTTPRequestHandler):
             return
         month = (qs.get('month') or ['August'])[0] or 'August'
         year = (qs.get('year') or ['2026'])[0]
+        debug_mode = (qs.get('debug') or [''])[0] == '1'
         template_url = (qs.get('templateUrl') or ['https://raw.githubusercontent.com/josephsismart/hct-cohs-ehs-kpi/main/templates/word_template.docx'])[0]
         print(f"GET: Generating Word report for {month} {year}")
+
+        if debug_mode:
+            try:
+                month_name = normalize_month(month) or month
+                kpi_data, committee_data = fetch_all_kpi_data(token, month_name)
+                debug_info = {
+                    'month_filter': month_name,
+                    'campuses_with_data': list(kpi_data.keys()),
+                    'committee_data_keys': list(committee_data.keys()) if committee_data else [],
+                    'kpi_rows': {},
+                    'fetch_errors': []
+                }
+                for campus, kpis in kpi_data.items():
+                    for kr, vals in kpis.items():
+                        kr_str = str(kr)
+                        if kr_str not in debug_info['kpi_rows']:
+                            debug_info['kpi_rows'][kr_str] = {'campuses': {}, 'total_planned': 0, 'total_actual': 0}
+                        debug_info['kpi_rows'][kr_str]['campuses'][campus] = vals
+                        debug_info['kpi_rows'][kr_str]['total_planned'] += vals.get('planned', 0)
+                        debug_info['kpi_rows'][kr_str]['total_actual'] += vals.get('actual', 0)
+                self.send_response(200)
+                self.send_header('Content-Type', 'application/json')
+                self.send_header('Access-Control-Allow-Origin', '*')
+                self.end_headers()
+                self.wfile.write(json.dumps(debug_info, indent=2, default=str).encode())
+                return
+            except Exception as e:
+                import traceback
+                self.send_response(500)
+                self.send_header('Content-Type', 'application/json')
+                self.end_headers()
+                self.wfile.write(json.dumps({'error': str(e), 'trace': traceback.format_exc()}).encode())
+                return
+
         try:
             doc_bytes = generate_report(token, month, year, template_url)
             filename = f'KPI_Report_{month}_{year}.docx'
