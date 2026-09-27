@@ -501,6 +501,10 @@ def update_chart_title(xml_str, kpi_row):
         rpr = m.group(0)
         # Remove any existing solidFill
         rpr = re.sub(r'<a:solidFill>.*?</a:solidFill>', '', rpr, flags=re.DOTALL)
+        # Normalize font size to 1100 (11pt) to match consistent title sizing
+        rpr = re.sub(r' sz="\d+"', ' sz="1100"', rpr)
+        if ' sz="' not in rpr:
+            rpr = rpr.replace('<a:rPr', '<a:rPr sz="1100"', 1)
         # Insert blue solidFill before closing tag
         rpr = rpr.replace('</a:rPr>', '<a:solidFill><a:srgbClr val="002060"/></a:solidFill></a:rPr>')
         return rpr
