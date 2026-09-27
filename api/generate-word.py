@@ -1,88 +1,63 @@
-"""Vercel Python serverless function — HCT-COHS KPI Word Report Generator.
-Fetches live data from Smartsheet API and generates downloadable .docx files with charts.
+"""Vercel Python serverless function -- HCT-COHS KPI Word Report Generator.
+Template-based: loads word_template.docx, updates charts with live Smartsheet data.
 """
 
-import os, io, json, zipfile, re
+import os, io, json, zipfile, re, copy
 from http.server import BaseHTTPRequestHandler
 from urllib.parse import urlparse, parse_qs
 from urllib.request import Request, urlopen
 from xml.etree import ElementTree as ET
 
-# ── Namespaces ──
-W   = 'http://schemas.openxmlformats.org/wordprocessingml/2006/main'
-R   = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships'
-NAVY  = '1C2340'
-BRAND = '180E3F'
-GREY  = '595959'
-WHITE = 'FFFFFF'
+# ---- Namespaces ----
+C_NS = 'http://schemas.openxmlformats.org/drawingml/2006/chart'
+A_NS = 'http://schemas.openxmlformats.org/drawingml/2006/main'
+W_NS = 'http://schemas.openxmlformats.org/wordprocessingml/2006/main'
 
-# ── Regions (same as PPT generator) ──
-REGIONS = {
-    'AD Al Ain':       {'sheets': ['AAF','AAZ'], 'short': ['Falaj Hazza','Zakhir'],        'subtitle': 'Al Ain Falaj Hazza & Al Ain Zakhir'},
-    'Abu Dhabi':       {'sheets': ['ADA','ADB'], 'short': ['Baniyas A','Baniyas B'],       'subtitle': 'Abu Dhabi Baniyas A & Abu Dhabi Baniyas B'},
-    'AD Remote':       {'sheets': ['ADH','MZY'], 'short': ['Al Dhanna','Madinat Zayed'],   'subtitle': 'Al Dhanna Ruwais & Al Dhafra Madinat Zayed City'},
-    'Dubai':           {'sheets': ['DMC','DBN'], 'short': ['Academic City','Al Nahda'],     'subtitle': 'Dubai Academic City & Dubai Al Nahda'},
-    'Fujairah':        {'sheets': ['FJF','FJH'], 'short': ['Faseel','Hulaifat'],            'subtitle': 'Fujairah Faseel & Fujairah Hulaifat'},
-    'Sharjah':         {'sheets': ['SJA','SJB'], 'short': ['Campus A','Campus B'],          'subtitle': 'Sharjah Campus A & Sharjah Campus B'},
-    'Ras Al Khaimah':  {'sheets': ['RKA','RKB'], 'short': ['Campus A','Campus B'],          'subtitle': 'RAK Campus A & RAK Campus B'},
+ET.register_namespace('c', C_NS)
+ET.register_namespace('a', A_NS)
+ET.register_namespace('w', W_NS)
+
+MONTH_NAMES = ['January','February','March','April','May','June',
+               'July','August','September','October','November','December']
+
+# ---- Campus codes for all regions ----
+ALL_CAMPUSES = ['ADA','ADB','AAF','AAZ','DMC','DBN','ADH','MZY','FJF','FJH','SJA','SJB','RKA','RKB']
+REGION_CAMPUSES = {
+    'Abu Dhabi Main': ['ADA','ADB'],
+    'Al Ain': ['AAF','AAZ'],
+    'Dubai': ['DMC','DBN'],
+    'Sharjah': ['SJA','SJB'],
+    'Fujairah': ['FJF','FJH'],
+    'Ras Al Khaimah': ['RKA','RKB'],
+    'Al Dhafra': ['ADH','MZY'],
 }
 
-# ── KPI structure ──
-PILLAR_KPIS = [
-    {'pillar': 'Leadership, Accountability & Engagement', 'weight': 0.20, 'rows': [2,3,4,5,6]},
-    {'pillar': 'Risk Management & Planning',              'weight': 0.20, 'rows': [7,8,9]},
-    {'pillar': 'Training & Awareness',                    'weight': 0.10, 'rows': [10,11]},
-    {'pillar': 'OCP & Emergency Preparedness',            'weight': 0.25, 'rows': [12,13,14,15]},
-    {'pillar': 'Performance Evaluation & Improvement',    'weight': 0.25, 'rows': [16,17,18,19]},
-]
-
-KPI_WEIGHTS = {
-    2: 0.30, 3: 0.10, 4: 0.10, 5: 0.25, 6: 0.25,
-    7: 0.30, 8: 0.50, 9: 0.20,
-    10: 0.50, 11: 0.50,
-    12: 0.40, 13: 0.40, 14: 0.10, 15: 0.10,
-    16: 0.30, 17: 0.30, 18: 0.20, 19: 0.20,
+COMMITTEE_MAP = {
+    'Abu Dhabi Main': ['ADA','ADB'],
+    'Abu Dhabi Main ': ['ADA','ADB'],
+    'Al Ain': ['AAF','AAZ'],
+    'Dubai': ['DMC','DBN'],
+    'Dubai ': ['DMC','DBN'],
+    'Sharjah': ['SJA','SJB'],
+    'Sharjah ': ['SJA','SJB'],
+    'Fujairah': ['FJF','FJH'],
+    'Fujairah ': ['FJF','FJH'],
+    'Ras Al Khaimah': ['RKA','RKB'],
+    'Ras Al Khaimah ': ['RKA','RKB'],
+    'RAK': ['RKA','RKB'],
+    'Al Dhafra': ['ADH','MZY'],
 }
 
-KPI_NAMES = {
-    2: 'HS KPI Report Submission',
-    3: 'Total Hours of Training',
-    4: 'External Authority Compliance',
-    5: 'HS Committee Meeting',
-    6: 'Hazard Identification',
-    7: 'Risk Assessment Closed',
-    8: 'Risk Assessment Validated',
-    9: 'Safe Working Procedure',
-    10: 'Planned Training',
-    11: 'Training Hours Delivered',
-    12: 'Operational Control Procedures',
-    13: 'Emergency Drills',
-    14: 'Permit to Work',
-    15: 'Onsite Safety Induction',
-    16: 'Scheduled EHS Inspection',
-    17: 'Findings Closed On Time',
-    18: 'Investigation Completed on Time',
-    19: 'Incident Notification on Time',
-}
-
-KPI_SHORT = {
-    2: 'HS KPI Report', 3: 'Training Hours', 4: 'Ext. Authority',
-    5: 'HS Committee', 6: 'Hazard ID',
-    7: 'Risk Closed', 8: 'Risk Validated', 9: 'Safe Working',
-    10: 'Planned Training', 11: 'Training Delivered',
-    12: 'OCP', 13: 'Emergency Drills', 14: 'Permit to Work', 15: 'Induction',
-    16: 'EHS Inspection', 17: 'Findings Closed', 18: 'Investigation', 19: 'Notification',
-}
-
-# ── Smartsheet sources (same as PPT) ──
+# ---- Smartsheet sources ----
 SYNC_SOURCES = [
     {'key': 'v2_hs_kpi_report', 'reportId': '4811266391494532', 'campusCol': 'Campuses', 'monthCol': 'Primary', 'valueCol': 'Submitted', 'kpi_row': 2},
     {'key': 'v2_external_compliance', 'sheetId': '4198632256393092', 'campusCol': 'Campus Code', 'monthCol': 'Primary', 'plannedCol': 'Applicable Compliance', 'actualCol': 'Actual Compliance', 'kpi_row': 4},
-    {'key': 'v2_hs_committee', 'sheetId': '435993944477572', 'campusCol': 'Committee', 'monthCol': 'Reporting Month', 'plannedCol': 'Meeting Planned', 'actualCol': 'Meeting Conducted', 'kpi_row': 5},
+    {'key': 'v2_hs_committee', 'sheetId': '435993944477572', 'campusCol': 'Committee', 'monthCol': 'Reporting Month', 'plannedCol': 'Meeting Planned', 'actualCol': 'Meeting Conducted', 'kpi_row': 5, 'isolateFromCampusSet': True},
     {'key': 'v2_hazard_id', 'sheetId': '7323092115214212', 'campusCol': 'Campus Code', 'monthCol': 'Reporting Month', 'plannedCol': 'Total Controls Identified', 'actualCol': 'Implemented Controls', 'kpi_row': 7},
     {'key': 'v2_risk_closed', 'sheetId': '7323092115214212', 'campusCol': 'Campus', 'monthCol': 'Primary', 'plannedCol': 'Total Risk Assessments Registered', 'actualCol': 'Risk Assessment Closed', 'kpi_row': 8},
     {'key': 'v2_risk_validated', 'sheetId': '7323092115214212', 'campusCol': 'Campus', 'monthCol': 'Primary', 'plannedCol': 'Total Assessments Register', 'actualCol': 'RA Validated and Signed Off', 'kpi_row': 9},
     {'key': 'v2_planned_training', 'sheetId': '8549734774951812', 'campusCol': 'Campus Code', 'monthCol': 'Reporting Month', 'plannedCol': 'Planned (Yes/No)', 'actualCol': 'Planned (Yes/No)', 'kpi_row': 10, 'yesNoCount': True},
+    {'key': 'v2_training_hours', 'sheetId': '8549734774951812', 'campusCol': 'Campus Code', 'monthCol': 'Reporting Month', 'plannedCol': 'Planned Training Hours', 'actualCol': 'Actual Training Hours', 'kpi_row': 11},
     {'key': 'v2_safe_working', 'sheetId': '1693592581001092', 'campusCol': 'Campus', 'monthCol': 'Primary', 'plannedCol': 'No. of SOPs Verified', 'actualCol': 'No. of SOPs Implemented', 'kpi_row': 12},
     {'key': 'v2_drills', 'sheetId': '5053158949605252', 'campusCol': 'Campus Code', 'monthCol': 'Reporting Month', 'plannedCol': 'Planned Drill? (Yes/No)', 'actualCol': 'Are there any submission?', 'kpi_row': 13, 'yesNoCount': True},
     {'key': 'v2_permit_to_work', 'sheetId': '5899016251330436', 'campusCol': 'Campus Code', 'monthCol': 'Reporting Month', 'plannedCol': 'No. of PTWs Issued', 'actualCol': 'Total Work Registered', 'kpi_row': 14},
@@ -94,18 +69,28 @@ SYNC_SOURCES = [
 ]
 
 WASTE_SOURCE = {'sheetId': '8150747345538948', 'campusCol': 'Campus Code', 'monthCol': 'Reporting Month'}
-WASTE_TABLE_COLS = ['General Waste', 'Food Waste', 'Paper Waste', 'Aluminum',
-                    'PET Bottle', 'Paper Cup/Carton', 'Single Use Plastic',
-                    'Tissue', 'Scrap Metal', 'E-waste', 'Hazardous']
-RECYCLABLE_COLS = ['Food Waste', 'Paper Waste', 'Aluminum', 'PET Bottle',
-                   'Paper Cup/Carton', 'Single Use Plastic', 'Tissue',
-                   'Scrap Metal', 'E-waste']
 
-MONTH_NAMES = ['January','February','March','April','May','June',
-               'July','August','September','October','November','December']
+# Chart-to-KPI mapping: chart index -> KPI row and data type
+# type: 'pct_campus' = percentage per campus, 'planned_actual_region' = two series by region,
+#       'total_closed_pct_region' = three series by region, 'hours_campus' = raw hours
+#       'planned_actual_campus' = two series by campus, 'pct_campus_hq' = percentage incl HQ
+CHART_KPI_MAP = {
+    1:  {'kpi_row': 2,  'type': 'pct_campus'},
+    2:  {'kpi_row': 5,  'type': 'planned_actual_region'},
+    3:  {'kpi_row': 6,  'type': 'total_closed_pct_region'},
+    4:  {'kpi_row': 7,  'type': 'pct_campus'},
+    5:  {'kpi_row': 11, 'type': 'hours_campus'},
+    6:  {'kpi_row': 12, 'type': 'pct_campus'},
+    7:  {'kpi_row': 13, 'type': 'pct_campus'},
+    8:  {'kpi_row': 14, 'type': 'planned_actual_campus'},
+    9:  {'kpi_row': 15, 'type': 'planned_actual_campus'},
+    10: {'kpi_row': 16, 'type': 'planned_actual_campus'},
+    11: {'kpi_row': 17, 'type': 'pct_campus'},
+    12: {'kpi_row': 18, 'type': 'pct_campus'},
+    13: {'kpi_row': 19, 'type': 'pct_campus'},
+}
 
-
-# ── Smartsheet API ──
+# ---- Smartsheet API ----
 
 def _ss_fetch(endpoint, token):
     url = f'https://api.smartsheet.com/2.0/{endpoint}'
@@ -149,10 +134,13 @@ def normalize_month(v):
     if not v: return None
     s = str(v).strip()
     if not s: return None
-    for m in MONTH_NAMES:
-        if m.lower() == s.lower(): return m
+    # Handle "1. January" prefix format
+    m = re.match(r'^\d+\.\s*(.+)$', s)
+    if m: s = m.group(1).strip()
+    for mn in MONTH_NAMES:
+        if mn.lower() == s.lower(): return mn
     abbr = s[:3].lower()
-    abbr_map = {m[:3].lower(): m for m in MONTH_NAMES}
+    abbr_map = {mn[:3].lower(): mn for mn in MONTH_NAMES}
     if abbr in abbr_map: return abbr_map[abbr]
     try:
         from datetime import datetime as dt
@@ -171,11 +159,17 @@ def safe_float(v, default=0.0):
     try: return float(v)
     except: return default
 
+def yes_to_int(v):
+    s = str(v).strip().lower()
+    return 1 if s in ('yes', 'true', '1') else 0
 
-# ── Fetch KPI data ──
+# ---- Fetch KPI data per campus ----
 
-def fetch_kpi_data(token, month_filter):
+def fetch_all_kpi_data(token, month_filter):
+    """Returns {campus_code: {kpi_row: {'planned': float, 'actual': float}}}"""
     data = {}
+    committee_data = {}  # separate for committee (by region name)
+
     for src in SYNC_SOURCES:
         try:
             if src.get('reportId'):
@@ -193,671 +187,329 @@ def fetch_kpi_data(token, month_filter):
         actual_col = src.get('actualCol')
         value_col = src.get('valueCol')
         is_yes_no = src.get('yesNoCount', False)
+        is_committee = src.get('isolateFromCampusSet', False)
 
-        campus_agg = {}
+        agg = {}
         for row in rows:
             campus = str(row.get(campus_col, '')).strip()
             if not campus: continue
+
+            # Month filtering
             if month_col and month_filter:
                 row_month = normalize_month(row.get(month_col))
                 if row_month != month_filter:
                     row_month = normalize_month(row.get('Reporting Month'))
                     if row_month != month_filter:
-                        row_month = normalize_month(row.get('Date Reported'))
+                        row_month = normalize_month(row.get('Primary'))
                         if row_month != month_filter:
-                            row_month = normalize_month(row.get('Primary'))
-                            if row_month != month_filter:
-                                continue
+                            continue
 
-            if campus not in campus_agg:
-                campus_agg[campus] = {'planned': 0, 'actual': 0}
+            if campus not in agg:
+                agg[campus] = {'planned': 0, 'actual': 0}
 
             if is_yes_no:
-                p = 1 if str(row.get(planned_col, '')).strip().lower() == 'yes' else 0
-                a = 1 if str(row.get(actual_col, '')).strip().lower() == 'yes' else 0
-                campus_agg[campus]['planned'] += p
-                campus_agg[campus]['actual'] += a
+                agg[campus]['planned'] += yes_to_int(row.get(planned_col))
+                agg[campus]['actual'] += yes_to_int(row.get(actual_col))
             elif planned_col and actual_col:
-                campus_agg[campus]['planned'] += safe_float(row.get(planned_col))
-                campus_agg[campus]['actual'] += safe_float(row.get(actual_col))
+                agg[campus]['planned'] += safe_float(row.get(planned_col))
+                agg[campus]['actual'] += safe_float(row.get(actual_col))
             elif value_col:
                 v = safe_float(row.get(value_col))
-                campus_agg[campus]['planned'] += v
-                campus_agg[campus]['actual'] += v
-
-        weight = KPI_WEIGHTS.get(kpi_row, 0.05)
-        for campus, agg in campus_agg.items():
-            if campus not in data:
-                data[campus] = {}
-            planned = agg['planned']
-            achieved = agg['actual']
-            calc = min(achieved / planned, 1.0) if planned > 0 else (1.0 if achieved > 0 else 0)
-            data[campus][kpi_row] = {'planned': planned, 'achieved': achieved, 'calc': calc, 'weight': weight}
-
-    return data
-
-def fetch_waste_data(token, month_filter):
-    try:
-        rows = fetch_sheet_rows(WASTE_SOURCE['sheetId'], token)
-    except:
-        return {}
-    waste = {}
-    for row in rows:
-        campus = str(row.get(WASTE_SOURCE['campusCol'], '')).strip()
-        month = normalize_month(row.get(WASTE_SOURCE['monthCol']))
-        if not campus or month != month_filter: continue
-        entry = {}
-        for col in WASTE_TABLE_COLS:
-            entry[col] = safe_float(row.get(col))
-        entry['Total Waste'] = safe_float(row.get('Total Waste'))
-        if entry['Total Waste'] == 0:
-            entry['Total Waste'] = sum(entry.get(c, 0) for c in WASTE_TABLE_COLS)
-        waste[campus] = entry
-    return waste
-
-
-# ── KPI processing ──
-
-def read_campus_data(kpi_data, sheet_name):
-    campus = kpi_data.get(sheet_name, {})
-    kpis = []
-    pillar_scores = []
-    for pillar in PILLAR_KPIS:
-        p_kpis = []
-        for row in pillar['rows']:
-            d = campus.get(row, {'planned': 0, 'achieved': 0, 'calc': 1.0, 'weight': KPI_WEIGHTS.get(row, 0.05)})
-            p_kpis.append(d)
-            kpis.append(d)
-        tw = sum(k['weight'] for k in p_kpis)
-        score = sum(k['calc'] * k['weight'] for k in p_kpis) / tw if tw > 0 else 0
-        pillar_scores.append(score)
-    weights = [p['weight'] for p in PILLAR_KPIS]
-    overall = sum(s * w for s, w in zip(pillar_scores, weights))
-    return {'sheet': sheet_name, 'kpis': kpis, 'pillar_scores': pillar_scores, 'overall': overall}
-
-def read_region_data(kpi_data, region_cfg):
-    campuses = [read_campus_data(kpi_data, s) for s in region_cfg['sheets']]
-    n = len(campuses)
-    avg_p = [sum(c['pillar_scores'][i] for c in campuses)/n for i in range(5)]
-    avg_o = sum(c['overall'] for c in campuses)/n
-    return {'campuses': campuses, 'avg_pillar': avg_p, 'avg_overall': avg_o, 'short': region_cfg['short']}
-
-
-# ── XML helper for OOXML Word ──
-
-def w_el(tag, **attrs):
-    e = ET.Element(f'{{{W}}}{tag}')
-    for k, v in attrs.items():
-        e.set(f'{{{W}}}{k}', v)
-    return e
-
-def make_run(text, bold=False, size=None, color=None, italic=False):
-    r = w_el('r')
-    rPr = w_el('rPr')
-    if bold: rPr.append(w_el('b'))
-    if italic: rPr.append(w_el('i'))
-    if size:
-        sz = w_el('sz'); sz.set(f'{{{W}}}val', str(size*2)); rPr.append(sz)
-        sz2 = w_el('szCs'); sz2.set(f'{{{W}}}val', str(size*2)); rPr.append(sz2)
-    if color:
-        cl = w_el('color'); cl.set(f'{{{W}}}val', color); rPr.append(cl)
-    r.append(rPr)
-    t = w_el('t'); t.text = text
-    t.set('{http://www.w3.org/XML/1998/namespace}space', 'preserve')
-    r.append(t)
-    return r
-
-def make_para(text='', bold=False, size=None, color=None, center=False,
-              style=None, space_before=0, space_after=0, italic=False):
-    p = w_el('p')
-    pPr = w_el('pPr')
-    if style:
-        ps = w_el('pStyle'); ps.set(f'{{{W}}}val', style); pPr.append(ps)
-    if center:
-        jc = w_el('jc'); jc.set(f'{{{W}}}val', 'center'); pPr.append(jc)
-    if space_before or space_after:
-        sp = w_el('spacing')
-        if space_before: sp.set(f'{{{W}}}before', str(space_before))
-        if space_after: sp.set(f'{{{W}}}after', str(space_after))
-        pPr.append(sp)
-    p.append(pPr)
-    if text:
-        p.append(make_run(text, bold=bold, size=size, color=color, italic=italic))
-    return p
-
-def make_page_break():
-    p = w_el('p')
-    r = w_el('r')
-    br = w_el('br'); br.set(f'{{{W}}}type', 'page')
-    r.append(br); p.append(r)
-    return p
-
-def make_cell(text, w_dxa, bold=False, size=10, color=None, fill=None, center=False, italic=False, colspan=None):
-    tc = w_el('tc')
-    tcPr = w_el('tcPr')
-    tcW = w_el('tcW'); tcW.set(f'{{{W}}}w', str(w_dxa)); tcW.set(f'{{{W}}}type', 'dxa')
-    tcPr.append(tcW)
-    if colspan:
-        gm = w_el('gridSpan'); gm.set(f'{{{W}}}val', str(colspan)); tcPr.append(gm)
-    if fill:
-        shd = w_el('shd')
-        shd.set(f'{{{W}}}val', 'clear')
-        shd.set(f'{{{W}}}color', 'auto')
-        shd.set(f'{{{W}}}fill', fill)
-        tcPr.append(shd)
-    tc.append(tcPr)
-    txt_color = color
-    if txt_color is None and fill and fill not in ('auto', 'FFFFFF', ''):
-        txt_color = WHITE
-    tc.append(make_para(text, bold=bold, size=size, color=txt_color, center=center, italic=italic))
-    return tc
-
-def make_tbl(total_w=9360):
-    tbl = w_el('tbl')
-    tp = w_el('tblPr')
-    ts = w_el('tblStyle'); ts.set(f'{{{W}}}val', 'TableGrid'); tp.append(ts)
-    tw = w_el('tblW'); tw.set(f'{{{W}}}w', str(total_w)); tw.set(f'{{{W}}}type', 'dxa'); tp.append(tw)
-    borders = w_el('tblBorders')
-    for side in ('top', 'left', 'bottom', 'right', 'insideH', 'insideV'):
-        b = w_el(side)
-        b.set(f'{{{W}}}val', 'single')
-        b.set(f'{{{W}}}sz', '4')
-        b.set(f'{{{W}}}space', '0')
-        b.set(f'{{{W}}}color', 'auto')
-        borders.append(b)
-    tp.append(borders)
-    tbl.append(tp)
-    return tbl
-
-
-# ── Chart XML generation ──
-
-def _esc(s):
-    return str(s).replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;').replace('"', '&quot;')
-
-def make_word_chart_xml(title, categories, series_list, max_val=None):
-    """Generate OOXML bar chart XML. series_list: [{'name','values','color'},...]"""
-    x = ['<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',
-         '<c:chartSpace xmlns:c="http://schemas.openxmlformats.org/drawingml/2006/chart"'
-         ' xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"'
-         ' xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">',
-         '<c:chart>',
-         f'<c:title><c:tx><c:rich><a:bodyPr/><a:lstStyle/><a:p>'
-         f'<a:pPr><a:defRPr sz="1100" b="1"/></a:pPr>'
-         f'<a:r><a:rPr lang="en-US" sz="1100" b="1"/><a:t>{_esc(title)}</a:t></a:r>'
-         f'</a:p></c:rich></c:tx><c:overlay val="0"/></c:title>',
-         '<c:autoTitleDeleted val="0"/>',
-         '<c:plotArea><c:layout/>',
-         '<c:barChart><c:barDir val="col"/><c:grouping val="clustered"/><c:varyColors val="0"/>']
-    for si, s in enumerate(series_list):
-        x.append(f'<c:ser><c:idx val="{si}"/><c:order val="{si}"/>')
-        x.append(f'<c:tx><c:strRef><c:f></c:f><c:strCache><c:ptCount val="1"/>'
-                 f'<c:pt idx="0"><c:v>{_esc(s["name"])}</c:v></c:pt></c:strCache></c:strRef></c:tx>')
-        x.append(f'<c:spPr><a:solidFill><a:srgbClr val="{s["color"]}"/></a:solidFill>'
-                 f'<a:ln><a:noFill/></a:ln></c:spPr>')
-        x.append('<c:dLbls><c:numFmt formatCode="0" sourceLinked="0"/>'
-                 '<c:spPr><a:noFill/><a:ln><a:noFill/></a:ln></c:spPr>'
-                 '<c:txPr><a:bodyPr/><a:lstStyle/><a:p><a:pPr><a:defRPr sz="800"/></a:pPr>'
-                 '<a:endParaRPr lang="en-US"/></a:p></c:txPr>'
-                 '<c:showLegendKey val="0"/><c:showVal val="1"/><c:showCatName val="0"/>'
-                 '<c:showSerName val="0"/><c:showPercent val="0"/></c:dLbls>')
-        x.append(f'<c:cat><c:strRef><c:f></c:f><c:strCache>'
-                 f'<c:ptCount val="{len(categories)}"/>')
-        for ci, cat in enumerate(categories):
-            x.append(f'<c:pt idx="{ci}"><c:v>{_esc(cat)}</c:v></c:pt>')
-        x.append('</c:strCache></c:strRef></c:cat>')
-        x.append(f'<c:val><c:numRef><c:f></c:f><c:numCache>'
-                 f'<c:formatCode>0</c:formatCode>'
-                 f'<c:ptCount val="{len(s["values"])}"/>')
-        for vi, v in enumerate(s['values']):
-            x.append(f'<c:pt idx="{vi}"><c:v>{v}</c:v></c:pt>')
-        x.append('</c:numCache></c:numRef></c:val></c:ser>')
-    x.append('<c:axId val="111111111"/><c:axId val="222222222"/></c:barChart>')
-    x.append('<c:catAx><c:axId val="111111111"/><c:scaling><c:orientation val="minMax"/></c:scaling>'
-             '<c:delete val="0"/><c:axPos val="b"/>'
-             '<c:txPr><a:bodyPr rot="-2700000" vert="horz"/><a:lstStyle/>'
-             '<a:p><a:pPr><a:defRPr sz="800"/></a:pPr><a:endParaRPr lang="en-US"/></a:p></c:txPr>'
-             '<c:crossAx val="222222222"/></c:catAx>')
-    max_str = f'<c:max val="{max_val}"/>' if max_val else ''
-    x.append(f'<c:valAx><c:axId val="222222222"/><c:scaling><c:orientation val="minMax"/>{max_str}</c:scaling>'
-             '<c:delete val="0"/><c:axPos val="l"/>'
-             '<c:numFmt formatCode="0" sourceLinked="0"/>'
-             '<c:txPr><a:bodyPr/><a:lstStyle/>'
-             '<a:p><a:pPr><a:defRPr sz="800"/></a:pPr><a:endParaRPr lang="en-US"/></a:p></c:txPr>'
-             '<c:crossAx val="111111111"/></c:valAx>')
-    x.append('</c:plotArea>')
-    if len(series_list) > 1:
-        x.append('<c:legend><c:legendPos val="b"/><c:overlay val="0"/></c:legend>')
-    x.append('<c:plotVisOnly val="1"/></c:chart></c:chartSpace>')
-    return '\n'.join(x)
-
-
-def make_chart_drawing_xml(rel_id, doc_pr_id, cx=5486400, cy=3200400):
-    """Return XML for a w:p with inline chart drawing, with full namespace declarations."""
-    WP_U = 'http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing'
-    A_U  = 'http://schemas.openxmlformats.org/drawingml/2006/main'
-    C_U  = 'http://schemas.openxmlformats.org/drawingml/2006/chart'
-    R_U  = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships'
-    W_U  = W
-    return (
-        f'<w:p xmlns:w="{W_U}"><w:r><w:drawing>'
-        f'<wp:inline distT="0" distB="0" distL="0" distR="0" xmlns:wp="{WP_U}">'
-        f'<wp:extent cx="{cx}" cy="{cy}"/>'
-        f'<wp:docPr id="{doc_pr_id}" name="Chart {doc_pr_id}"/>'
-        f'<wp:cNvGraphicFramePr/>'
-        f'<a:graphic xmlns:a="{A_U}">'
-        f'<a:graphicData uri="{C_U}">'
-        f'<c:chart xmlns:c="{C_U}" xmlns:r="{R_U}" r:id="{rel_id}"/>'
-        f'</a:graphicData></a:graphic>'
-        f'</wp:inline></w:drawing></w:r></w:p>'
-    )
-
-
-CHART_MARKER_PREFIX = '___CHART_MARKER_'
-
-def make_chart_marker(idx):
-    """Insert a paragraph with unique marker text for later replacement."""
-    return make_para(f'{CHART_MARKER_PREFIX}{idx}___', size=1, color='FFFFFF')
-
-
-# ── Report building ──
-
-def make_cover_table(period, region_name, subtitle):
-    tbl = make_tbl()
-    def row2(label, value, bold_val=False, label_fill=BRAND, label_w=2880, val_w=6480):
-        tr = w_el('tr')
-        tr.append(make_cell(label, label_w, bold=True, size=10, fill=label_fill))
-        tr.append(make_cell(value, val_w, bold=bold_val, size=10))
-        return tr
-    def row_header(text):
-        tr = w_el('tr')
-        tr.append(make_cell(text, 9360, bold=True, size=10, fill=NAVY, colspan=2))
-        return tr
-    tbl.append(row2('Report Title:', f'Corporate OHS Monthly SLA & KPI Report — {region_name}', bold_val=True))
-    tbl.append(row2('Client Company:', 'Higher Colleges of Technology'))
-    tbl.append(row2('Campuses:', subtitle))
-    tbl.append(row2('Issued By:', 'Corporate OHS LLC OPC'))
-    tbl.append(row2('Reporting Period:', period, bold_val=True))
-    tbl.append(row_header('Document Production/Approval Record'))
-    return tbl
-
-
-def make_kpi_summary_table(region_data, region_cfg):
-    tbl = make_tbl()
-    W1, W2, W3, W4, W5 = 600, 2800, 1400, 1400, 1400
-    tr = w_el('tr')
-    tr.append(make_cell('#', W1, bold=True, size=9, fill=BRAND, center=True))
-    tr.append(make_cell('KPI', W2, bold=True, size=9, fill=BRAND, center=True))
-    for name in region_cfg['short']:
-        tr.append(make_cell(name, W3, bold=True, size=9, fill=BRAND, center=True))
-    tr.append(make_cell('Average', W5, bold=True, size=9, fill=BRAND, center=True))
-    tbl.append(tr)
-    campuses = region_data['campuses']
-    kpi_idx = 0
-    for pillar in PILLAR_KPIS:
-        tr = w_el('tr')
-        tr.append(make_cell('', W1, size=9, fill='D9E2F3'))
-        tr.append(make_cell(pillar['pillar'], W2, bold=True, size=9, fill='D9E2F3'))
-        for _ in region_cfg['short']:
-            tr.append(make_cell('', W3, size=9, fill='D9E2F3'))
-        tr.append(make_cell('', W5, size=9, fill='D9E2F3'))
-        tbl.append(tr)
-        for row_num in pillar['rows']:
-            tr = w_el('tr')
-            tr.append(make_cell(str(row_num), W1, size=9, center=True))
-            tr.append(make_cell(KPI_NAMES.get(row_num, f'KPI {row_num}'), W2, size=9))
-            vals = []
-            for c in campuses:
-                kpi = c['kpis'][kpi_idx] if kpi_idx < len(c['kpis']) else {'calc': 0}
-                pct = round(kpi['calc'] * 100)
-                color = '00B050' if pct >= 90 else ('FFC000' if pct >= 70 else 'FF0000')
-                tr.append(make_cell(f'{pct}%', W3, size=9, center=True, color=color))
-                vals.append(kpi['calc'])
-            avg = sum(vals) / len(vals) if vals else 0
-            avg_pct = round(avg * 100)
-            avg_color = '00B050' if avg_pct >= 90 else ('FFC000' if avg_pct >= 70 else 'FF0000')
-            tr.append(make_cell(f'{avg_pct}%', W5, size=9, center=True, color=avg_color, bold=True))
-            tbl.append(tr)
-            kpi_idx += 1
-    tr = w_el('tr')
-    tr.append(make_cell('', W1, size=9, fill=NAVY))
-    tr.append(make_cell('Pillar Weighted Scores', W2, bold=True, size=9, fill=NAVY))
-    for c in campuses:
-        tr.append(make_cell(f'{round(c["overall"]*100)}%', W3, bold=True, size=9, fill=NAVY, center=True))
-    tr.append(make_cell(f'{round(region_data["avg_overall"]*100)}%', W5, bold=True, size=9, fill=NAVY, center=True))
-    tbl.append(tr)
-    return tbl
-
-
-def make_waste_table(waste_data, region_cfg):
-    tbl = make_tbl()
-    cols = ['Campus', 'Total Waste', 'General', 'Recyclable', 'Hazardous']
-    widths = [2200, 1600, 1600, 1600, 2360]
-    tr = w_el('tr')
-    for lbl, w in zip(cols, widths):
-        tr.append(make_cell(lbl, w, bold=True, size=9, fill=BRAND, center=True))
-    tbl.append(tr)
-    for sheet in region_cfg['sheets']:
-        w = waste_data.get(sheet, {})
-        total = w.get('Total Waste', 0)
-        general = w.get('General Waste', 0)
-        recyclable = sum(w.get(c, 0) for c in RECYCLABLE_COLS)
-        hazardous = w.get('Hazardous', 0)
-        tr = w_el('tr')
-        tr.append(make_cell(sheet, 2200, size=9))
-        tr.append(make_cell(f'{total:.1f}', 1600, size=9, center=True))
-        tr.append(make_cell(f'{general:.1f}', 1600, size=9, center=True))
-        tr.append(make_cell(f'{recyclable:.1f}', 1600, size=9, center=True))
-        tr.append(make_cell(f'{hazardous:.1f}', 2360, size=9, center=True))
-        tbl.append(tr)
-    return tbl
-
-
-# ── Build DOCX ──
-
-STYLES_XML = """<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
-  <w:docDefaults><w:rPrDefault><w:rPr>
-    <w:rFonts w:ascii="Calibri" w:hAnsi="Calibri"/>
-    <w:sz w:val="22"/><w:szCs w:val="22"/>
-  </w:rPr></w:rPrDefault></w:docDefaults>
-  <w:style w:type="paragraph" w:styleId="Normal" w:default="1">
-    <w:name w:val="Normal"/>
-    <w:pPr><w:spacing w:after="160" w:line="259" w:lineRule="auto"/></w:pPr>
-  </w:style>
-  <w:style w:type="paragraph" w:styleId="Heading1">
-    <w:name w:val="heading 1"/>
-    <w:pPr><w:keepNext/><w:keepLines/><w:spacing w:before="240" w:after="60"/><w:outlineLvl w:val="0"/></w:pPr>
-    <w:rPr><w:b/><w:sz w:val="32"/><w:szCs w:val="32"/><w:color w:val="180E3F"/></w:rPr>
-  </w:style>
-  <w:style w:type="paragraph" w:styleId="Heading2">
-    <w:name w:val="heading 2"/>
-    <w:pPr><w:keepNext/><w:keepLines/><w:spacing w:before="200" w:after="60"/><w:outlineLvl w:val="1"/></w:pPr>
-    <w:rPr><w:b/><w:sz w:val="26"/><w:szCs w:val="26"/><w:color w:val="1C2340"/></w:rPr>
-  </w:style>
-  <w:style w:type="table" w:styleId="TableGrid">
-    <w:name w:val="Table Grid"/>
-    <w:tblPr><w:tblBorders>
-      <w:top w:val="single" w:sz="4" w:space="0" w:color="auto"/>
-      <w:left w:val="single" w:sz="4" w:space="0" w:color="auto"/>
-      <w:bottom w:val="single" w:sz="4" w:space="0" w:color="auto"/>
-      <w:right w:val="single" w:sz="4" w:space="0" w:color="auto"/>
-      <w:insideH w:val="single" w:sz="4" w:space="0" w:color="auto"/>
-      <w:insideV w:val="single" w:sz="4" w:space="0" w:color="auto"/>
-    </w:tblBorders></w:tblPr>
-  </w:style>
-</w:styles>"""
-
-SETTINGS_XML = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:settings xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:defaultTabStop w:val="720"/></w:settings>'
-
-ROOT_RELS = """<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
-  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/>
-</Relationships>"""
-
-
-def generate_report(region_name, month_name, year, token):
-    region_cfg = REGIONS.get(region_name)
-    if not region_cfg:
-        raise ValueError(f'Unknown region: {region_name}')
-
-    period = f'{month_name} {year}'
-    print(f'Generating Word report for {region_name} — {period}')
-
-    # Fetch data
-    kpi_data = fetch_kpi_data(token, month_name)
-    waste_data = fetch_waste_data(token, month_name)
-    region_data = read_region_data(kpi_data, region_cfg)
-    campuses = region_data['campuses']
-    short = region_cfg['short']
-    colors = ['4472C4', 'ED7D31', '70AD47']
-
-    # ── Build chart files ──
-    chart_files = {}
-    chart_rels = []
-    chart_num = 0
-    rel_base = 10
-
-    # Build KPI index map
-    kpi_idx_map = {}
-    idx = 0
-    for pillar in PILLAR_KPIS:
-        for r in pillar['rows']:
-            kpi_idx_map[r] = idx
-            idx += 1
-
-    # Chart 1: Pillar Score Summary
-    chart_num += 1
-    cats = ['Leadership', 'Risk Mgmt', 'Training', 'OCP & Emergency', 'Performance']
-    series = []
-    for ci, c in enumerate(campuses):
-        series.append({'name': short[ci],
-                       'values': [round(c['pillar_scores'][i]*100) for i in range(5)],
-                       'color': colors[ci % len(colors)]})
-    avg_vals = [round(region_data['avg_pillar'][i]*100) for i in range(5)]
-    series.append({'name': 'Average', 'values': avg_vals, 'color': '595959'})
-    chart_files[f'word/charts/chart{chart_num}.xml'] = make_word_chart_xml('Pillar Score Summary (%)', cats, series, max_val=100)
-    chart_rels.append((f'rId{rel_base + chart_num}', f'charts/chart{chart_num}.xml'))
-
-    # Charts 2-6: Per-pillar KPI breakdown
-    pillar_names_short = ['Leadership & Engagement', 'Risk Management', 'Training & Awareness',
-                          'OCP & Emergency', 'Performance Evaluation']
-    for pi, pillar in enumerate(PILLAR_KPIS):
-        chart_num += 1
-        cats = [KPI_SHORT.get(r, f'KPI {r}') for r in pillar['rows']]
-        series = []
-        for ci, c in enumerate(campuses):
-            vals = []
-            for r in pillar['rows']:
-                ki = kpi_idx_map[r]
-                kpi = c['kpis'][ki] if ki < len(c['kpis']) else {'calc': 0}
-                vals.append(round(kpi['calc'] * 100))
-            series.append({'name': short[ci], 'values': vals, 'color': colors[ci % len(colors)]})
-        chart_files[f'word/charts/chart{chart_num}.xml'] = make_word_chart_xml(
-            f'{pillar_names_short[pi]} KPIs (%)', cats, series, max_val=100)
-        chart_rels.append((f'rId{rel_base + chart_num}', f'charts/chart{chart_num}.xml'))
-
-    # Chart 7: Waste
-    chart_num += 1
-    waste_cats = ['Total Waste', 'General', 'Recyclable', 'Hazardous']
-    w_series = []
-    for ci, sheet in enumerate(region_cfg['sheets']):
-        w = waste_data.get(sheet, {})
-        recyclable = sum(w.get(c, 0) for c in RECYCLABLE_COLS)
-        w_series.append({'name': short[ci],
-                         'values': [round(w.get('Total Waste', 0), 1),
-                                    round(w.get('General Waste', 0), 1),
-                                    round(recyclable, 1),
-                                    round(w.get('Hazardous', 0), 1)],
-                         'color': colors[ci % len(colors)]})
-    chart_files[f'word/charts/chart{chart_num}.xml'] = make_word_chart_xml(
-        'Waste Segregation (kg)', waste_cats, w_series, max_val=None)
-    chart_rels.append((f'rId{rel_base + chart_num}', f'charts/chart{chart_num}.xml'))
-
-    total_charts = chart_num
-
-    # ── Build document body ──
-    body = w_el('body')
-
-    # Cover page
-    body.append(make_para('', space_after=400))
-    body.append(make_para('Corporate OHS Monthly', bold=True, size=28, color=BRAND, center=True))
-    body.append(make_para('KPI Performance Report', bold=True, size=28, color=BRAND, center=True))
-    body.append(make_para('', space_after=200))
-    body.append(make_para(region_name, bold=True, size=20, color=NAVY, center=True))
-    body.append(make_para(region_cfg['subtitle'], bold=False, size=14, color=GREY, center=True))
-    body.append(make_para('', space_after=200))
-    body.append(make_para('Reporting Period', bold=True, size=14, color=GREY, center=True))
-    body.append(make_para(period, bold=True, size=18, color=BRAND, center=True))
-    body.append(make_para('', space_after=400))
-    body.append(make_cover_table(period, region_name, region_cfg['subtitle']))
-    body.append(make_page_break())
-
-    # Section 1: KPI Summary
-    body.append(make_para('1. KPI Performance Summary', style='Heading1'))
-    body.append(make_para(f'The following table summarizes the KPI performance for {region_name} campuses during {period}.',
-                          size=11, space_after=120))
-    body.append(make_kpi_summary_table(region_data, region_cfg))
-    body.append(make_para('', space_after=120))
-
-    # Overall score
-    overall_pct = round(region_data['avg_overall'] * 100)
-    body.append(make_para(f'Overall Weighted Score: {overall_pct}%', bold=True, size=14,
-                          color='00B050' if overall_pct >= 90 else ('FFC000' if overall_pct >= 70 else 'FF0000'),
-                          center=True, space_before=120, space_after=120))
-
-    # Chart 1: Pillar Score Summary
-    body.append(make_chart_marker(1))
-    body.append(make_para('', space_after=80))
-    body.append(make_page_break())
-
-    # Section 2: Pillar breakdown
-    body.append(make_para('2. Pillar Score Breakdown', style='Heading1'))
-    for i, pillar in enumerate(PILLAR_KPIS):
-        score = round(region_data['avg_pillar'][i] * 100)
-        body.append(make_para(f'{pillar["pillar"]}  —  {score}%  (Weight: {int(pillar["weight"]*100)}%)',
-                              style='Heading2'))
-        for ci, c in enumerate(campuses):
-            campus_score = round(c['pillar_scores'][i] * 100)
-            body.append(make_para(f'  {short[ci]}: {campus_score}%', size=11, space_after=40))
-        # Per-pillar chart (charts 2-6)
-        body.append(make_chart_marker(i + 2))
-        body.append(make_para('', space_after=80))
-    body.append(make_page_break())
-
-    # Section 3: Waste Segregation
-    body.append(make_para('3. Waste Segregation', style='Heading1'))
-    body.append(make_para(f'Waste data for {period}:', size=11, space_after=120))
-    body.append(make_waste_table(waste_data, region_cfg))
-    body.append(make_para('', space_after=120))
-    # Waste chart (chart 7)
-    body.append(make_chart_marker(7))
-    body.append(make_para('', space_after=200))
-
-    # Section 4: Recommendations
-    body.append(make_para('4. Recommendations & Action Items', style='Heading1'))
-    body.append(make_para('(To be completed by the EHS team)', italic=True, size=11, color=GREY, space_after=200))
-
-    # sectPr
-    sectPr = w_el('sectPr')
-    pgSz = w_el('pgSz'); pgSz.set(f'{{{W}}}w', '11906'); pgSz.set(f'{{{W}}}h', '16838')
-    pgMar = w_el('pgMar')
-    pgMar.set(f'{{{W}}}top', '1440'); pgMar.set(f'{{{W}}}right', '1440')
-    pgMar.set(f'{{{W}}}bottom', '1440'); pgMar.set(f'{{{W}}}left', '1440')
-    sectPr.append(pgSz); sectPr.append(pgMar)
-    body.append(sectPr)
-
-    doc_root = w_el('document')
-    doc_root.append(body)
-    ET.register_namespace('w', W)
-    ET.register_namespace('r', R)
-
-    # Serialize document.xml
-    doc_xml = ET.tostring(doc_root, xml_declaration=True, encoding='UTF-8').decode('utf-8')
-
-    # Replace chart markers with drawing XML
-    for ci in range(1, total_charts + 1):
-        marker_text = f'{CHART_MARKER_PREFIX}{ci}___'
-        # Find the paragraph containing the marker and replace it with drawing XML
-        pattern = re.compile(
-            r'<ns0:p[^>]*>.*?' + re.escape(marker_text).replace('ns0:', 'ns0:') + r'.*?</ns0:p>',
-            re.DOTALL
-        )
-        # The ET serializer may use different namespace prefixes, so search for the marker text
-        if marker_text in doc_xml:
-            # Find the full <...:p> element containing this marker
-            start = doc_xml.find(marker_text)
-            # Walk back to find the opening <...:p
-            p_start = doc_xml.rfind('<', 0, start)
-            while p_start > 0 and ':p>' not in doc_xml[p_start:p_start+20] and ':p ' not in doc_xml[p_start:p_start+20]:
-                p_start = doc_xml.rfind('<', 0, p_start)
-            # Find the tag prefix
-            tag_match = re.search(r'<([^:]+):p[ >]', doc_xml[p_start:p_start+50])
-            if tag_match:
-                prefix = tag_match.group(1)
-                # Find closing tag
-                close_tag = f'</{prefix}:p>'
-                p_end = doc_xml.find(close_tag, start)
-                if p_end > 0:
-                    p_end += len(close_tag)
-                    rel_id = f'rId{rel_base + ci}'
-                    drawing_xml = make_chart_drawing_xml(rel_id, ci, cx=5486400, cy=3200400)
-                    doc_xml = doc_xml[:p_start] + drawing_xml + doc_xml[p_end:]
-
-    # Build relationships XML
-    doc_rels_parts = ['<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',
-                      '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">',
-                      '  <Relationship Id="rId0" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>',
-                      '  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/settings" Target="settings.xml"/>']
-    for rid, target in chart_rels:
-        doc_rels_parts.append(f'  <Relationship Id="{rid}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/chart" Target="{target}"/>')
-    doc_rels_parts.append('</Relationships>')
-    doc_rels_xml = '\n'.join(doc_rels_parts)
-
-    # Build content types XML
-    ct_parts = ['<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',
-                '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">',
-                '  <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>',
-                '  <Default Extension="xml" ContentType="application/xml"/>',
-                '  <Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>',
-                '  <Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/>',
-                '  <Override PartName="/word/settings.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.settings+xml"/>']
-    for ci in range(1, total_charts + 1):
-        ct_parts.append(f'  <Override PartName="/word/charts/chart{ci}.xml" ContentType="application/vnd.openxmlformats-officedocument.drawingml.chart+xml"/>')
-    ct_parts.append('</Types>')
-    content_types_xml = '\n'.join(ct_parts)
-
-    # Build ZIP
-    buf = io.BytesIO()
-    with zipfile.ZipFile(buf, 'w', zipfile.ZIP_DEFLATED) as z:
-        z.writestr('word/document.xml', doc_xml.encode('utf-8'))
-        z.writestr('word/styles.xml', STYLES_XML)
-        z.writestr('word/settings.xml', SETTINGS_XML)
-        z.writestr('_rels/.rels', ROOT_RELS)
-        z.writestr('word/_rels/document.xml.rels', doc_rels_xml)
-        z.writestr('[Content_Types].xml', content_types_xml)
-        for fname, chart_xml in chart_files.items():
-            z.writestr(fname, chart_xml)
-
-    buf.seek(0)
-    return buf.getvalue()
-
-
-# ── HTTP Handler ──
+                agg[campus]['planned'] += v
+                agg[campus]['actual'] += v
+
+        if is_committee:
+            # Committee data is by region name, expand to campuses
+            for region_name, vals in agg.items():
+                campus_codes = COMMITTEE_MAP.get(region_name, COMMITTEE_MAP.get(region_name.strip(), []))
+                if campus_codes:
+                    for code in campus_codes:
+                        if code not in data: data[code] = {}
+                        data[code][kpi_row] = {'planned': vals['planned'], 'actual': vals['actual']}
+                # Also store by region name for region-level charts
+                committee_data[region_name.strip()] = vals
+        else:
+            for campus, vals in agg.items():
+                if campus not in data: data[campus] = {}
+                data[campus][kpi_row] = vals
+
+    return data, committee_data
+
+# ---- Chart XML updater ----
+
+def update_chart_xml(chart_xml_bytes, kpi_data, chart_info, committee_data=None):
+    """Update chart XML with real data values."""
+    root = ET.fromstring(chart_xml_bytes)
+    kpi_row = chart_info['kpi_row']
+    chart_type = chart_info['type']
+
+    # Find all series
+    all_series = list(root.iter(f'{{{C_NS}}}ser'))
+
+    if chart_type == 'pct_campus':
+        # Single series: percentage per campus
+        if all_series:
+            ser = all_series[0]
+            # Get categories from chart
+            cats = []
+            cat_el = ser.find(f'{{{C_NS}}}cat')
+            if cat_el:
+                for pt in cat_el.iter(f'{{{C_NS}}}pt'):
+                    v = pt.find(f'{{{C_NS}}}v')
+                    if v is not None: cats.append(v.text or '')
+
+            # Update values
+            val_el = ser.find(f'{{{C_NS}}}val')
+            if val_el:
+                cache = val_el.find(f'{{{C_NS}}}numRef')
+                if cache is None: cache = val_el
+                num_cache = cache.find(f'{{{C_NS}}}numCache')
+                if num_cache is not None:
+                    for pt in num_cache.findall(f'{{{C_NS}}}pt'):
+                        idx = int(pt.get('idx', 0))
+                        if idx < len(cats):
+                            campus = cats[idx].strip()
+                            d = kpi_data.get(campus, {}).get(kpi_row, {})
+                            planned = d.get('planned', 0)
+                            actual = d.get('actual', 0)
+                            pct = min(actual / planned * 100, 100) if planned > 0 else 0
+                            v = pt.find(f'{{{C_NS}}}v')
+                            if v is not None: v.text = str(round(pct))
+
+    elif chart_type == 'hours_campus':
+        # Single series: raw hours per campus
+        if all_series:
+            ser = all_series[0]
+            cats = []
+            cat_el = ser.find(f'{{{C_NS}}}cat')
+            if cat_el:
+                for pt in cat_el.iter(f'{{{C_NS}}}pt'):
+                    v = pt.find(f'{{{C_NS}}}v')
+                    if v is not None: cats.append(v.text or '')
+
+            val_el = ser.find(f'{{{C_NS}}}val')
+            if val_el:
+            0;
+            num_cache = cache.find(f'{{{C_NS}}}numCache')
+                if num_cache is not None:
+                    for pt in num_cache.findall(f'{{{C_NS}}}pt'):
+                        idx = int(pt.get('idx', 0))
+                        if idx < len(cats):
+                            campus = cats[idx].strip()
+                            d = kpi_data.get(campus, {}).get(kpi_row, {})
+                            hours = d.get('actual', 0)
+                            v = pt.find(f'{{{C_NS}}}v')
+                            if v is not None: v.text = str(round(hours))
+
+    elif chart_type == 'planned_actual_campus':
+        # Two series: planned + actual per campus
+        cats = []
+        if all_series:
+            cat_el = all_series[0].find(f'{{{C_NS}}}cat')
+            if cat_el:
+                for pt in cat_el.iter(f'{{{C_NS}}}pt'):
+                    v = pt.find(f'{{{C_NS}}}v')
+                    if v is not None: cats.append(v.text or '')
+
+        for ser_idx, ser in enumerate(all_series):
+            field = 'planned' if ser_idx == 0 else 'actual'
+            val_el = ser.find(f'{{{C_NS}}}val')
+            if val_el:
+                cache = val_el.find(f'{{{C_NS}}}numRef')
+                if cache is None: cache = val_el
+                num_cache = cache.find(f'{{{C_NS}}}numCache')
+                if num_cache is not None:
+                    for pt in num_cache.findall(f'{{{C_NS}}}pt'):
+                        idx = int(pt.get('idx', 0))
+                        if idx < len(cats):
+                            campus = cats[idx].strip()
+                            d = kpi_data.get(campus, {}).get(kpi_row, {})
+                            val = d.get(field, 0)
+                            v = pt.find(f'{{{C_NS}}}v')
+                            if v is not None: v.text = str(round(val))
+
+    elif chart_type == 'planned_actual_region':
+        # Two series: planned + actual per region
+        cats = []
+        if all_series:
+            cat_el = all_series[0].find(f'{{{C_NS}}}cat')
+            if cat_el:
+                for pt in cat_el.iter(f'{{{C_NS}}}pt'):
+                    v = pt.find(f'{{{C_NS}}}v')
+                    if v is not None: cats.append(v.text or '')
+
+        for ser_idx, ser in enumerate(all_series):
+            field = 'planned' if ser_idx == 0 else 'actual'
+            val_el = ser.find(f'{{{C_NS}}}val')
+            if val_el:
+                cache = val_el.find(f'{{{C_NS}}}numRef')
+                if cache is None: cache = val_el
+                num_cache = cache.find(f'{{{C_NS}}}numCache')
+                if num_cache is not None:
+                    for pt in num_cache.findall(f'{{{C_NS}}}pt'):
+                        idx = int(pt.get('idx', 0))
+                        if idx < len(cats):
+                            region_name = cats[idx].strip()
+                            d = {}
+                            if committee_data:
+                                d = committee_data.get(region_name, {})
+                            else:
+                                # Aggregate from campuses
+                            if not d:
+                                campus_codes = REGION_CAMPUSES.get(region_name, [])
+                                if campus_codes:
+                                    tot_p = sum(kpi_data.get(c, {}).get(kpi_row, {}).get('planned', 0) for c in campus_codes)
+                                    tot_a = sum(kpi_data.get(c, {}).get(kpi_row, {}).get('actual', 0) for c in campus_codes)
+                                    d = {'planned': tot_p, 'actual': tot_a}
+                            val = d.get(field, 0) if d else 0
+                            v = pt.find(f'{{{C_NS}}}v')
+                            if v is not None: v.text = str(round(val))
+
+    elif chart_type == 'total_closed_pct_region':
+        # Two series: total findings + closed findings, per region
+        cats = []
+        if all_series:
+            cat_el = all_series[0].find(f'{{{C_NS}}}cat')
+            if cat_el:
+                for pt in cat_el.iter(f'{{{C_NS}}}pt'):
+                    v = pt.find(f'{{{C_NS}}}v')
+                    if v is not None: cats.append(v.text or '')
+
+        for ser_idx, ser in enumerate(all_series):
+            # series 0 = planned (total findings), series 1 = actual (closed)
+            field = 'planned' if ser_idx == 0 else 'actual'
+            val_el = ser.find(f'{{{C_NS}}}val')
+            if val_el:
+                cache = val_el.find(f'{{{C_NS}}}numRef')
+                if cache is None: cache = val_el
+                num_cache = cache.find(f'{{{C_NS}}}numCache')
+                if num_cache is not None:
+                    for pt in num_cache.findall(f'{{{C_NS}}}pt'):
+                        idx = int(pt.get('idx', 0))
+                        if idx < len(cats):
+                            region_name = cats[idx].strip()
+                            campus_codes = REGION_CAMPUSES.get(region_name, [])
+                            if campus_codes:
+                                tot = sum(kpi_data.get(c, {}).get(kpi_row, {}).get(field, 0) for c in campus_codes)
+                            else:
+                                tot = 0
+                            v = pt.find(f'{{{C_NS}}}v')
+                            if v is not None: v.text = str(round(tot))
+
+    return ET.tostring(root, encoding='UTF-8', xml_declaration=True)
+
+# ---- Text replacement ----
+
+def replace_text_in_doc(doc_xml_bytes, month_name, year):
+    """Replace month/year placeholders in document.xml"""
+    text = doc_xml_bytes.decode('utf-8')
+    # Replace common placeholders
+    for mn in MONTH_NAMES:
+        if mn != month_name:
+            # Replace "August 2026" etc. with new month
+            for y in range(2024, 2028):
+                text = text.replace(f'{mn} {y}', f'{month_name} {year}')
+    return text.encode('utf-8')
+
+# ---- Main generator ----
+
+def generate_report(token, month, year, template_url):
+    """Generate Word report from template."""
+    import urllib.request
+
+    month_name = normalize_month(month) or month
+
+    # Download template
+    print(f"  Downloading template from {template_url}")
+    req = urllib.request.Request(template_url)
+    with urllib.request.urlopen(req) as resp:
+        template_bytes = resp.read()
+
+    # Fetch all KPI data
+    print(f"  Fetching KPI data for {month_name} {year}")
+    kpi_data, committee_data = fetch_all_kpi_data(token, month_name)
+    print(f"  Got data for {len(kpi_data)} campuses")
+
+    # Unzip template
+    template_io = io.BytesIO(template_bytes)
+    output_io = io.BytesIO()
+
+    with zipfile.ZipFile(template_io, 'r') as zin, \
+         zipfile.ZipFile(output_io, 'w', zipfile.ZIP_DEFLATED) as zout:
+
+        for item in zin.infolist():
+            raw = zin.read(item.filename)
+
+            # Update chart XML files
+            m = re.match(r'word/charts/chart(\d+)\.xml$', item.filename)
+            if m:
+                chart_num = int(m.group(1))
+                if chart_num in CHART_KPI_MAP:
+                    print(f"  Updating chart{chart_num}.xml")
+                    try:
+                        raw = update_chart_xml(raw, kpi_data, CHART_KPI_MAP[chart_num], committee_data)
+                    except Exception as e:
+                        print(f"  WARNING: Failed to update chart{chart_num}: {e}")
+
+            # Update document.xml (text replacements)
+            if item.filename == 'word/document.xml':
+                try:
+                    raw = replace_text_in_doc(raw, month_name, year)
+                except Exception as e:
+                    print(f"  WARNING: Failed to update document.xml: {e}")
+
+            zout.writestr(item, raw)
+
+    output_io.seek(0)
+    return output_io.read()
+
+# ---- HTTP Handler for Vercel ----
 
 class handler(BaseHTTPRequestHandler):
     def do_GET(self):
-        parsed = urlparse(self.path)
-        qs = parse_qs(parsed.query)
-        region = qs.get('region', [None])[0]
-        month = qs.get('month', [None])[0]
-        year = qs.get('year', ['2026'])[0]
+        self.send_response(200)
+        self.send_header('Content-Type', 'application/json')
+        self.end_headers()
+        self.wfile.write(json.dumps({'status': 'ok', 'endpoint': 'generate-word'}).encode())
 
-        if not region or not month:
-            self.send_response(400)
-            self.send_header('Content-Type', 'application/json')
-            self.end_headers()
-            self.wfile.write(json.dumps({'error': 'region and month required'}).encode())
-            return
-
-        token = os.environ.get('SMARTSHEET_TOKEN', '')
-        if not token:
-            self.send_response(500)
-            self.send_header('Content-Type', 'application/json')
-            self.end_headers()
-            self.wfile.write(json.dumps({'error': 'SMARTSHEET_TOKEN not set'}).encode())
-            return
-
+    def do_POST(self):
         try:
-            docx_bytes = generate_report(region, month, year, token)
-            filename = f'KPI_Report_{region.replace(" ", "_")}_{month}_{year}.docx'
+            length = int(self.headers.get('Content-Length', 0))
+            body = json.loads(self.rfile.read(length)) if length else {}
+
+            token = body.get('token') or os.environ.get('SMARTSHEET_ACCESS_TOKEN')
+            if not token:
+                self.send_response(400)
+                self.send_header('Content-Type', 'application/json')
+                self.end_headers()
+                self.wfile.write(json.dumps({"error": "No token provided"}).encode())
+                return
+
+            month = body.get('month', 'August')
+            year = str(body.get('year', 2026))
+
+            # Template URL from GitHub raw
+            template_url = body.get('templateUrl',
+                'https://raw.githubusercontent.com/josephsismart/hct-cohs-ehs-kpi/main/templates/word_template.docx')
+
+            print(f"Generating Word report for {month} {year}")
+            doc_bytes = generate_report(token, month, year, template_url)
+
+            filename = f'KPI_Report_{month}_{year}.docx'
+            b = base64.b64encode(doc_bytes).decode()
+
             self.send_response(200)
-            self.send_header('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document')
-            self.send_header('Content-Disposition', f'attachment; filename="{filename}"')
-            self.send_header('Content-Length', str(len(docx_bytes)))
+            self.send_header('Content-Type', 'application/json')
             self.end_headers()
-            self.wfile.write(docx_bytes)
+            self.wfile.write(json.dumps({
+                'filename': filename,
+                'base64': b,
+                'size': len(doc_bytes)
+            }).encode())
+
         except Exception as e:
+            import traceback
+            traceback.print_exc()
             self.send_response(500)
             self.send_header('Content-Type', 'application/json')
             self.end_headers()
