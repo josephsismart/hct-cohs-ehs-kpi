@@ -978,13 +978,12 @@ def generate_presentation(template_bytes, region_name, year, q1_data, q2_data, p
             if changed:
                 file_contents[fname] = xml.encode('utf-8')
 
-    # 7. Update NA box text with correct KPI names (keep "No scoring" text)
+    # 7. Update NA box text — replace "No scoring for this quarter" with "N/A"
     for fname in list(file_contents.keys()):
         if not (fname.startswith('ppt/slides/slide') and fname.endswith('.xml')): continue
         xml = file_contents[fname].decode('utf-8')
         if 'No scoring' not in xml: continue
-        # NA boxes contain "KPI X - Name\nNo scoring for this quarter"
-        # Just ensure they display correctly - no data changes needed
+        xml = xml.replace('No scoring for this quarter', 'N/A')
         file_contents[fname] = xml.encode('utf-8')
 
     # 8. Force Y-axis max on all bar charts
