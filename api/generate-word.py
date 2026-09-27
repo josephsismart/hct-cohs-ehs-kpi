@@ -469,7 +469,7 @@ def generate_report(token, month, year, template_url):
 class handler(BaseHTTPRequestHandler):
     def do_GET(self):
         qs = parse_qs(urlparse(self.path).query)
-        token = (qs.get('token') or [os.environ.get('SMARTSHEET_ACCESS_TOKEN','')])[0]
+        token = (qs.get('token') or [os.environ.get('SMARTSHEET_TOKEN','')])[0]
         if not token:
             self.send_response(400)
             self.send_header('Content-Type', 'application/json')
@@ -502,7 +502,7 @@ class handler(BaseHTTPRequestHandler):
             length = int(self.headers.get('Content-Length', 0))
             body = json.loads(self.rfile.read(length)) if length else {}
 
-            token = body.get('token') or os.environ.get('SMARTSHEET_ACCESS_TOKEN')
+            token = body.get('token') or os.environ.get('SMARTSHEET_TOKEN')
             if not token:
                 self.send_response(400)
                 self.send_header('Content-Type', 'application/json')
