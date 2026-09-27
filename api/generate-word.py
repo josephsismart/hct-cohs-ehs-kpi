@@ -1,4 +1,4 @@
-"""Vercel Python serverless function -- HCT-COHS KPI Word Report Generator.
+"""Vercel Python serverless function --ÂÂ HCT-COHS KPI Word Report Generator.
 Template-based: loads word_template.docx, updates charts with live Smartsheet data.
 """
 
@@ -8,7 +8,7 @@ from urllib.parse import urlparse, parse_qs
 import requests as http_requests
 from xml.etree import ElementTree as ET
 
-# ---- Namespaces ----
+# --ÂÂ--ÂÂ Namespaces --ÂÂ--ÂÂ
 C_NS = 'http://schemas.openxmlformats.org/drawingml/2006/chart'
 A_NS = 'http://schemas.openxmlformats.org/drawingml/2006/main'
 W_NS = 'http://schemas.openxmlformats.org/wordprocessingml/2006/main'
@@ -27,7 +27,7 @@ CAMPUS_ALIAS = {
     'RAK A ': 'RKA', 'RAK B ': 'RKB',
 }
 
-# ---- Campus codes for all regions ----
+# --ÂÂ--ÂÂ Campus codes for all regions --ÂÂ--ÂÂ
 ALL_CAMPUSES = ['ADA','ADB','AAF','AAZ','DMC','DBN','ADH','MZY','FJF','FJH','SJA','SJB','RKA','RKB']
 REGION_CAMPUSES = {
     'Abu Dhabi Main': ['ADA','ADB'],
@@ -55,7 +55,7 @@ COMMITTEE_MAP = {
     'Al Dhafra': ['ADH','MZY'],
 }
 
-# ---- Smartsheet sources ----
+# --ÂÂ--ÂÂ Smartsheet sources --ÂÂ--ÂÂ
 SYNC_SOURCES = [
     {'key': 'v2_hs_kpi_report', 'reportId': '5852576405737348', 'campusCol': 'Committee', 'monthCol': 'Reporting Quarter', 'valueCol': 'KPI 1 - % of HS KPI Reports Submitted', 'kpi_row': 2, 'isolateFromCampusSet': True},
     {'key': 'v2_external_compliance', 'sheetId': '1325212455882628', 'campusCol': 'Campus Code', 'monthCol': 'Primary', 'plannedCol': 'Applicable Legal Compliance', 'actualCol': 'Legal Requirements Complied', 'kpi_row': 4},
@@ -97,7 +97,7 @@ CHART_KPI_MAP = {
     13: {'kpi_row': 19, 'type': 'pct_campus'},
 }
 
-# ---- Smartsheet API ----
+# --ÂÂ--ÂÂ Smartsheet API --ÂÂ--ÂÂ
 
 def _ss_fetch(endpoint, token):
     url = f'https://api.smartsheet.com/2.0/{endpoint}'
@@ -174,7 +174,7 @@ def yes_to_int(v):
     s = str(v).strip().lower()
     return 1 if s in ('yes', 'true', '1') else 0
 
-# ---- Fetch KPI data per campus ----
+# --ÂÂ--ÂÂ Fetch KPI data per campus --ÂÂ--ÂÂ
 
 def fetch_all_kpi_data(token, month_filter):
     """Returns {campus_code: {kpi_row: {'planned': float, 'actual': float}}}"""
@@ -251,11 +251,21 @@ def fetch_all_kpi_data(token, month_filter):
 
     return data, committee_data
 
-# ---- Chart XML updater ----
+# --ÂÂ--ÂÂ Chart XML updater --ÂÂ--ÂÂ
 
 def update_chart_xml(chart_xml_bytes, kpi_data, chart_info, committee_data=None):
     """Update chart XML with real data values."""
-    root = ET.fromstring(chart_xml_bytes)
+    # Fix: Register ALL namespaces from chart XML before parsing
+    # to prevent ElementTree from rewriting prefixes (ns0, ns1, etc.)
+    # which corrupts OOXML and causes "unreadable content" in Word
+    raw_xml = chart_xml_bytes if isinstance(chart_xml_bytes, bytes) else chart_xml_bytes.encode('utf-8')
+    xml_str = raw_xml.decode('utf-8')
+    for prefix, uri in re.findall(r'xmlns:(\w+)=["\'](.*?)["\' ]', xml_str):
+        try:
+            ET.register_namespace(prefix, uri)
+        except Exception:
+            pass
+    root = ET.fromstring(raw_xml)
     kpi_row = chart_info['kpi_row']
     chart_type = chart_info['type']
 
@@ -425,7 +435,7 @@ def update_chart_xml(chart_xml_bytes, kpi_data, chart_info, committee_data=None)
 
     return ET.tostring(root, encoding='UTF-8', xml_declaration=True)
 
-# ---- Text replacement ----
+# --ÂÂ--ÂÂ Text replacement --ÂÂ--ÂÂ
 
 def replace_text_in_doc(doc_xml_bytes, month_name, year):
     """Replace month/year placeholders in document.xml"""
@@ -438,7 +448,7 @@ def replace_text_in_doc(doc_xml_bytes, month_name, year):
                 text = text.replace(f'{mn} {y}', f'{month_name} {year}')
     return text.encode('utf-8')
 
-# ---- Main generator ----
+# --ÂÂ--ÂÂ Main generator --ÂÂ--ÂÂ
 
 def generate_report(token, month, year, template_url):
     """Generate Word report from template."""
@@ -510,7 +520,7 @@ def generate_report(token, month, year, template_url):
     output_io.seek(0)
     return output_io.read()
 
-# ---- HTTP Handler for Vercel ----
+# --ÂÂ--ÂÂ HTTP Handler for Vercel --ÂÂ--ÂÂ
 
 class handler(BaseHTTPRequestHandler):
     def do_GET(self):
