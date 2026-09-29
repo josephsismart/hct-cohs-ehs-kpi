@@ -985,6 +985,7 @@ def generate_presentation(template_bytes, region_name, year, q1_data, q2_data, p
         c1_na = q1_data.get(campus_codes[0], {}).get(kpi_row, {}).get('na', False)
         c2_na = q1_data.get(campus_codes[1], {}).get(kpi_row, {}).get('na', False) if len(campus_codes) > 1 else True
         new_xml = update_chart_xml(xml_str, c1_val, c2_val, c1_na, c2_na, kpi_row=kpi_row, avg_override=all_campus_avg.get(kpi_row))
+        new_xml = _set_na_data_labels(new_xml, c1_na, c2_na)
         new_xml = update_chart_title(new_xml, kpi_row)
         file_contents[path] = new_xml.encode('utf-8')
 
@@ -2227,6 +2228,7 @@ def generate_presentation(template_bytes, region_name, year, q1_data, q2_data, p
         c1_na = q1_data.get(campus_codes[0], {}).get(kpi_row, {}).get('na', False)
         c2_na = q1_data.get(campus_codes[1], {}).get(kpi_row, {}).get('na', False) if len(campus_codes) > 1 else True
         new_xml = update_chart_xml(xml_str, c1_val, c2_val, c1_na, c2_na, kpi_row=kpi_row, avg_override=all_campus_avg.get(kpi_row))
+        new_xml = _set_na_data_labels(new_xml, c1_na, c2_na)
         new_xml = update_chart_title(new_xml, kpi_row)
         file_contents[path] = new_xml.encode('utf-8')
 
