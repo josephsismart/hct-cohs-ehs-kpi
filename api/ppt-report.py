@@ -1824,10 +1824,12 @@ def update_chart_title(xml_str, kpi_row):
     new_title_block = re.sub(r'<a:rPr[^>]*/>', fix_self_closing_rpr, new_title_block)
     return xml_str[:title_match.start()] + new_title_block + xml_str[title_match.end():]
 
-def update_chart_xml(xml_str, c1_val, c2_val, c1_na=False, c2_na=False, kpi_row=None):
+def update_chart_xml(xml_str, c1_val, c2_val, c1_na=False, c2_na=False, kpi_row=None, avg_override=None):
     """Update a 2-category clustered column chart: bar series = [c1, c2], line series = [avg, avg]."""
-    # Fix: exclude N/A campuses from average
-    if c1_na and c2_na:
+    # Fix: use avg_override if provided (All Campus Avg), else exclude N/A campuses
+    if avg_override is not None:
+        avg_val = avg_override
+    elif c1_na and c2_na:
         avg_val = 0.0
     elif c1_na:
         avg_val = c2_val
