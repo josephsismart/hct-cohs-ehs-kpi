@@ -524,6 +524,59 @@ def update_chart_title(xml_str, kpi_row):
     new_title_block = re.sub(r'<a:rPr[^>]*/>', fix_self_closing_rpr, new_title_block)
     return xml_str[:title_match.start()] + new_title_block + xml_str[title_match.end():]
 
+def _set_na_data_labels(xml_str, c1_na, c2_na):
+    """Override chart data labels to show 'N/A' for campuses with no data."""
+    if not c1_na and not c2_na:
+        return xml_str
+    # Find bar chart series (first series = bar values for the 2 campuses)
+    bar_match = re.search(r'<c:barChart>.*?</c:barChart>', xml_str, re.DOTALL)
+    if not bar_match:
+        return xml_str
+    bar_xml = bar_match.group(0)
+    sers = list(re.finditer(r'<c:ser>.*?</c:ser>', bar_xml, re.DOTALL))
+    if not sers:
+        return xml_str
+    # Only modify the first series (campus bars)
+    ser0 = sers[0].group(0)
+    new_ser0 = ser0
+    na_indices = []
+    if c1_na: na_indices.append(0)
+    if c2_na: na_indices.append(1)
+    for idx in na_indices:
+        # Build a custom dLbl for this point that shows "N/A" text
+        na_dlbl = (
+            f'<c:dLbl><c:idx val="{idx}"/>'
+            f'<c:tx><c:rich><a:bodyPr/><a:lstStyle/>'
+            f'<a:p><a:r><a:rPr lang="en-US" sz="1000" b="1"/>'
+            f'<a:t>N/A</a:t></a:r></a:p>'
+            f'</c:rich></c:tx>'
+            f'<c:showLegendKey val="0"/><c:showVal val="0"/>'
+            f'<c:showCatName val="0"/><c:showSerName val="0"/>'
+            f'<c:showPercent val="0"/>'
+            f'</c:dLbl>'
+        )
+        # Remove any existing dLbl for this index
+        new_ser0 = re.sub(rf'<c:dLbl><c:idx val="{idx}"/>.*?</c:dLbl>', '', new_ser0, flags=re.DOTALL)
+        # Insert before </c:ser> or before <c:dLbls> if exists
+        if '<c:dLbls>' in new_ser0:
+            new_ser0 = new_ser0.replace('<c:dLbls>', na_dlbl + '<c:dLbls>', 1)
+        else:
+            # Insert before <c:cat> or <c:val>
+            for tag in ['<c:cat>', '<c:val>', '<c:idx']:
+                if tag in new_ser0:
+                    # Insert after the idx element
+                    idx_end = new_ser0.find('</c:idx>') + len('</c:idx>')
+                    if '<c:order>' in new_ser0:
+                        order_end = new_ser0.find('</c:order>') + len('</c:order>')
+                        insert_pos = max(idx_end, order_end)
+                    else:
+                        insert_pos = idx_end
+                    new_ser0 = new_ser0[:insert_pos] + na_dlbl + new_ser0[insert_pos:]
+                    break
+    bar_xml_new = bar_xml.replace(ser0, new_ser0, 1)
+    xml_str = xml_str[:bar_match.start()] + bar_xml_new + xml_str[bar_match.end():]
+    return xml_str
+
 def update_chart_xml(xml_str, c1_val, c2_val, c1_na=False, c2_na=False, kpi_row=None, avg_override=None):
     """Update a 2-category clustered column chart: bar series = [c1, c2], line series = [avg, avg]."""
     # Use all-campus average if provided, otherwise average the 2 regional campuses
@@ -600,6 +653,8 @@ def update_chart_xml(xml_str, c1_val, c2_val, c1_na=False, c2_na=False, kpi_row=
     if kpi_row == 15:
         xml_str = xml_str.replace('Below Target', '')
         xml_str = xml_str.replace('Contractors Inducted - Below Target', '')
+    # Override data labels to show "N/A" for campuses with no data
+    xml_str = _set_na_data_labels(xml_str, c1_na, c2_na)
     return xml_str
 
 def _set_val_axis_max(xml_str, max_val):
@@ -908,15 +963,17 @@ def generate_presentation(template_bytes, region_name, year, q1_data, q2_data, p
     # 2. Compute all-campus average per KPI (average of percentages, not total/total)
     all_campus_avg = {}
     for kpi_row_k in set(Q1_CHART_MAP.values()):
-        campus_calcs = []
+        total_planned = 0
+        total_achieved = 0
         for cc, cd in q1_data.items():
             if cc in ('HQ', 'ADC'):
                 continue
             kd = cd.get(kpi_row_k, {})
             if kd and not kd.get('na', True) and kd.get('planned', 0) > 0:
-                campus_calcs.append(kd['calc'])
-        if campus_calcs:
-            all_campus_avg[kpi_row_k] = sum(campus_calcs) / len(campus_calcs)
+                total_planned += kd['planned']
+                total_achieved += kd.get('achieved', 0)
+        if total_planned > 0:
+            all_campus_avg[kpi_row_k] = total_achieved / total_planned
 
     # Update Q1 charts (slides 4-11)
     for chart_file, kpi_row in Q1_CHART_MAP.items():
