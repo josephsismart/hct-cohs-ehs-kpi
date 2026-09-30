@@ -4814,6 +4814,43 @@ def update_scoring_slide(xml_str, region_data, short_names):
 
 # -- Main generation --
 
+_DASH_AVG = {}
+
+def fetch_dashboard_avg(host, month_list):
+    """All Campus Avg = same pooled totals as the dashboard KPI cards
+    (sum actual / sum planned, All Campuses, excl. HQ/ADC) for the selected months."""
+    result = {}
+    if not host or not month_list:
+        return result
+    months = set((normalize_month(m) or m) for m in month_list)
+    try:
+        proto = 'http' if host.startswith('localhost') or host.startswith('127.') else 'https'
+        req = Request(proto + '://' + host + '/api/sync', headers={'Accept': 'application/json'})
+        with urlopen(req, timeout=25) as resp:
+            payload = json.loads(resp.read().decode('utf-8'))
+    except Exception:
+        return result
+    sources = payload.get('sources') or {}
+    totals = {}
+    for src in SYNC_SOURCES:
+        if src.get('valueCol'):
+            continue
+        rows = (sources.get(src['key']) or {}).get('rows') or []
+        t = totals.setdefault(src['kpi_row'], [0.0, 0.0])
+        for r in rows:
+            if str(r.get('campus', '')).strip() in ('HQ', 'ADC'):
+                continue
+            rm = normalize_month(r.get('month')) or r.get('month')
+            if rm not in months:
+                continue
+            t[0] += safe_float(r.get('actual'))
+            t[1] += safe_float(r.get('planned'))
+    for k, (a, p) in totals.items():
+        if p > 0:
+            result[k] = min(a / p, 1.0)
+    return result
+
+
 def generate_presentation(template_bytes, region_name, year, q1_data, q2_data, period='quarter', month_name=None, quarter='Q1'):
     if region_name not in REGIONS:
         return None, f"Unknown region: {region_name}"
@@ -4885,6 +4922,10 @@ def generate_presentation(template_bytes, region_name, year, q1_data, q2_data, p
                 total_achieved += kd.get('achieved', 0)
         if total_planned > 0:
             all_campus_avg[kpi_row_k] = min(total_achieved / total_planned, 1.0)
+
+    # Match dashboard KPI cards exactly (All Campuses, same month/quarter filter)
+    for _k, _v in (_DASH_AVG or {}).items():
+        all_campus_avg[_k] = _v
 
     # 2. Update Q1 charts (slides 4-11)
     for chart_file, kpi_row in Q1_CHART_MAP.items():
@@ -5147,6 +5188,8 @@ class handler(BaseHTTPRequestHandler):
             # Fetch KPI data
             q1_data, q1_errors = fetch_kpi_data(token, q1_months)
             q2_data, q2_errors = fetch_kpi_data(token, q2_months) if q2_months else ({}, [])
+            global _DASH_AVG
+            _DASH_AVG = fetch_dashboard_avg(self.headers.get('host'), q1_months)
 
             if debug:
                 debug_out = {}
@@ -5155,7 +5198,7 @@ class handler(BaseHTTPRequestHandler):
                 self.send_response(200)
                 self.send_header('Content-Type', 'application/json')
                 self.end_headers()
-                self.wfile.write(json.dumps({'q1_campuses': list(q1_data.keys()), 'q2_campuses': list(q2_data.keys()), 'q1_sample': debug_out, 'months': q1_months, 'errors': q1_errors + q2_errors}, indent=2).encode())
+                self.wfile.write(json.dumps({'q1_campuses': list(q1_data.keys()), 'q2_campuses': list(q2_data.keys()), 'q1_sample': debug_out, 'months': q1_months, 'dash_avg': _DASH_AVG, 'errors': q1_errors + q2_errors}, indent=2).encode())
                 return
 
             # Load template
