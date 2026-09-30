@@ -1,7 +1,7 @@
 """Vercel Python serverless function - HCT-COHS KPI PPT Generator.
 Generates quarterly (Q1+Q2) KPI reports using client's reference template.
 Fetches live data from Smartsheet API.
-"""
+"""h
 import os, re, io, json, zipfile, tempfile
 from http.server import BaseHTTPRequestHandler
 from urllib.parse import urlparse, parse_qs
@@ -119,7 +119,7 @@ SYNC_SOURCES = [
     {'key': 'v2_permit_to_work', 'sheetId': '3519179394076548', 'campusCol': 'Campus Code', 'monthCol': 'Reporting Month', 'plannedCol': 'No. of PTWs Issued', 'actualCol': 'Total Work Registered', 'kpi_row': 14},
     {'key': 'v2_onsite_induction', 'sheetId': '3519179394076548', 'campusCol': 'Campus Code', 'monthCol': 'Reporting Month', 'plannedCol': 'No. of Active Contractors', 'actualCol': 'No. of Contractors Inducted', 'kpi_row': 15},
     {'key': 'v2_ehs_inspection', 'sheetId': '1510149721116548', 'campusCol': 'Campus Code', 'monthCol': 'Primary', 'plannedCol': 'No. of EHS Inspections Planned', 'actualCol': 'No. of EHS Inspections Completed', 'kpi_row': 17},
-    {'key': 'v2_findings_on_time', 'sheetId': '1510149721116548', 'campusCol': 'Campus Code', 'monthCol': 'Primary', 'plannedCol': 'No. of Total Findings', 'actualCol': 'No. of Findings Closed', 'kpi_row': 16},
+    {'key': 'v2_findings_on_time', 'sheetId': '1510149721116548', 'campusCol': 'Campus Code', 'monthCol': 'Primary', 'plannedCol': 'No. of Findings Due', 'actualCol': 'No. of Findings Closed', 'kpi_row': 16},
     {'key': 'v2_investigation_on_time', 'sheetId': '5977763159691140', 'campusCol': 'Campus Code', 'monthCol': 'Reporting Month', 'plannedCol': 'Total Incident Investigated', 'actualCol': 'Investigation Completed on Time', 'kpi_row': 19},
     {'key': 'notification', 'sheetId': '5977763159691140', 'campusCol': 'Campus Code', 'monthCol': 'Reporting Month', 'plannedCol': 'Total Incident', 'actualCol': 'Incident Notification Submitted on Time', 'kpi_row': 18},
 ]
@@ -198,8 +198,15 @@ def fetch_sheet_rows(sheet_id, token):
     data = _ss_fetch(f'sheets/{sheet_id}?pageSize=10000', token)
     if not data.get('rows'): return []
     col_map = {c['id']: c['title'] for c in data.get('columns', [])}
+    # Exclude parent/summary rows to avoid double-counting (matches dashboard logic)
+    parent_ids = set()
+    for row in data['rows']:
+        if row.get('parentId'):
+            parent_ids.add(row['parentId'])
     rows = []
     for row in data['rows']:
+        if row.get('id') in parent_ids:
+            continue  # skip parent rows that have children
         rec = {}
         for cell in row.get('cells', []):
             title = col_map.get(cell.get('columnId'))
@@ -1501,7 +1508,7 @@ SYNC_SOURCES = [
     {'key': 'v2_permit_to_work', 'sheetId': '3519179394076548', 'campusCol': 'Campus Code', 'monthCol': 'Reporting Month', 'plannedCol': 'No. of PTWs Issued', 'actualCol': 'Total Work Registered', 'kpi_row': 14},
     {'key': 'v2_onsite_induction', 'sheetId': '3519179394076548', 'campusCol': 'Campus Code', 'monthCol': 'Reporting Month', 'plannedCol': 'No. of Active Contractors', 'actualCol': 'No. of Contractors Inducted', 'kpi_row': 15},
     {'key': 'v2_ehs_inspection', 'sheetId': '1510149721116548', 'campusCol': 'Campus Code', 'monthCol': 'Primary', 'plannedCol': 'No. of EHS Inspections Planned', 'actualCol': 'No. of EHS Inspections Completed', 'kpi_row': 17},
-    {'key': 'v2_findings_on_time', 'sheetId': '1510149721116548', 'campusCol': 'Campus Code', 'monthCol': 'Primary', 'plannedCol': 'No. of Total Findings', 'actualCol': 'No. of Findings Closed', 'kpi_row': 16},
+    {'key': 'v2_findings_on_time', 'sheetId': '1510149721116548', 'campusCol': 'Campus Code', 'monthCol': 'Primary', 'plannedCol': 'No. of Findings Due', 'actualCol': 'No. of Findings Closed', 'kpi_row': 16},
     {'key': 'v2_investigation_on_time', 'sheetId': '5977763159691140', 'campusCol': 'Campus Code', 'monthCol': 'Reporting Month', 'plannedCol': 'Total Incident Investigated', 'actualCol': 'Investigation Completed on Time', 'kpi_row': 19},
     {'key': 'notification', 'sheetId': '5977763159691140', 'campusCol': 'Campus Code', 'monthCol': 'Reporting Month', 'plannedCol': 'Total Incident', 'actualCol': 'Incident Notification Submitted on Time', 'kpi_row': 18},
 ]
@@ -1580,8 +1587,15 @@ def fetch_sheet_rows(sheet_id, token):
     data = _ss_fetch(f'sheets/{sheet_id}?pageSize=10000', token)
     if not data.get('rows'): return []
     col_map = {c['id']: c['title'] for c in data.get('columns', [])}
+    # Exclude parent/summary rows to avoid double-counting (matches dashboard logic)
+    parent_ids = set()
+    for row in data['rows']:
+        if row.get('parentId'):
+            parent_ids.add(row['parentId'])
     rows = []
     for row in data['rows']:
+        if row.get('id') in parent_ids:
+            continue  # skip parent rows that have children
         rec = {}
         for cell in row.get('cells', []):
             title = col_map.get(cell.get('columnId'))
@@ -2748,7 +2762,7 @@ SYNC_SOURCES = [
     {'key': 'v2_permit_to_work', 'sheetId': '3519179394076548', 'campusCol': 'Campus Code', 'monthCol': 'Reporting Month', 'plannedCol': 'No. of PTWs Issued', 'actualCol': 'Total Work Registered', 'kpi_row': 14},
     {'key': 'v2_onsite_induction', 'sheetId': '3519179394076548', 'campusCol': 'Campus Code', 'monthCol': 'Reporting Month', 'plannedCol': 'No. of Active Contractors', 'actualCol': 'No. of Contractors Inducted', 'kpi_row': 15},
     {'key': 'v2_ehs_inspection', 'sheetId': '1510149721116548', 'campusCol': 'Campus Code', 'monthCol': 'Primary', 'plannedCol': 'No. of EHS Inspections Planned', 'actualCol': 'No. of EHS Inspections Completed', 'kpi_row': 17},
-    {'key': 'v2_findings_on_time', 'sheetId': '1510149721116548', 'campusCol': 'Campus Code', 'monthCol': 'Primary', 'plannedCol': 'No. of Total Findings', 'actualCol': 'No. of Findings Closed', 'kpi_row': 16},
+    {'key': 'v2_findings_on_time', 'sheetId': '1510149721116548', 'campusCol': 'Campus Code', 'monthCol': 'Primary', 'plannedCol': 'No. of Findings Due', 'actualCol': 'No. of Findings Closed', 'kpi_row': 16},
     {'key': 'v2_investigation_on_time', 'sheetId': '5977763159691140', 'campusCol': 'Campus Code', 'monthCol': 'Reporting Month', 'plannedCol': 'Total Incident Investigated', 'actualCol': 'Investigation Completed on Time', 'kpi_row': 19},
     {'key': 'notification', 'sheetId': '5977763159691140', 'campusCol': 'Campus Code', 'monthCol': 'Reporting Month', 'plannedCol': 'Total Incident', 'actualCol': 'Incident Notification Submitted on Time', 'kpi_row': 18},
 ]
@@ -2827,8 +2841,15 @@ def fetch_sheet_rows(sheet_id, token):
     data = _ss_fetch(f'sheets/{sheet_id}?pageSize=10000', token)
     if not data.get('rows'): return []
     col_map = {c['id']: c['title'] for c in data.get('columns', [])}
+    # Exclude parent/summary rows to avoid double-counting (matches dashboard logic)
+    parent_ids = set()
+    for row in data['rows']:
+        if row.get('parentId'):
+            parent_ids.add(row['parentId'])
     rows = []
     for row in data['rows']:
+        if row.get('id') in parent_ids:
+            continue  # skip parent rows that have children
         rec = {}
         for cell in row.get('cells', []):
             title = col_map.get(cell.get('columnId'))
@@ -4055,7 +4076,7 @@ SYNC_SOURCES = [
     {'key': 'v2_permit_to_work', 'sheetId': '3519179394076548', 'campusCol': 'Campus Code', 'monthCol': 'Reporting Month', 'plannedCol': 'No. of PTWs Issued', 'actualCol': 'Total Work Registered', 'kpi_row': 14},
     {'key': 'v2_onsite_induction', 'sheetId': '3519179394076548', 'campusCol': 'Campus Code', 'monthCol': 'Reporting Month', 'plannedCol': 'No. of Active Contractors', 'actualCol': 'No. of Contractors Inducted', 'kpi_row': 15},
     {'key': 'v2_ehs_inspection', 'sheetId': '1510149721116548', 'campusCol': 'Campus Code', 'monthCol': 'Primary', 'plannedCol': 'No. of EHS Inspections Planned', 'actualCol': 'No. of EHS Inspections Completed', 'kpi_row': 17},
-    {'key': 'v2_findings_on_time', 'sheetId': '1510149721116548', 'campusCol': 'Campus Code', 'monthCol': 'Primary', 'plannedCol': 'No. of Total Findings', 'actualCol': 'No. of Findings Closed', 'kpi_row': 16},
+    {'key': 'v2_findings_on_time', 'sheetId': '1510149721116548', 'campusCol': 'Campus Code', 'monthCol': 'Primary', 'plannedCol': 'No. of Findings Due', 'actualCol': 'No. of Findings Closed', 'kpi_row': 16},
     {'key': 'v2_investigation_on_time', 'sheetId': '5977763159691140', 'campusCol': 'Campus Code', 'monthCol': 'Reporting Month', 'plannedCol': 'Total Incident Investigated', 'actualCol': 'Investigation Completed on Time', 'kpi_row': 19},
     {'key': 'notification', 'sheetId': '5977763159691140', 'campusCol': 'Campus Code', 'monthCol': 'Reporting Month', 'plannedCol': 'Total Incident', 'actualCol': 'Incident Notification Submitted on Time', 'kpi_row': 18},
 ]
@@ -4134,8 +4155,15 @@ def fetch_sheet_rows(sheet_id, token):
     data = _ss_fetch(f'sheets/{sheet_id}?pageSize=10000', token)
     if not data.get('rows'): return []
     col_map = {c['id']: c['title'] for c in data.get('columns', [])}
+    # Exclude parent/summary rows to avoid double-counting (matches dashboard logic)
+    parent_ids = set()
+    for row in data['rows']:
+        if row.get('parentId'):
+            parent_ids.add(row['parentId'])
     rows = []
     for row in data['rows']:
+        if row.get('id') in parent_ids:
+            continue  # skip parent rows that have children
         rec = {}
         for cell in row.get('cells', []):
             title = col_map.get(cell.get('columnId'))
