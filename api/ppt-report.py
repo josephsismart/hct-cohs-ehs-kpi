@@ -295,7 +295,9 @@ def fetch_kpi_data(token, month_list=None):
             if month_list and month_col:
                 raw_mv = str(row.get(month_col, '')).strip().upper()
                 if raw_mv in QUARTER_MONTHS:
-                    pass  # quarterly data passes through all month filters
+                    q_months = QUARTER_MONTHS[raw_mv]
+                    if not all(m in month_list for m in q_months):
+                        continue
                 else:
                     row_month = normalize_month(row.get(month_col))
                     if not row_month:
@@ -304,7 +306,7 @@ def fetch_kpi_data(token, month_list=None):
                         row_month = normalize_month(row.get('Date Reported'))
                     if not row_month:
                         row_month = normalize_month(row.get('Primary'))
-                    if row_month is not None and row_month not in month_list:
+                    if row_month is None or row_month not in month_list:
                         continue
 
             if campus not in campus_agg:
@@ -1675,7 +1677,9 @@ def fetch_kpi_data(token, month_list=None):
             if month_list and month_col:
                 raw_mv = str(row.get(month_col, '')).strip().upper()
                 if raw_mv in QUARTER_MONTHS:
-                    pass  # quarterly data passes through all month filters
+                    q_months = QUARTER_MONTHS[raw_mv]
+                    if not all(m in month_list for m in q_months):
+                        continue
                 else:
                     row_month = normalize_month(row.get(month_col))
                     if not row_month:
@@ -1684,7 +1688,7 @@ def fetch_kpi_data(token, month_list=None):
                         row_month = normalize_month(row.get('Date Reported'))
                     if not row_month:
                         row_month = normalize_month(row.get('Primary'))
-                    if row_month is not None and row_month not in month_list:
+                    if row_month is None or row_month not in month_list:
                         continue
 
             if campus not in campus_agg:
@@ -2920,7 +2924,9 @@ def fetch_kpi_data(token, month_list=None):
             if month_list and month_col:
                 raw_mv = str(row.get(month_col, '')).strip().upper()
                 if raw_mv in QUARTER_MONTHS:
-                    pass  # quarterly data passes through all month filters
+                    q_months = QUARTER_MONTHS[raw_mv]
+                    if not all(m in month_list for m in q_months):
+                        continue
                 else:
                     row_month = normalize_month(row.get(month_col))
                     if not row_month:
@@ -2929,7 +2935,7 @@ def fetch_kpi_data(token, month_list=None):
                         row_month = normalize_month(row.get('Date Reported'))
                     if not row_month:
                         row_month = normalize_month(row.get('Primary'))
-                    if row_month is not None and row_month not in month_list:
+                    if row_month is None or row_month not in month_list:
                         continue
 
             if campus not in campus_agg:
@@ -4225,7 +4231,9 @@ def fetch_kpi_data(token, month_list=None):
             if month_list and month_col:
                 raw_mv = str(row.get(month_col, '')).strip().upper()
                 if raw_mv in QUARTER_MONTHS:
-                    pass  # quarterly data passes through all month filters
+                    q_months = QUARTER_MONTHS[raw_mv]
+                    if not all(m in month_list for m in q_months):
+                        continue
                 else:
                     row_month = normalize_month(row.get(month_col))
                     if not row_month:
@@ -4234,7 +4242,7 @@ def fetch_kpi_data(token, month_list=None):
                         row_month = normalize_month(row.get('Date Reported'))
                     if not row_month:
                         row_month = normalize_month(row.get('Primary'))
-                    if row_month is not None and row_month not in month_list:
+                    if row_month is None or row_month not in month_list:
                         continue
 
             if campus not in campus_agg:
